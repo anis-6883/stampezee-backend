@@ -1,7 +1,7 @@
 import { Request } from "express";
 import mongoose from "mongoose";
 
-export interface Config {
+export interface IConfig {
   [key: string]: {
     corsOptions: {
       origin: string[];
@@ -28,7 +28,7 @@ export interface IUser {
   updatedAt: Date;
 }
 
-export interface ApiRequest extends Request {
+export interface IApiRequest extends Request {
   user?: IUser;
   otp?: string;
   token?: string;

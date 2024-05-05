@@ -1,7 +1,7 @@
 {
-  "name": "everyday-blend",
+  "name": "stampezee",
   "version": "1.0.0",
-  "description": "Social Concern Project",
+  "description": "StampEzee is a comprehensive stamp collection system designed to streamline the process of purchasing stamps by order.",
   "main": "index.js",
   "scripts": {
     "start": "node ./dist/index.js",

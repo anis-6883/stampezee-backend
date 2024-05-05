@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { APP_SECRET } from "../configs/constants";
-import User from "../modules/user/model";
+import User from "../features/user/model";
 
 export const asyncHandler = (func: any) => async (req: Request, res: Response) => {
   try {

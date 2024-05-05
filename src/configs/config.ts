@@ -1,6 +1,6 @@
-import { Config } from "types";
+import { IConfig } from "types";
 
-const config: Config = {
+const config: IConfig = {
   development: {
     corsOptions: {
       origin: process.env.CORS_ORIGINS.split(",").map((origin) => origin.trim()),

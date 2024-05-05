@@ -1,9 +1,9 @@
 import { NextFunction, Response } from "express";
 import { COOKIE_KEY } from "../configs/constants";
 import { apiResponse, decodeAuthToken } from "../helpers";
-import { ApiRequest } from "../types";
+import { IApiRequest } from "../types";
 
-export default async function auth(req: ApiRequest, res: Response, next: NextFunction): Promise<any> {
+export default async function auth(req: IApiRequest, res: Response, next: NextFunction): Promise<any> {
   try {
     const token = req?.cookies?.[COOKIE_KEY] || req.headers?.authorization?.replace("Bearer ", "");
     if (!token) return apiResponse(res, 401, false, "Unauthorized!");
