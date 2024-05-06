@@ -6,9 +6,9 @@ import { apiResponse, generateSignature } from "../../helpers";
 import { IUser } from "../../types";
 import User from "./model";
 
-export const createUser = async (req: Request, res: Response, role: string) => {
+export const createUser = async (req: Request, res: Response, role: "admin" | "retailer" | "user") => {
   const existingAdmin = await operations.findOne({ table: User, key: { email: req.body.email } });
-  if (existingAdmin) return apiResponse(res, 400, false, "User already exists!");
+  if (existingAdmin) return apiResponse(res, 400, false, `This ${role} already exists!`);
 
   req.body.password = await bcrypt.hash(req.body.password, 10);
 
@@ -31,5 +31,5 @@ export const createUser = async (req: Request, res: Response, role: string) => {
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   });
 
-  return apiResponse(res, 201, true, "Admin Registration Successfully!", admin);
+  return apiResponse(res, 201, true, `${role} registration successfully!`, admin);
 };

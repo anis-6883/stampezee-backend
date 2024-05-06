@@ -9,8 +9,8 @@ const schema = new mongoose.Schema(
     },
     lastName: {
       type: String,
-      required: true,
       trim: true,
+      default: null,
     },
     email: {
       type: String,
@@ -35,6 +35,41 @@ const schema = new mongoose.Schema(
       type: String,
       enum: ["user", "admin", "retailer"],
       default: "user",
+    },
+    storeName: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    phone: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    country: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    city: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    province: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    postalCode: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    address: {
+      type: String,
+      trim: true,
+      default: null,
     },
   },
   {

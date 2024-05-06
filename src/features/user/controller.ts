@@ -6,7 +6,7 @@ import { apiResponse, asyncHandler, decodeAuthToken, generateSignature, validate
 import { IUser } from "../../types";
 import User from "./model";
 import { createUser } from "./service";
-import { adminRegisterSchema, loginSchema, registerSchema } from "./validation";
+import { adminRegisterSchema, loginSchema, retailerRegisterSchema, userRegisterSchema } from "./validation";
 
 /**
  * User Registration
@@ -15,7 +15,7 @@ import { adminRegisterSchema, loginSchema, registerSchema } from "./validation";
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const userRegistration = asyncHandler(async (req: Request, res: Response) => {
-  const result = validateBody(registerSchema, req.body);
+  const result = validateBody(userRegisterSchema, req.body);
   if (!result) return apiResponse(res, 400, false, "Invalid Request!");
 
   return createUser(req, res, "user");
@@ -32,6 +32,20 @@ export const adminRegistration = asyncHandler(async (req: Request, res: Response
   if (!result) return apiResponse(res, 400, false, "Invalid Request!");
 
   return createUser(req, res, "admin");
+});
+
+/**
+ * Retailer Registration
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const retailerRegistration = asyncHandler(async (req: Request, res: Response) => {
+  const result = validateBody(retailerRegisterSchema, req.body);
+  console.log(result);
+  if (!result) return apiResponse(res, 400, false, "Invalid Request!");
+
+  return createUser(req, res, "retailer");
 });
 
 /**
