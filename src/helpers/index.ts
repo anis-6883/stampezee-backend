@@ -2,13 +2,13 @@ import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { APP_SECRET } from "../configs/constants";
-import User from "../features/user/model";
 
 export const asyncHandler = (func: any) => async (req: Request, res: Response) => {
   try {
     await func(req, res);
   } catch (err) {
-    return res.status(400).json({ status: false, message: err.message });
+    console.error(err);
+    return res.status(400).json({ status: false, message: "Something went wrong!" });
   }
 };
 
@@ -16,32 +16,32 @@ export const apiResponse = (res: Response, statusCode: number, status: boolean, 
   return res.status(statusCode).json({ status, message, data });
 };
 
-export const validateBody = (schema: any, body: Object): Boolean => {
+export const validateBody = (schema: any, body: Object): Object => {
   const result = schema.validate(body, {
     allowUnknown: true,
     abortEarly: false,
   });
 
-  if (result.error) return false;
-  return true;
+  const format: any = {};
 
-  // if (result.error) {
-  //   const format: any = {};
-  //   result.error.details.forEach((detail: any) => {
-  //     format[detail.context.label] = detail.message;
-  //   });
-  // }
+  if (result.error) {
+    result.error.details.forEach((detail: any) => {
+      format[detail.context.label] = detail.message;
+    });
+  }
+
+  return format;
 };
 
 export const decodeAuthToken = async (token: string) => {
-  try {
-    const decoded: any = jwt.verify(token, process.env.APP_SECRET!);
-    const user = await User.findOne({ email: decoded?.email });
-    if (!user) throw new Error("User not found!");
-    return user;
-  } catch (err) {
-    console.error(err);
-  }
+  // try {
+  //   const decoded: any = jwt.verify(token, process.env.APP_SECRET!);
+  //   const user = await User.findOne({ email: decoded?.email });
+  //   if (!user) throw new Error("User not found!");
+  //   return user;
+  // } catch (err) {
+  //   console.error(err);
+  // }
 };
 
 export const generateSalt = async () => {
@@ -77,4 +77,8 @@ export const exclude = (existingApp: any, keys: any[]) => {
     delete existingApp[key];
   }
   return existingApp;
+};
+
+export const getRandomInteger = (min: number, max: number) => {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 };
