@@ -22,6 +22,7 @@ app.use(express.static("public"));
 app.use(cors(config[env].corsOptions));
 app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: true, limit: "100kb" }));
+app.use(verifyApiKeyHeader);
 
 // Connect to MongoDB with Mongoose
 connectToDatabase(config[env].databaseURI);
@@ -32,8 +33,8 @@ app.get("/", (req, res) => {
 });
 
 // Main Routes
-app.use("/api/v1", verifyApiKeyHeader, webRoutes); // web
-app.use("/api/v1/admin", verifyApiKeyHeader, adminRoutes); // admin
+app.use("/api/v1", webRoutes); // web
+app.use("/api/v1/admin", adminRoutes); // admin
 
 // 404 Route
 app.use((req, res, next) => {

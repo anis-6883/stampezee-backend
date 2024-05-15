@@ -60,6 +60,14 @@ const address = Joi.string().trim().required().messages({
   "string.base": "address must be string!",
 });
 
+const otp = Joi.number().required().integer().min(100000).max(999999).messages({
+  "number.base": "otp must be number!",
+  "number.integer": "otp must be integer!",
+  "number.min": "otp must be 6 digits long!",
+  "number.max": "otp must be 6 digits long!",
+  "any.required": "otp is required!",
+});
+
 export const userRegisterSchema = Joi.object({
   firstName,
   lastName,
@@ -90,4 +98,8 @@ export const adminRegisterSchema = Joi.object({
 export const loginSchema = Joi.object({
   email,
   password: weakPassword,
+});
+
+export const verifyOtpSchema = Joi.object({
+  otp,
 });

@@ -88,6 +88,16 @@ const schema = new mongoose.Schema(
       trim: true,
       default: null,
     },
+    about: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    website: {
+      type: String,
+      trim: true,
+      default: null,
+    },
   },
   {
     timestamps: true,

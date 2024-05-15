@@ -33,17 +33,6 @@ export const validateBody = (schema: any, body: Object): Object => {
   return format;
 };
 
-export const decodeAuthToken = async (token: string) => {
-  // try {
-  //   const decoded: any = jwt.verify(token, process.env.APP_SECRET!);
-  //   const user = await User.findOne({ email: decoded?.email });
-  //   if (!user) throw new Error("User not found!");
-  //   return user;
-  // } catch (err) {
-  //   console.error(err);
-  // }
-};
-
 export const generateSalt = async () => {
   return await bcrypt.genSalt();
 };
@@ -72,7 +61,7 @@ export const excludeMany = async (array: any[], keys: any[]): Promise<any[]> => 
   return newArray;
 };
 
-export const exclude = (existingApp: any, keys: any[]) => {
+export const exclude = (existingApp: { [key: string]: any }, keys: any[]) => {
   for (let key of keys) {
     delete existingApp[key];
   }
