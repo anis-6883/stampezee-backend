@@ -56,7 +56,7 @@ const schema = new mongoose.Schema(
     },
     ref: {
       type: "String",
-      enum: ["self", "super-admin"],
+      enum: ["self", "super_admin"],
       default: "self",
     },
     status: {

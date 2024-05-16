@@ -22,13 +22,13 @@ export const authCheck = asyncHandler(async (req: Request, res: Response) => {
   let model: Model<any>;
 
   switch (decoded.role) {
-    case "super-admin":
+    case "super_admin":
       model = SuperAdmin;
       break;
     case "retailer":
       model = Retailer;
       break;
-    case "sub-admin":
+    case "sub_admin":
       model = SubAdmin;
       break;
     case "customer":
@@ -58,13 +58,13 @@ export const refreshAccessToken = asyncHandler(async (req: Request, res: Respons
   let model: Model<any>;
 
   switch (decoded.role) {
-    case "super-admin":
+    case "super_admin":
       model = SuperAdmin;
       break;
     case "retailer":
       model = Retailer;
       break;
-    case "sub-admin":
+    case "sub_admin":
       model = SubAdmin;
       break;
     case "customer":
