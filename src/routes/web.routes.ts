@@ -6,6 +6,6 @@ const router = express.Router();
 
 router.use("/auth-check", authCheck);
 router.use("/refresh-token", refreshAccessToken);
-router.use("/user", retailerAuthRoutes);
+router.use("/retailer", retailerAuthRoutes);
 
 export default router;

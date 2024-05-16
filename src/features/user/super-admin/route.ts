@@ -5,9 +5,9 @@ import { superAdminLogin, superAdminLogout, superAdminProfile, superAdminRegistr
 
 const router = express.Router();
 
-router.post("/secret/super-admin/register", superAdminRegistration);
-router.post("/super-admin/login", superAdminLogin);
-router.post("/super-admin/logout", superAdminLogout);
-router.get("/super-admin/profile", superAdminAuthorize, superAdminProfile);
+router.post("/register", superAdminRegistration);
+router.post("/login", superAdminLogin);
+router.post("/logout", superAdminLogout);
+router.get("/profile", superAdminAuthorize, superAdminProfile);
 
 export default router;

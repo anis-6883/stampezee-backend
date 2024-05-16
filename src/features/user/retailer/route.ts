@@ -4,9 +4,9 @@ import { retailerLogin, retailerOtpVerify, retailerRegistration, retailerResendO
 
 const router = express.Router();
 
-router.post("/retailer/register", retailerRegistration);
-router.post("/retailer/otp-verify", tempRetailerAuthorize, retailerOtpVerify);
-router.get("/retailer/resend-otp", tempRetailerAuthorize, retailerResendOtp);
-router.post("/retailer/login", retailerLogin);
+router.post("/register", retailerRegistration);
+router.post("/otp-verify", tempRetailerAuthorize, retailerOtpVerify);
+router.get("/resend-otp", tempRetailerAuthorize, retailerResendOtp);
+router.post("/login", retailerLogin);
 
 export default router;

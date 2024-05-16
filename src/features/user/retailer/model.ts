@@ -56,37 +56,42 @@ const schema = new mongoose.Schema(
     storeName: {
       type: String,
       trim: true,
-      default: null,
+      required: true,
+    },
+    dialCode: {
+      type: String,
+      trim: true,
+      required: true,
     },
     phone: {
       type: String,
       trim: true,
-      default: null,
+      required: true,
     },
     country: {
       type: String,
       trim: true,
-      default: null,
+      required: true,
     },
     city: {
       type: String,
       trim: true,
-      default: null,
+      required: true,
     },
     province: {
       type: String,
       trim: true,
-      default: null,
+      required: true,
     },
     postalCode: {
       type: String,
       trim: true,
-      default: null,
+      required: true,
     },
     address: {
       type: String,
       trim: true,
-      default: null,
+      required: true,
     },
     about: {
       type: String,

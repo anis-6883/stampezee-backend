@@ -109,6 +109,10 @@ export const retailerResendOtp = asyncHandler(async (req: IApiRequest, res: Resp
   const otp = getRandomInteger(100000, 999999);
   const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
 
+  if (req.user.isVerified) {
+    return apiResponse(res, 400, false, "This retailer already verified!");
+  }
+
   if (req.user.otpExpiry > new Date()) {
     return apiResponse(res, 400, false, "Please, wait for 2 minutes before resend otp!");
   }
