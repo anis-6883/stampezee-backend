@@ -106,7 +106,7 @@ export const retailerRegisterSchema = Joi.object({
   address,
 });
 
-export const adminRegisterSchema = Joi.object({
+export const superAdminRegisterSchema = Joi.object({
   firstName,
   lastName,
   email,

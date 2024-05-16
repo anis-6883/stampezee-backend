@@ -24,13 +24,13 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
   retailerBody.otp = getRandomInteger(100000, 999999);
   retailerBody.otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
 
-  const existingAdmin = await Retailer.findOne({ email: retailerBody.email });
+  const existingRetailer = await Retailer.findOne({ email: retailerBody.email });
 
-  if (existingAdmin && existingAdmin.isVerified) {
+  if (existingRetailer && existingRetailer.isVerified) {
     return apiResponse(res, 400, false, "This retailer already exists!");
   }
 
-  if (existingAdmin) {
+  if (existingRetailer) {
     await Retailer.updateOne(
       { email: retailerBody.email },
       { $set: { otp: retailerBody.otp, otpExpiry: retailerBody.otpExpiry } }
@@ -96,7 +96,16 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     expires: new Date(Date.now()),
   });
 
-  return apiResponse(res, 200, true, "Otp verified successfully!");
+  // Remove Field
+  delete req.user.password;
+  delete req.user.otp;
+  delete req.user.otpExpiry;
+  delete req.user.isVerified;
+  delete req.user.verifiedAt;
+  delete req.user.createdAt;
+  delete req.user.updatedAt;
+
+  return apiResponse(res, 200, true, "Otp verified successfully!", { ...req.user, role: "retailer" });
 });
 
 /**
@@ -196,4 +205,29 @@ export const retailerLogout = asyncHandler(async (_req: Request, res: Response) 
   });
 
   return apiResponse(res, 200, true, "Retailer Logout Successfully!");
+});
+
+/**
+ * Retailer Profile
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
+  if ("user" in req) {
+    if (!req.user) return apiResponse(res, 401, false, "Unauthorized Request!");
+
+    // Remove Field
+    delete req.user.password;
+    delete req.user.otp;
+    delete req.user.otpExpiry;
+    delete req.user.isVerified;
+    delete req.user.verifiedAt;
+    delete req.user.createdAt;
+    delete req.user.updatedAt;
+
+    return apiResponse(res, 200, true, "Retailer Profile", { ...req.user, role: "retailer" });
+  } else {
+    return apiResponse(res, 401, false, "Unauthorized!");
+  }
 });
