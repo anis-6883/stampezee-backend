@@ -1,5 +1,5 @@
 import express from "express";
-import { customerAuthorize } from "../../../middlewares/authMiddleware";
+import { authorizationCheck } from "../../../middlewares/authMiddleware";
 import {
   customerLogin,
   customerOtpVerify,
@@ -11,9 +11,9 @@ import {
 const router = express.Router();
 
 router.post("/register", customerRegistration);
-router.post("/otp-verify", customerAuthorize, customerOtpVerify);
-router.get("/resend-otp", customerAuthorize, customerResendOtp);
+router.post("/otp-verify", authorizationCheck, customerOtpVerify);
+router.get("/resend-otp", authorizationCheck, customerResendOtp);
 router.post("/login", customerLogin);
-router.get("/profile", customerAuthorize, customerProfile);
+router.get("/profile", authorizationCheck, customerProfile);
 
 export default router;
