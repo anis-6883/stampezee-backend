@@ -6,8 +6,18 @@ const firstName = Joi.string().trim().required().messages({
 });
 
 const lastName = Joi.string().trim().required().messages({
-  "any.required": "firstName is required!",
-  "string.base": "firstName must be string!",
+  "any.required": "lastName is required!",
+  "string.base": "lastName must be string!",
+});
+
+const fullName = Joi.string().trim().required().messages({
+  "any.required": "fullName is required!",
+  "string.base": "fullName must be string!",
+});
+
+const phone = Joi.string().trim().required().messages({
+  "any.required": "phone is required!",
+  "string.base": "phone must be string!",
 });
 
 const email = Joi.string().email().trim().required().messages({
@@ -40,6 +50,11 @@ const country = Joi.string().trim().required().messages({
   "string.base": "country must be string!",
 });
 
+const dialCode = Joi.string().trim().required().messages({
+  "any.required": "dialCode is required!",
+  "string.base": "dialCode must be string!",
+});
+
 const province = Joi.string().trim().required().messages({
   "any.required": "province is required!",
   "string.base": "province must be string!",
@@ -68,10 +83,12 @@ const otp = Joi.number().required().integer().min(100000).max(999999).messages({
   "any.required": "otp is required!",
 });
 
-export const userRegisterSchema = Joi.object({
-  firstName,
-  lastName,
+export const customerRegisterSchema = Joi.object({
+  fullName,
   email,
+  phone,
+  country,
+  dialCode,
   password: strongPassword,
 });
 
@@ -80,8 +97,10 @@ export const retailerRegisterSchema = Joi.object({
   firstName,
   lastName,
   email,
-  password: strongPassword,
+  dialCode,
+  phone,
   country,
+  password: strongPassword,
   province,
   city,
   postalCode,

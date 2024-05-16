@@ -33,8 +33,8 @@ app.get("/", (req, res) => {
 });
 
 // Main Routes
-app.use("/api/v1", webRoutes); // web
-app.use("/api/v1/admin", adminRoutes); // admin
+app.use("/api", webRoutes); // web
+app.use("/api/secret-root/admin", adminRoutes); // admin
 
 // 404 Route
 app.use((req, res, next) => {
