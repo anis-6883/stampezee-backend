@@ -1,5 +1,5 @@
 import express from "express";
-import { retailerAuthorize } from "../../../middlewares/authMiddleware";
+import { authorizationCheck } from "../../../middlewares/authMiddleware";
 import {
   retailerLogin,
   retailerLogout,
@@ -12,10 +12,10 @@ import {
 const router = express.Router();
 
 router.post("/register", retailerRegistration);
-router.post("/otp-verify", retailerAuthorize, retailerOtpVerify);
-router.get("/resend-otp", retailerAuthorize, retailerResendOtp);
+router.post("/otp-verify", authorizationCheck, retailerOtpVerify);
+router.get("/resend-otp", authorizationCheck, retailerResendOtp);
 router.post("/login", retailerLogin);
 router.post("/logout", retailerLogout);
-router.get("/profile", retailerAuthorize, retailerProfile);
+router.get("/profile", authorizationCheck, retailerProfile);
 
 export default router;

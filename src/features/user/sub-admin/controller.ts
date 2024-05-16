@@ -6,7 +6,7 @@ import { loginSchema } from "../validation";
 import SubAdmin from "./model";
 
 /**
- * SubAdmin Login
+ * Sub Admin Login
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -44,28 +44,4 @@ export const subAdminLogin = asyncHandler(async (req: Request, res: Response) =>
   delete subAdmin._doc.updatedAt;
 
   return apiResponse(res, 200, true, "SubAdmin Login Successfully!", subAdmin);
-});
-
-/**
- * SubAdmin Logout
- * @param {Request} req - The HTTP request object.
- * @param {Response} res - The HTTP response object.
- * @returns {Promise<void>} - A promise that resolves when the response is sent.
- */
-export const subAdminLogout = asyncHandler(async (_req: Request, res: Response) => {
-  res.clearCookie(COOKIE_KEY, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
-    expires: new Date(Date.now()),
-  });
-
-  res.clearCookie(REFRESH_TOKEN_KEY, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
-    expires: new Date(Date.now()),
-  });
-
-  return apiResponse(res, 200, true, "SubAdmin Logout Successfully!");
 });

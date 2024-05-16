@@ -180,7 +180,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   delete retailer._doc.createdAt;
   delete retailer._doc.updatedAt;
 
-  return apiResponse(res, 200, true, "Retailer Login Successfully!", retailer);
+  return apiResponse(res, 200, true, "Retailer Login Successfully!", { ...retailer._doc, role: "retailer" });
 });
 
 /**

@@ -31,6 +31,10 @@ const schema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    retailer: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+    },
   },
   {
     timestamps: true,
