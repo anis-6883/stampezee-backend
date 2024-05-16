@@ -4,7 +4,7 @@ import _ from "lodash";
 import { IApiRequest } from "types";
 import { COOKIE_KEY, REFRESH_TOKEN_KEY } from "../../../configs/constants";
 import { apiResponse, asyncHandler, generateSignature, validateBody } from "../../../helpers";
-import { adminRegisterSchema, loginSchema } from "../validation";
+import { loginSchema, superAdminRegisterSchema } from "../validation";
 import SuperAdmin from "./model";
 
 /**
@@ -14,7 +14,7 @@ import SuperAdmin from "./model";
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const superAdminRegistration = asyncHandler(async (req: Request, res: Response) => {
-  const result = validateBody(adminRegisterSchema, req.body);
+  const result = validateBody(superAdminRegisterSchema, req.body);
   if (!_.isEmpty(result)) return apiResponse(res, 400, false, "Invalid Request!", result);
 
   const existingAdmin = await SuperAdmin.findOne({ email: req.body.email });
@@ -70,7 +70,7 @@ export const superAdminLogin = asyncHandler(async (req: Request, res: Response) 
   delete superAdmin._doc.createdAt;
   delete superAdmin._doc.updatedAt;
 
-  return apiResponse(res, 200, true, "Super Admin Login Successfully!", superAdmin);
+  return apiResponse(res, 200, true, "Super Admin Login Successfully!", { ...superAdmin._doc, role: "super-admin" });
 });
 
 /**
@@ -112,7 +112,7 @@ export const superAdminProfile = asyncHandler(async (req: IApiRequest, res: Resp
     delete req.user.createdAt;
     delete req.user.updatedAt;
 
-    return apiResponse(res, 200, true, "Super Admin Profile", req.user);
+    return apiResponse(res, 200, true, "Super Admin Profile", { ...req.user, role: "super-admin" });
   } else {
     return apiResponse(res, 401, false, "Unauthorized!");
   }

@@ -18,9 +18,31 @@ const schema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    otp: {
+      type: Number,
+      trim: true,
+      default: null,
+    },
+    otpExpiry: {
+      type: Date,
+      default: null,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    verifiedAt: {
+      type: Date,
+      default: null,
+    },
     image: {
       type: String,
       default: null,
+    },
+    dialCode: {
+      type: String,
+      trim: true,
+      required: true,
     },
     phone: {
       type: String,
@@ -31,6 +53,11 @@ const schema = new mongoose.Schema(
       type: String,
       trim: true,
       default: null,
+    },
+    ref: {
+      type: "String",
+      enum: ["self", "super-admin"],
+      default: "self",
     },
     status: {
       type: Boolean,

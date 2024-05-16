@@ -7,6 +7,7 @@ import logger from "morgan";
 import errorMiddleware from "../middlewares/errorMiddleware";
 import verifyApiKeyHeader from "../middlewares/verifyApiKeyHeader";
 import adminRoutes from "../routes/admin.routes";
+import mobileRoutes from "../routes/mobile.routes";
 import webRoutes from "../routes/web.routes";
 import config from "./config";
 import connectToDatabase from "./database";
@@ -34,6 +35,7 @@ app.get("/", (req, res) => {
 
 // Main Routes
 app.use("/api", webRoutes); // web
+app.use("/api/v1", mobileRoutes); // mobile
 app.use("/api/secret-root/admin", adminRoutes); // admin
 
 // 404 Route
