@@ -5,8 +5,7 @@ const firstName = Joi.string().trim().required().messages({
   "string.base": "firstName must be string!",
 });
 
-const lastName = Joi.string().trim().required().messages({
-  "any.required": "lastName is required!",
+const lastName = Joi.string().trim().messages({
   "string.base": "lastName must be string!",
 });
 
