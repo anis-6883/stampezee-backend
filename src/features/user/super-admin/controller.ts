@@ -48,8 +48,8 @@ export const superAdminLogin = asyncHandler(async (req: Request, res: Response) 
   const isPasswordValid = await bcrypt.compare(req.body.password, superAdmin.password);
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
-  const accessToken = generateSignature({ email: superAdmin.email, role: "super-admin" }, "1d");
-  const refreshToken = generateSignature({ email: superAdmin.email, role: "super-admin" }, "7d");
+  const accessToken = generateSignature({ email: superAdmin.email, role: "super_admin" }, "1d");
+  const refreshToken = generateSignature({ email: superAdmin.email, role: "super_admin" }, "7d");
 
   res.cookie(COOKIE_KEY, accessToken, {
     httpOnly: true,
@@ -70,7 +70,7 @@ export const superAdminLogin = asyncHandler(async (req: Request, res: Response) 
   delete superAdmin._doc.createdAt;
   delete superAdmin._doc.updatedAt;
 
-  return apiResponse(res, 200, true, "Super Admin Login Successfully!", { ...superAdmin._doc, role: "super-admin" });
+  return apiResponse(res, 200, true, "Super Admin Login Successfully!", { ...superAdmin._doc, role: "super_admin" });
 });
 
 /**
@@ -112,7 +112,7 @@ export const superAdminProfile = asyncHandler(async (req: IApiRequest, res: Resp
     delete req.user.createdAt;
     delete req.user.updatedAt;
 
-    return apiResponse(res, 200, true, "Super Admin Profile", { ...req.user, role: "super-admin" });
+    return apiResponse(res, 200, true, "Super Admin Profile", { ...req.user, role: "super_admin" });
   } else {
     return apiResponse(res, 401, false, "Unauthorized!");
   }
