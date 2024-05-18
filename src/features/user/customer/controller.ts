@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import _ from "lodash";
+import { ROLE } from "../../../configs/constants";
 import { apiResponse, asyncHandler, generateSignature, getRandomInteger, validateBody } from "../../../helpers";
 import { IApiRequest, IUser } from "../../../types";
 import { sendVerificationEmail } from "../service";
@@ -43,7 +44,7 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
     await Customer.create(customerBody);
   }
 
-  const token = generateSignature({ email: customerBody.email, role: "customer" }, "15m"); // 15 min
+  const token = generateSignature({ email: customerBody.email, role: ROLE.CUSTOMER }, "15m"); // 15 min
 
   sendVerificationEmail(customerBody.email, customerBody.otp, "mobile");
 
@@ -72,7 +73,7 @@ export const customerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     { $set: { isVerified: true, verifiedAt: new Date(), otp: null, otpExpiry: null } }
   );
 
-  const token = generateSignature({ email: req.user.email, role: "customer" }, "30 days");
+  const token = generateSignature({ email: req.user.email, role: ROLE.CUSTOMER }, "30 days");
 
   return apiResponse(res, 200, true, "Otp verified successfully!", { token });
 });
@@ -123,7 +124,7 @@ export const customerLogin = asyncHandler(async (req: Request, res: Response) =>
   const isPasswordValid = await bcrypt.compare(req.body.password, customer.password);
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
-  const token = generateSignature({ email: customer.email, role: "customer" }, "30 days");
+  const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER }, "30 days");
 
   // Remove Field
   delete customer._doc.password;

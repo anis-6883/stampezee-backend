@@ -1,5 +1,6 @@
 import express from "express";
-import { authorizationCheck } from "../../../middlewares/authMiddleware";
+import { ROLE } from "../../../configs/constants";
+import { authAndPermissionCheck } from "../../../middlewares/authMiddleware";
 import {
   retailerLogin,
   retailerLogout,
@@ -12,10 +13,10 @@ import {
 const router = express.Router();
 
 router.post("/register", retailerRegistration);
-router.post("/otp-verify", authorizationCheck, retailerOtpVerify);
-router.get("/resend-otp", authorizationCheck, retailerResendOtp);
+router.post("/otp-verify", authAndPermissionCheck(ROLE.RETAILER), retailerOtpVerify);
+router.get("/resend-otp", authAndPermissionCheck(ROLE.RETAILER), retailerResendOtp);
 router.post("/login", retailerLogin);
 router.post("/logout", retailerLogout);
-router.get("/profile", authorizationCheck, retailerProfile);
+router.get("/profile", authAndPermissionCheck(ROLE.RETAILER), retailerProfile);
 
 export default router;

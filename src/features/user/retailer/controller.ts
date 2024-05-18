@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import _ from "lodash";
-import { COOKIE_KEY, REFRESH_TOKEN_KEY } from "../../../configs/constants";
+import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
 import { apiResponse, asyncHandler, generateSignature, getRandomInteger, validateBody } from "../../../helpers";
 import { IApiRequest } from "../../../types";
 import { sendVerificationEmail } from "../service";
@@ -39,7 +39,7 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
     await Retailer.create(retailerBody);
   }
 
-  const tempToken = generateSignature({ email: retailerBody.email, role: "retailer" }, "15m"); // 15 min
+  const tempToken = generateSignature({ email: retailerBody.email, role: ROLE.RETAILER }, "15m"); // 15 min
 
   res.cookie("temp", tempToken, {
     httpOnly: true,
@@ -71,8 +71,8 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     { $set: { isVerified: true, verifiedAt: new Date(), otp: null, otpExpiry: null } }
   );
 
-  const accessToken = generateSignature({ email: req.user.email, role: "retailer" }, "1d");
-  const refreshToken = generateSignature({ email: req.user.email, role: "retailer" }, "7d");
+  const accessToken = generateSignature({ email: req.user.email, role: ROLE.RETAILER }, "1d");
+  const refreshToken = generateSignature({ email: req.user.email, role: ROLE.RETAILER }, "7d");
 
   res.cookie(COOKIE_KEY, accessToken, {
     httpOnly: true,
@@ -105,7 +105,7 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
   delete req.user.createdAt;
   delete req.user.updatedAt;
 
-  return apiResponse(res, 200, true, "Otp verified successfully!", { ...req.user, role: "retailer" });
+  return apiResponse(res, 200, true, "Otp verified successfully!", { ...req.user, role: ROLE.RETAILER });
 });
 
 /**
@@ -154,8 +154,8 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   const isPasswordValid = await bcrypt.compare(req.body.password, retailer.password);
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
-  const accessToken = generateSignature({ email: retailer.email, role: "retailer" }, "1d");
-  const refreshToken = generateSignature({ email: retailer.email, role: "retailer" }, "7d");
+  const accessToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "1d");
+  const refreshToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "7d");
 
   res.cookie(COOKIE_KEY, accessToken, {
     httpOnly: true,
@@ -180,7 +180,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   delete retailer._doc.createdAt;
   delete retailer._doc.updatedAt;
 
-  return apiResponse(res, 200, true, "Retailer Login Successfully!", { ...retailer._doc, role: "retailer" });
+  return apiResponse(res, 200, true, "Retailer Login Successfully!", { ...retailer._doc, role: ROLE.RETAILER });
 });
 
 /**
@@ -226,7 +226,7 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
     delete req.user.createdAt;
     delete req.user.updatedAt;
 
-    return apiResponse(res, 200, true, "Retailer Profile", { ...req.user, role: "retailer" });
+    return apiResponse(res, 200, true, "Retailer Profile", { ...req.user, role: ROLE.RETAILER });
   } else {
     return apiResponse(res, 401, false, "Unauthorized!");
   }
