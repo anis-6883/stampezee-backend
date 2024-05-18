@@ -24,7 +24,7 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
       name: address,
     },
     status,
-    retailerID: req.user._id,
+    retailerId: req.user._id,
   });
 
   return apiResponse(res, 201, true, "Branch created successfully!");
@@ -41,8 +41,11 @@ export const getAllBranches = asyncHandler(async (req: IApiRequest, res: Respons
   const skip: number = (Number(page) - 1) * Number(limit);
 
   const [docs, total] = await Promise.all([
-    Branch.find({ retailerID: req.user._id }).limit(Number(limit)).skip(skip).sort({ createdAt: "asc" }),
-    Branch.find({ retailerID: req.user._id }).countDocuments(),
+    Branch.find({ retailerId: req.user._id, softDeleted: { $eq: false } })
+      .limit(Number(limit))
+      .skip(skip)
+      .sort({ createdAt: "asc" }),
+    Branch.find({ retailerId: req.user._id, softDeleted: { $eq: false } }).countDocuments(),
   ]);
 
   const hasNext = total > skip + Number(limit);
@@ -111,12 +114,61 @@ export const updateBranch = asyncHandler(async (req: IApiRequest, res: Response)
 });
 
 /**
- * Delete A Single Branch
+ * Soft Delete A Single Branch
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const deleteBranch = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const softDeleteBranch = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { id } = req.params;
+
+  const branch = await Branch.findOneAndUpdate({ _id: id }, { $set: { softDeleted: true } });
+  if (!branch) return apiResponse(res, 404, false, "Branch not found!");
+
+  return apiResponse(res, 200, true, "Branch deleted successfully!");
+});
+
+/**
+ * Get All Deleted Branches
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const getAllDeletedBranches = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { page = 1, limit = 10 } = req.query;
+  const skip: number = (Number(page) - 1) * Number(limit);
+
+  const [docs, total] = await Promise.all([
+    Branch.find({ retailerId: req.user._id, softDeleted: { $eq: true } })
+      .limit(Number(limit))
+      .skip(skip)
+      .sort({ createdAt: "asc" }),
+    Branch.find({ retailerId: req.user._id, softDeleted: { $eq: true } }).countDocuments(),
+  ]);
+
+  const hasNext = total > skip + Number(limit);
+  const hasPrev = Number(page) > 1;
+
+  const data = {
+    docs,
+    page: +page,
+    limit: +limit,
+    totalPage: Math.ceil(total / Number(limit)),
+    totalDocs: total,
+    hasNext,
+    hasPrev,
+  };
+
+  return apiResponse(res, 201, true, "Deleted Branches fetched successfully!", data);
+});
+
+/**
+ * Confirm Delete A Single Branch
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const confirmDeleteBranch = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
   const branch = await Branch.findOneAndDelete({ _id: id });

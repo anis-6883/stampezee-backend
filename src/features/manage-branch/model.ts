@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const schema = new mongoose.Schema(
   {
-    retailerID: {
+    retailerId: {
       type: "ObjectId", // mongoose.Types.ObjectId
       ref: "Retailer",
       required: true,
@@ -36,7 +36,7 @@ const schema = new mongoose.Schema(
     },
     softDeleted: {
       type: Boolean,
-      default: true,
+      default: false,
     },
   },
   {

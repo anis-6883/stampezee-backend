@@ -2,7 +2,14 @@ import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import _ from "lodash";
 import { ROLE } from "../../../configs/constants";
-import { apiResponse, asyncHandler, generateSignature, getRandomInteger, validateBody } from "../../../helpers";
+import {
+  apiResponse,
+  asyncHandler,
+  exclude,
+  generateSignature,
+  getRandomInteger,
+  validateBody,
+} from "../../../helpers";
 import { IApiRequest, IUser } from "../../../types";
 import { sendVerificationEmail } from "../service";
 import { customerRegisterSchema, loginSchema, verifyOtpSchema } from "../validation";
@@ -126,16 +133,18 @@ export const customerLogin = asyncHandler(async (req: Request, res: Response) =>
 
   const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER }, "30 days");
 
-  // Remove Field
-  delete customer._doc.password;
-  delete customer._doc.otp;
-  delete customer._doc.otpExpiry;
-  delete customer._doc.isVerified;
-  delete customer._doc.verifiedAt;
-  delete customer._doc.createdAt;
-  delete customer._doc.updatedAt;
+  // Remove Sensitive Data
+  const data = exclude(customer._doc, [
+    "password",
+    "otp",
+    "otpExpiry",
+    "isVerified",
+    "verifiedAt",
+    "createdAt",
+    "updatedAt",
+  ]);
 
-  return apiResponse(res, 200, true, "Customer Login Successfully!", { token, ...customer._doc });
+  return apiResponse(res, 200, true, "Customer Login Successfully!", { token, ...data });
 });
 
 /**
@@ -148,16 +157,18 @@ export const customerProfile = asyncHandler(async (req: IApiRequest, res: Respon
   if ("user" in req) {
     if (!req.user) return apiResponse(res, 401, false, "Unauthorized Request!");
 
-    // Remove Field
-    delete req.user.password;
-    delete req.user.otp;
-    delete req.user.otpExpiry;
-    delete req.user.isVerified;
-    delete req.user.verifiedAt;
-    delete req.user.createdAt;
-    delete req.user.updatedAt;
+    // Remove Sensitive Data
+    const data = exclude(req.user, [
+      "password",
+      "otp",
+      "otpExpiry",
+      "isVerified",
+      "verifiedAt",
+      "createdAt",
+      "updatedAt",
+    ]);
 
-    return apiResponse(res, 200, true, "Customer Profile", req.user);
+    return apiResponse(res, 200, true, "Customer Profile", data);
   } else {
     return apiResponse(res, 401, false, "Unauthorized!");
   }

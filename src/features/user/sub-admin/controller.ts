@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
-import { apiResponse, asyncHandler, generateSignature, validateBody } from "../../../helpers";
+import { apiResponse, asyncHandler, exclude, generateSignature, validateBody } from "../../../helpers";
 import { loginSchema } from "../validation";
 import SubAdmin from "./model";
 
@@ -38,10 +38,8 @@ export const subAdminLogin = asyncHandler(async (req: Request, res: Response) =>
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   });
 
-  // Remove Field
-  delete subAdmin._doc.password;
-  delete subAdmin._doc.createdAt;
-  delete subAdmin._doc.updatedAt;
+  // Remove Sensitive Data
+  const data = exclude(subAdmin._doc, ["password", "createdAt", "updatedAt"]);
 
-  return apiResponse(res, 200, true, "SubAdmin Login Successfully!", subAdmin);
+  return apiResponse(res, 200, true, "SubAdmin Login Successfully!", data);
 });

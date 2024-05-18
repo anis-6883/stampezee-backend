@@ -2,6 +2,16 @@ import mongoose from "mongoose";
 
 const schema = new mongoose.Schema(
   {
+    retailerId: {
+      type: "ObjectId", // mongoose.Types.ObjectId
+      ref: "Retailer",
+      required: true,
+    },
+    branchId: {
+      type: "ObjectId", // mongoose.Types.ObjectId
+      ref: "Branch",
+      required: true,
+    },
     firstName: {
       type: String,
       required: true,
@@ -31,9 +41,9 @@ const schema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-    retailer: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true,
+    softDeleted: {
+      type: Boolean,
+      default: false,
     },
   },
   {

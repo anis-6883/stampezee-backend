@@ -2,7 +2,14 @@ import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import _ from "lodash";
 import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
-import { apiResponse, asyncHandler, generateSignature, getRandomInteger, validateBody } from "../../../helpers";
+import {
+  apiResponse,
+  asyncHandler,
+  exclude,
+  generateSignature,
+  getRandomInteger,
+  validateBody,
+} from "../../../helpers";
 import { IApiRequest } from "../../../types";
 import { sendVerificationEmail } from "../service";
 import { loginSchema, retailerRegisterSchema, verifyOtpSchema } from "../validation";
@@ -96,16 +103,18 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     expires: new Date(Date.now()),
   });
 
-  // Remove Field
-  delete req.user.password;
-  delete req.user.otp;
-  delete req.user.otpExpiry;
-  delete req.user.isVerified;
-  delete req.user.verifiedAt;
-  delete req.user.createdAt;
-  delete req.user.updatedAt;
+  // Remove Sensitive Data
+  const data = exclude(req.user, [
+    "password",
+    "otp",
+    "otpExpiry",
+    "isVerified",
+    "verifiedAt",
+    "createdAt",
+    "updatedAt",
+  ]);
 
-  return apiResponse(res, 200, true, "Otp verified successfully!", { ...req.user, role: ROLE.RETAILER });
+  return apiResponse(res, 200, true, "Otp verified successfully!", { ...data, role: ROLE.RETAILER });
 });
 
 /**
@@ -171,16 +180,18 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   });
 
-  // Remove Field
-  delete retailer._doc.password;
-  delete retailer._doc.otp;
-  delete retailer._doc.otpExpiry;
-  delete retailer._doc.isVerified;
-  delete retailer._doc.verifiedAt;
-  delete retailer._doc.createdAt;
-  delete retailer._doc.updatedAt;
+  // Remove Sensitive Data
+  const data = exclude(retailer._doc, [
+    "password",
+    "otp",
+    "otpExpiry",
+    "isVerified",
+    "verifiedAt",
+    "createdAt",
+    "updatedAt",
+  ]);
 
-  return apiResponse(res, 200, true, "Retailer Login Successfully!", { ...retailer._doc, role: ROLE.RETAILER });
+  return apiResponse(res, 200, true, "Retailer Login Successfully!", { ...data, role: ROLE.RETAILER });
 });
 
 /**
@@ -217,16 +228,18 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
   if ("user" in req) {
     if (!req.user) return apiResponse(res, 401, false, "Unauthorized Request!");
 
-    // Remove Field
-    delete req.user.password;
-    delete req.user.otp;
-    delete req.user.otpExpiry;
-    delete req.user.isVerified;
-    delete req.user.verifiedAt;
-    delete req.user.createdAt;
-    delete req.user.updatedAt;
+    // Remove Sensitive Data
+    const data = exclude(req.user, [
+      "password",
+      "otp",
+      "otpExpiry",
+      "isVerified",
+      "verifiedAt",
+      "createdAt",
+      "updatedAt",
+    ]);
 
-    return apiResponse(res, 200, true, "Retailer Profile", { ...req.user, role: ROLE.RETAILER });
+    return apiResponse(res, 200, true, "Retailer Profile", { ...data, role: ROLE.RETAILER });
   } else {
     return apiResponse(res, 401, false, "Unauthorized!");
   }

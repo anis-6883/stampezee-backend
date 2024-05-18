@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 import _ from "lodash";
 import { IApiRequest } from "types";
 import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
-import { apiResponse, asyncHandler, generateSignature, validateBody } from "../../../helpers";
+import { apiResponse, asyncHandler, exclude, generateSignature, validateBody } from "../../../helpers";
 import { loginSchema, superAdminRegisterSchema } from "../validation";
 import SuperAdmin from "./model";
 
@@ -24,12 +24,10 @@ export const superAdminRegistration = asyncHandler(async (req: Request, res: Res
 
   const superAdmin: any = await SuperAdmin.create(req.body);
 
-  // Remove Field
-  delete superAdmin._doc.password;
-  delete superAdmin._doc.createdAt;
-  delete superAdmin._doc.updatedAt;
+  // Remove Sensitive Data
+  const data = exclude(superAdmin._doc, ["password", "createdAt", "updatedAt"]);
 
-  return apiResponse(res, 201, true, "Super Admin registration successfully!", superAdmin);
+  return apiResponse(res, 201, true, "Super Admin registration successfully!", data);
 });
 
 /**
@@ -65,12 +63,10 @@ export const superAdminLogin = asyncHandler(async (req: Request, res: Response) 
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   });
 
-  // Remove Field
-  delete superAdmin._doc.password;
-  delete superAdmin._doc.createdAt;
-  delete superAdmin._doc.updatedAt;
+  // Remove Sensitive Data
+  const data = exclude(superAdmin._doc, ["password", "createdAt", "updatedAt"]);
 
-  return apiResponse(res, 200, true, "Super Admin Login Successfully!", { ...superAdmin._doc, role: ROLE.SUPER_ADMIN });
+  return apiResponse(res, 200, true, "Super Admin Login Successfully!", { ...data, role: ROLE.SUPER_ADMIN });
 });
 
 /**
@@ -107,12 +103,10 @@ export const superAdminProfile = asyncHandler(async (req: IApiRequest, res: Resp
   if ("user" in req) {
     if (!req.user) return apiResponse(res, 401, false, "Unauthorized Request!");
 
-    // Remove Field
-    delete req.user.password;
-    delete req.user.createdAt;
-    delete req.user.updatedAt;
+    // Remove Sensitive Data
+    const data = exclude(req.user, ["password", "createdAt", "updatedAt"]);
 
-    return apiResponse(res, 200, true, "Super Admin Profile", { ...req.user, role: ROLE.SUPER_ADMIN });
+    return apiResponse(res, 200, true, "Super Admin Profile", { ...data, role: ROLE.SUPER_ADMIN });
   } else {
     return apiResponse(res, 401, false, "Unauthorized!");
   }
