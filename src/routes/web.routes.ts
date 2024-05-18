@@ -1,8 +1,11 @@
 import express from "express";
-import userAuthRoutes from "../features/user/route";
+import { authCheck, refreshAccessToken } from "../features/user/controller";
+import retailerAuthRoutes from "../features/user/retailer/route";
 
 const router = express.Router();
 
-router.use("/user", userAuthRoutes);
+router.use("/auth-check", authCheck);
+router.use("/refresh-token", refreshAccessToken);
+router.use("/retailer", retailerAuthRoutes);
 
 export default router;

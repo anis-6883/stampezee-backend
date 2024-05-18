@@ -7,6 +7,7 @@ import logger from "morgan";
 import errorMiddleware from "../middlewares/errorMiddleware";
 import verifyApiKeyHeader from "../middlewares/verifyApiKeyHeader";
 import adminRoutes from "../routes/admin.routes";
+import mobileRoutes from "../routes/mobile.routes";
 import webRoutes from "../routes/web.routes";
 import config from "./config";
 import connectToDatabase from "./database";
@@ -22,6 +23,7 @@ app.use(express.static("public"));
 app.use(cors(config[env].corsOptions));
 app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: true, limit: "100kb" }));
+app.use(verifyApiKeyHeader);
 
 // Connect to MongoDB with Mongoose
 connectToDatabase(config[env].databaseURI);
@@ -32,8 +34,9 @@ app.get("/", (req, res) => {
 });
 
 // Main Routes
-app.use("/api/v1", verifyApiKeyHeader, webRoutes); // web
-app.use("/api/v1/admin", verifyApiKeyHeader, adminRoutes); // admin
+app.use("/api", webRoutes); // web
+app.use("/api/v1", mobileRoutes); // mobile
+app.use("/api/secret-root/admin", adminRoutes); // admin
 
 // 404 Route
 app.use((req, res, next) => {

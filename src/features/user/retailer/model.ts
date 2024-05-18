@@ -19,6 +19,23 @@ const schema = new mongoose.Schema(
       trim: true,
       index: true,
     },
+    otp: {
+      type: Number,
+      trim: true,
+      default: null,
+    },
+    otpExpiry: {
+      type: Date,
+      default: null,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    verifiedAt: {
+      type: Date,
+      default: null,
+    },
     password: {
       type: String,
       required: true,
@@ -31,42 +48,57 @@ const schema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-    role: {
-      type: String,
-      enum: ["user", "admin", "retailer"],
-      default: "user",
+    ref: {
+      type: "String",
+      enum: ["self", "admin"],
+      default: "self",
     },
     storeName: {
       type: String,
       trim: true,
-      default: null,
+      required: true,
+    },
+    dialCode: {
+      type: String,
+      trim: true,
+      required: true,
     },
     phone: {
       type: String,
       trim: true,
-      default: null,
+      required: true,
     },
     country: {
       type: String,
       trim: true,
-      default: null,
+      required: true,
     },
     city: {
       type: String,
       trim: true,
-      default: null,
+      required: true,
     },
     province: {
       type: String,
       trim: true,
-      default: null,
+      required: true,
     },
     postalCode: {
       type: String,
       trim: true,
-      default: null,
+      required: true,
     },
     address: {
+      type: String,
+      trim: true,
+      required: true,
+    },
+    about: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    website: {
       type: String,
       trim: true,
       default: null,
@@ -78,15 +110,6 @@ const schema = new mongoose.Schema(
   }
 );
 
-schema.methods.toJSON = function () {
-  const user = this.toObject();
-  delete user.__v;
-  delete user.password;
-  delete user.createdAt;
-  delete user.updatedAt;
-  return JSON.parse(JSON.stringify(user).replace(/_id/g, "id"));
-};
+const Retailer = mongoose.model("Retailer", schema);
 
-const User = mongoose.model("User", schema);
-
-export default User;
+export default Retailer;

@@ -23,9 +23,12 @@ export interface IUser {
   password: string;
   image: string;
   status: boolean;
-  role: string;
   createdAt: Date;
   updatedAt: Date;
+  otp: number;
+  otpExpiry: Date;
+  isVerified: boolean;
+  verifiedAt: Date;
 }
 
 export interface IApiRequest extends Request {
