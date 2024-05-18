@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
-import { COOKIE_KEY, REFRESH_TOKEN_KEY } from "../../../configs/constants";
+import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
 import { apiResponse, asyncHandler, generateSignature, validateBody } from "../../../helpers";
 import { loginSchema } from "../validation";
 import SubAdmin from "./model";
@@ -21,8 +21,8 @@ export const subAdminLogin = asyncHandler(async (req: Request, res: Response) =>
   const isPasswordValid = await bcrypt.compare(req.body.password, subAdmin.password);
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
-  const accessToken = generateSignature({ email: subAdmin.email }, "1d");
-  const refreshToken = generateSignature({ email: subAdmin.email }, "7d");
+  const accessToken = generateSignature({ email: subAdmin.email, role: ROLE.SUB_ADMIN }, "1d");
+  const refreshToken = generateSignature({ email: subAdmin.email, role: ROLE.SUB_ADMIN }, "7d");
 
   res.cookie(COOKIE_KEY, accessToken, {
     httpOnly: true,

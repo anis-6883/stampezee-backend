@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { Model } from "mongoose";
-import { COOKIE_KEY, REFRESH_TOKEN_KEY } from "../../configs/constants";
+import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../configs/constants";
 import { apiResponse, asyncHandler, generateSignature } from "../../helpers";
 import Customer from "./customer/model";
 import Retailer from "./retailer/model";
@@ -14,7 +14,7 @@ import SuperAdmin from "./super-admin/model";
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const authCheck = asyncHandler(async (req: Request, res: Response) => {
+export const verifyToken = asyncHandler(async (req: Request, res: Response) => {
   const token = req?.cookies?.[COOKIE_KEY] || req.headers?.authorization?.replace("Bearer ", "");
   if (!token) return apiResponse(res, 401, false, "Unauthorized!");
 
@@ -22,16 +22,16 @@ export const authCheck = asyncHandler(async (req: Request, res: Response) => {
   let model: Model<any>;
 
   switch (decoded.role) {
-    case "super_admin":
+    case ROLE.SUPER_ADMIN:
       model = SuperAdmin;
       break;
-    case "retailer":
+    case ROLE.RETAILER:
       model = Retailer;
       break;
-    case "sub_admin":
+    case ROLE.SUB_ADMIN:
       model = SubAdmin;
       break;
-    case "customer":
+    case ROLE.CUSTOMER:
       model = Customer;
       break;
     default:
@@ -58,16 +58,16 @@ export const refreshAccessToken = asyncHandler(async (req: Request, res: Respons
   let model: Model<any>;
 
   switch (decoded.role) {
-    case "super_admin":
+    case ROLE.SUPER_ADMIN:
       model = SuperAdmin;
       break;
-    case "retailer":
+    case ROLE.RETAILER:
       model = Retailer;
       break;
-    case "sub_admin":
+    case ROLE.SUB_ADMIN:
       model = SubAdmin;
       break;
-    case "customer":
+    case ROLE.CUSTOMER:
       model = Customer;
       break;
     default:
