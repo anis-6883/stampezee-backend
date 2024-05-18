@@ -1,3 +1,4 @@
 npm run format 
 npm run build
 git add -A .
+curl -X POST -H 'Content-type: application/json' --data '{"text":"Hello, World!"}' https://hooks.slack.com/services/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
