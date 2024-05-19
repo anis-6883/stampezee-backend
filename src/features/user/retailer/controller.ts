@@ -34,7 +34,7 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
   const existingRetailer = await Retailer.findOne({ email: retailerBody.email });
 
   if (existingRetailer && existingRetailer.isVerified) {
-    return apiResponse(res, 400, false, "This retailer already exists!");
+    return apiResponse(res, 400, false, "Your email already exists!");
   }
 
   if (existingRetailer) {

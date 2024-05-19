@@ -61,7 +61,7 @@ export const getAllBranches = asyncHandler(async (req: IApiRequest, res: Respons
     hasPrev,
   };
 
-  return apiResponse(res, 201, true, "Branches fetched successfully!", data);
+  return apiResponse(res, 200, true, "Branches fetched successfully!", data);
 });
 
 /**

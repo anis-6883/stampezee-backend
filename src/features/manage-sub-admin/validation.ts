@@ -57,3 +57,15 @@ export const subAdminSchema = Joi.object({
   password: strongPassword,
   status,
 });
+
+// Without Password
+export const subAdminSchema2 = Joi.object({
+  branchId,
+  firstName,
+  lastName,
+  email,
+  phone,
+  country,
+  dialCode,
+  status,
+});
