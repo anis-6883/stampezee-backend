@@ -10,7 +10,7 @@ import { apiResponse } from "../helpers";
 import { IApiRequest } from "../types";
 
 export const authAndPermissionCheck =
-  (role: string) =>
+  (role: string, checkPermission: boolean = true) =>
   async (req: IApiRequest, res: Response, next: NextFunction): Promise<any> => {
     try {
       const token =
@@ -20,7 +20,7 @@ export const authAndPermissionCheck =
       const decoded: any = jwt.verify(token, process.env.APP_SECRET!);
       let model: Model<any>;
 
-      if (role !== decoded.role) {
+      if (checkPermission && role !== decoded.role) {
         return apiResponse(res, 403, false, "You are not authorized to perform this action!");
       }
 
@@ -46,6 +46,7 @@ export const authAndPermissionCheck =
 
       req.token = token;
       req.user = user._doc;
+      req.role = decoded.role;
       return next();
     } catch (err) {
       console.error(err);
