@@ -2,15 +2,19 @@ import express from "express";
 import { ROLE } from "../configs/constants";
 import branchRoutes from "../features/manage-branch/routes";
 import subAdminRoutes from "../features/manage-sub-admin//routes";
-import { getUserProfile, refreshAccessToken, verifyToken } from "../features/user/controller";
+import { getUserProfile, refreshAccessToken, userLogout, verifyToken } from "../features/user/controller";
 import retailerAuthRoutes from "../features/user/retailer/route";
 import { authAndPermissionCheck } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
-router.get("/verify-token", verifyToken);
-router.get("/refresh-token", refreshAccessToken);
+// Common Routes
+router.get("/verify-token", authAndPermissionCheck("", false), verifyToken);
+router.get("/refresh-token", authAndPermissionCheck("", false), refreshAccessToken);
 router.get("/get-profile", authAndPermissionCheck("", false), getUserProfile);
+router.post("/user-logout", authAndPermissionCheck("", false), userLogout);
+
+// Feature Routes
 router.use("/retailer", retailerAuthRoutes);
 router.use("/retailer/branch", authAndPermissionCheck(ROLE.RETAILER), branchRoutes);
 router.use("/retailer/sub-admin", authAndPermissionCheck(ROLE.RETAILER), subAdminRoutes);

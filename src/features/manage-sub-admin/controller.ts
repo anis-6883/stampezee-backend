@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import { Response } from "express";
+import fs from "fs";
 import _ from "lodash";
 import { IApiRequest, IUser } from "types";
 import Branch from "../../features/manage-branch/model";
@@ -16,6 +17,11 @@ import { subAdminSchema } from "./validation";
 export const createSubAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = validateBody(subAdminSchema, req.body);
   if (!_.isEmpty(result)) return apiResponse(res, 400, false, "Invalid Request!", result);
+
+  console.log("req.body", req.body);
+  console.log("req.files", req.file);
+
+  fs.unlinkSync(req.file.path);
 
   const branch = await Branch.findOne({ _id: req.body.branchId, retailerId: req.user._id });
   if (!branch) return apiResponse(res, 400, false, "Branch not found!");
