@@ -35,4 +35,5 @@ export interface IApiRequest extends Request {
   user?: IUser;
   otp?: string;
   token?: string;
+  role: string;
 }

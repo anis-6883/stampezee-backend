@@ -2,7 +2,8 @@ import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { Model } from "mongoose";
 import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../configs/constants";
-import { apiResponse, asyncHandler, generateSignature } from "../../helpers";
+import { apiResponse, asyncHandler, exclude, generateSignature } from "../../helpers";
+import { IApiRequest } from "../../types";
 import Customer from "./customer/model";
 import Retailer from "./retailer/model";
 import SubAdmin from "./sub-admin/model";
@@ -87,4 +88,23 @@ export const refreshAccessToken = asyncHandler(async (req: Request, res: Respons
   });
 
   return apiResponse(res, 200, true, "Access Token Regenerated!");
+});
+
+/**
+ * Get Retailer or Super Admin Profile
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const getUserProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
+  if ("user" in req) {
+    if (!req.user) return apiResponse(res, 401, false, "Unauthorized Request!");
+
+    // Remove Sensitive Data
+    const data = exclude(req.user, ["password", "createdAt", "updatedAt"]);
+
+    return apiResponse(res, 200, true, "Profile fetched successfully!", { ...data, role: req.role });
+  } else {
+    return apiResponse(res, 401, false, "Unauthorized!");
+  }
 });
