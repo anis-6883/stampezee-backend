@@ -71,3 +71,17 @@ export const exclude = (existingApp: { [key: string]: any }, keys: any[]) => {
 export const getRandomInteger = (min: number, max: number) => {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 };
+
+export const flattenObject = (obj: any, parentKey: string = "", result: any = {}) => {
+  for (let key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      let newKey = parentKey ? `${parentKey}.${key}` : key;
+      if (typeof obj[key] === "object" && !Array.isArray(obj[key])) {
+        flattenObject(obj[key], newKey, result);
+      } else {
+        result[newKey] = obj[key];
+      }
+    }
+  }
+  return result;
+};
