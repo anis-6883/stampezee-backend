@@ -10,7 +10,7 @@ import { apiResponse } from "../helpers";
 import { IApiRequest } from "../types";
 
 export const authAndPermissionCheck =
-  (role: string, checkPermission: boolean = true) =>
+  (role: string, checkPermission: boolean = true, findUser: boolean = true) =>
   async (req: IApiRequest, res: Response, next: NextFunction): Promise<any> => {
     try {
       const token =
@@ -24,28 +24,30 @@ export const authAndPermissionCheck =
         return apiResponse(res, 403, false, "You are not authorized to perform this action!");
       }
 
-      switch (decoded.role) {
-        case ROLE.SUPER_ADMIN:
-          model = SuperAdmin;
-          break;
-        case ROLE.RETAILER:
-          model = Retailer;
-          break;
-        case ROLE.SUB_ADMIN:
-          model = SubAdmin;
-          break;
-        case ROLE.CUSTOMER:
-          model = Customer;
-          break;
-        default:
-          return apiResponse(res, 401, false, "Unauthorized!");
+      if (findUser) {
+        switch (decoded.role) {
+          case ROLE.SUPER_ADMIN:
+            model = SuperAdmin;
+            break;
+          case ROLE.RETAILER:
+            model = Retailer;
+            break;
+          case ROLE.SUB_ADMIN:
+            model = SubAdmin;
+            break;
+          case ROLE.CUSTOMER:
+            model = Customer;
+            break;
+          default:
+            return apiResponse(res, 401, false, "Unauthorized!");
+        }
+
+        const user: any = await model.findOne({ email: decoded?.email });
+        if (!user) return apiResponse(res, 401, false, "Unauthorized Request!");
+        req.user = user._doc;
       }
 
-      const user: any = await model.findOne({ email: decoded?.email });
-      if (!user) return apiResponse(res, 401, false, "Unauthorized Request!");
-
       req.token = token;
-      req.user = user._doc;
       req.role = decoded.role;
       return next();
     } catch (err) {
