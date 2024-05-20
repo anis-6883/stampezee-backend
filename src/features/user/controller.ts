@@ -10,10 +10,10 @@ import { IApiRequest } from "../../types";
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const verifyToken = asyncHandler(async (req: IApiRequest, res: Response) => {
-  if (!req.user) {
+  if (!req.role) {
     return apiResponse(res, 401, false, "Unauthorized Request!");
   }
-  return apiResponse(res, 200, true, "Authorized!");
+  return apiResponse(res, 200, true, "Authorized!", { role: req.role });
 });
 
 /**

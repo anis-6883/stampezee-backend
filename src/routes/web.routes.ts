@@ -9,7 +9,7 @@ import { authAndPermissionCheck } from "../middlewares/authMiddleware";
 const router = express.Router();
 
 // Common Routes
-router.get("/verify-token", authAndPermissionCheck("", false), verifyToken);
+router.get("/verify-token", authAndPermissionCheck("", false, false), verifyToken);
 router.get("/refresh-token", authAndPermissionCheck("", false), refreshAccessToken);
 router.get("/get-profile", authAndPermissionCheck("", false), getUserProfile);
 router.post("/user-logout", authAndPermissionCheck("", false), userLogout);
