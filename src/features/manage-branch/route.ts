@@ -11,7 +11,7 @@ import {
 
 const router = express.Router();
 
-router.post("/create", createBranch);
+router.post("/", createBranch);
 router.get("/all", getAllBranches);
 router.get("/deleted", getAllDeletedBranches);
 router.get("/:id", getSingleBranch);
