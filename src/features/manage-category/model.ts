@@ -36,6 +36,6 @@ const schema = new mongoose.Schema(
   }
 );
 
-const Branch = mongoose.model("Branch", schema);
+const Category = mongoose.model("Category", schema);
 
-export default Branch;
+export default Category;
