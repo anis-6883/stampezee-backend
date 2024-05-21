@@ -14,7 +14,7 @@ const upload = multer({ storage: storage });
 
 const router = express.Router();
 
-router.post("/create", upload.single("image"), createSubAdmin);
+router.post("/", upload.single("image"), createSubAdmin);
 router.get("/all", getAllSubAdmins);
 router.get("/deleted", getAllDeletedSubAdmins);
 router.get("/:id", getSingleSubAdmin);
