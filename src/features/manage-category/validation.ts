@@ -1,11 +1,11 @@
 import Joi from "joi";
 
-const name = Joi.string().trim().required().messages({
+const name = Joi.string().trim().lowercase().required().messages({
   "any.required": "name is required!",
   "string.base": "name must be string!",
 });
 
-const description = Joi.string().trim().messages({
+const description = Joi.string().messages({
   "string.base": "name must be string!",
 });
 
