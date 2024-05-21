@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
-import _ from "lodash";
-import { apiResponse, asyncHandler, flattenObject, validateBody } from "../../helpers";
+import { apiResponse, asyncHandler, flattenObject } from "../../helpers";
 import Settings from "./model";
 import { settingsSchema } from "./validation";
 
@@ -27,10 +26,9 @@ export const getSettings = asyncHandler(async (req: Request, res: Response) => {
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const updateSettings = asyncHandler(async (req: Request, res: Response) => {
-  const result = validateBody(settingsSchema, req.body);
-  if (!_.isEmpty(result)) return apiResponse(res, 400, false, "Invalid Request!", result);
+  const result = await settingsSchema.validateAsync(req.body);
 
-  const { general, notification, pages, s3Bucket } = req.body;
+  const { general, notification, pages, s3Bucket } = result;
 
   const settings = await Settings.findOne({});
   let data = null;

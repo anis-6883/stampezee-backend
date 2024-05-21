@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
-import _ from "lodash";
 import { IApiRequest } from "types";
-import { apiResponse, asyncHandler, validateBody } from "../../helpers";
+import { apiResponse, asyncHandler } from "../../helpers";
 import Branch from "./model";
 import { branchSchema } from "./validation";
 
@@ -12,10 +11,9 @@ import { branchSchema } from "./validation";
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const createBranch = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = validateBody(branchSchema, req.body);
-  if (!_.isEmpty(result)) return apiResponse(res, 400, false, "Invalid Request!", result);
+  const result = await branchSchema.validateAsync(req.body);
 
-  const { name, address, longitude, latitude, status } = req.body;
+  const { name, address, longitude, latitude, status } = result;
 
   await Branch.create({
     name,
@@ -86,11 +84,10 @@ export const getSingleBranch = asyncHandler(async (req: IApiRequest, res: Respon
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const updateBranch = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = validateBody(branchSchema, req.body);
-  if (!_.isEmpty(result)) return apiResponse(res, 400, false, "Invalid Request!", result);
+  const result = await branchSchema.validateAsync(req.body);
 
   const { id } = req.params;
-  const { name, address, longitude, latitude, status } = req.body;
+  const { name, address, longitude, latitude, status } = result;
 
   const branch = await Branch.findOneAndUpdate(
     { _id: id },

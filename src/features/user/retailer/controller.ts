@@ -22,10 +22,9 @@ import Retailer from "./model";
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const retailerRegistration = asyncHandler(async (req: Request, res: Response) => {
-  const result = validateBody(retailerRegisterSchema, req.body);
-  if (!_.isEmpty(result)) return apiResponse(res, 400, false, "Invalid Request!", result);
+  const result = await retailerRegisterSchema.validateAsync(req.body);
 
-  const { otp, otpExpiry, isVerified, verifiedAt, image, ref, ...retailerBody } = req.body;
+  const { otp, otpExpiry, isVerified, verifiedAt, image, ref, ...retailerBody } = result;
 
   retailerBody.password = await bcrypt.hash(retailerBody.password, 10);
   retailerBody.otp = getRandomInteger(100000, 999999);

@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
-import { apiResponse, asyncHandler, exclude, generateSignature, validateBody } from "../../../helpers";
+import { apiResponse, asyncHandler, exclude, generateSignature } from "../../../helpers";
 import { IApiRequest } from "../../../types";
 import { loginSchema } from "../validation";
 import SubAdmin from "./model";
@@ -13,13 +13,12 @@ import SubAdmin from "./model";
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const subAdminLogin = asyncHandler(async (req: Request, res: Response) => {
-  const result = validateBody(loginSchema, req.body);
-  if (!result) return apiResponse(res, 400, false, "Invalid Request!");
+  const result = await loginSchema.validateAsync(req.body);
 
-  const subAdmin: any = await SubAdmin.findOne({ email: req.body.email, status: true });
+  const subAdmin: any = await SubAdmin.findOne({ email: result.email, status: true });
   if (!subAdmin) return apiResponse(res, 401, false, "Invalid Credentials!");
 
-  const isPasswordValid = await bcrypt.compare(req.body.password, subAdmin.password);
+  const isPasswordValid = await bcrypt.compare(result.password, subAdmin.password);
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
   const accessToken = generateSignature({ email: subAdmin.email, role: ROLE.SUB_ADMIN }, "1d");
