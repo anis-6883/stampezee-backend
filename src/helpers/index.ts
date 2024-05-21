@@ -7,8 +7,14 @@ export const asyncHandler = (func: any) => async (req: Request, res: Response) =
   try {
     await func(req, res);
   } catch (err) {
-    console.error(err);
-    return res.status(400).json({ status: false, message: "Something went wrong!" });
+    if (err.isJoi) {
+      const format: any = {};
+      err.details.forEach((detail: any) => {
+        format[detail.context.label] = detail.message;
+      });
+      return apiResponse(res, 400, false, "Invalid Request!", format);
+    }
+    return apiResponse(res, 400, false, "Server Error!");
   }
 };
 

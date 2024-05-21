@@ -1,10 +1,9 @@
 import bcrypt from "bcrypt";
 import { Response } from "express";
-import _ from "lodash";
 import { IApiRequest } from "types";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import Branch from "../../features/manage-branch/model";
-import { apiResponse, asyncHandler, exclude, validateBody } from "../../helpers";
+import { apiResponse, asyncHandler, exclude } from "../../helpers";
 import SubAdmin from "../user/sub-admin/model";
 import { subAdminSchema, subAdminSchema2 } from "./validation";
 
@@ -15,10 +14,9 @@ import { subAdminSchema, subAdminSchema2 } from "./validation";
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const createSubAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = validateBody(subAdminSchema, req.body);
-  if (!_.isEmpty(result)) return apiResponse(res, 400, false, "Invalid Request!", result);
+  const result = await subAdminSchema.validateAsync(req.body);
 
-  const { softDeleted, retailerId, password, ...createBody } = req.body;
+  const { softDeleted, retailerId, password, ...createBody } = result;
   createBody.retailerId = req.user._id;
 
   const [branch, existingSubAdmin] = await Promise.all([
@@ -108,11 +106,10 @@ export const getSingleSubAdmin = asyncHandler(async (req: IApiRequest, res: Resp
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const updateSubAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = validateBody(subAdminSchema2, req.body);
-  if (!_.isEmpty(result)) return apiResponse(res, 400, false, "Invalid Request!", result);
+  const result = await subAdminSchema2.validateAsync(req.body);
 
   const { id } = req.params;
-  const { softDeleted, retailerId, password, ...updatedBody } = req.body;
+  const { softDeleted, retailerId, password, ...updatedBody } = result;
 
   const [branch, existingSubAdmin] = await Promise.all([
     Branch.findOne({ _id: updatedBody.branchId, retailerId: req.user._id }),

@@ -1,9 +1,8 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
-import _ from "lodash";
 import { IApiRequest } from "types";
 import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
-import { apiResponse, asyncHandler, exclude, generateSignature, validateBody } from "../../../helpers";
+import { apiResponse, asyncHandler, exclude, generateSignature } from "../../../helpers";
 import { loginSchema, superAdminRegisterSchema } from "../validation";
 import SuperAdmin from "./model";
 
@@ -14,15 +13,14 @@ import SuperAdmin from "./model";
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const superAdminRegistration = asyncHandler(async (req: Request, res: Response) => {
-  const result = validateBody(superAdminRegisterSchema, req.body);
-  if (!_.isEmpty(result)) return apiResponse(res, 400, false, "Invalid Request!", result);
+  const result = await superAdminRegisterSchema.validateAsync(req.body);
 
-  const existingAdmin = await SuperAdmin.findOne({ email: req.body.email });
+  const existingAdmin = await SuperAdmin.findOne({ email: result.email });
   if (existingAdmin) return apiResponse(res, 400, false, "This Super Admin already exists!");
 
-  req.body.password = await bcrypt.hash(req.body.password, 10);
+  result.password = await bcrypt.hash(result.password, 10);
 
-  const superAdmin: any = await SuperAdmin.create(req.body);
+  const superAdmin: any = await SuperAdmin.create(result);
 
   // Remove Sensitive Data
   const data = exclude(superAdmin._doc, ["password", "createdAt", "updatedAt"]);
@@ -37,13 +35,12 @@ export const superAdminRegistration = asyncHandler(async (req: Request, res: Res
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const superAdminLogin = asyncHandler(async (req: Request, res: Response) => {
-  const result = validateBody(loginSchema, req.body);
-  if (!result) return apiResponse(res, 400, false, "Invalid Request!");
+  const result = await loginSchema.validateAsync(req.body);
 
-  const superAdmin: any = await SuperAdmin.findOne({ email: req.body.email });
+  const superAdmin: any = await SuperAdmin.findOne({ email: result.email });
   if (!superAdmin) return apiResponse(res, 401, false, "Invalid Credentials!");
 
-  const isPasswordValid = await bcrypt.compare(req.body.password, superAdmin.password);
+  const isPasswordValid = await bcrypt.compare(result.password, superAdmin.password);
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
   const accessToken = generateSignature({ email: superAdmin.email, role: ROLE.SUPER_ADMIN }, "1d");
