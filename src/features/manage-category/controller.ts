@@ -2,7 +2,7 @@ import { Response } from "express";
 import { IApiRequest } from "types";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import Sorting from "../../features/sorting/model";
-import { apiResponse, asyncHandler } from "../../helpers";
+import { apiResponse, asyncHandler, fileValidation } from "../../helpers";
 import Category from "./model";
 import { categorySchema } from "./validation";
 
@@ -13,7 +13,10 @@ import { categorySchema } from "./validation";
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const createCategory = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = await categorySchema.validateAsync(req.body);
+  const result = await categorySchema.validateAsync(req.body, {
+    allowUnknown: true,
+    abortEarly: false,
+  });
 
   const { softDeleted, ...createBody } = result;
 
@@ -23,6 +26,14 @@ export const createCategory = asyncHandler(async (req: IApiRequest, res: Respons
   if (existingCategory) return apiResponse(res, 400, false, "This category already exists!");
 
   let imageKey = null;
+
+  // File Validation
+  if (req.file) {
+    const { status, message } = fileValidation(req.file, undefined, ["image/jpeg", "image/png", "image/jpg"]);
+    if (!status) {
+      return apiResponse(res, 400, false, "Invalid Request!", { image: message });
+    }
+  }
 
   // Upload File to S3 Bucket
   if (req.file) {
@@ -70,7 +81,7 @@ export const getAllCategories = asyncHandler(async (req: IApiRequest, res: Respo
   const sortedList = sortedIds.map((id) => categoryMap.get(id)).filter(Boolean);
 
   const data = {
-    sortedList,
+    docs: sortedList,
     page: +page,
     limit: +limit,
     totalPage: Math.ceil(total / Number(limit)),
@@ -104,16 +115,27 @@ export const getSingleCategory = asyncHandler(async (req: IApiRequest, res: Resp
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const updateCategory = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = await categorySchema.validateAsync(req.body);
+  const result = await categorySchema.validateAsync(req.body, {
+    allowUnknown: true,
+    abortEarly: false,
+  });
 
   const { id } = req.params;
-  const { softDeleted, ...updatedBody } = result;
+  const { softDeleted, image, ...updatedBody } = result;
 
   const category = await Category.findOne({ _id: id });
   if (!category) return apiResponse(res, 404, false, "Category not found!");
 
   const existingCategory = await Category.findOne({ name: updatedBody.name, _id: { $ne: id } });
   if (existingCategory) return apiResponse(res, 400, false, "This category name already exists!");
+
+  // File Validation
+  if (req.file) {
+    const { status, message } = fileValidation(req.file, undefined, ["image/jpeg", "image/png", "image/jpg"]);
+    if (!status) {
+      return apiResponse(res, 400, false, "Invalid Request!", { image: message });
+    }
+  }
 
   // Upload File to S3 Bucket
   if (req.file) {

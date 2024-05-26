@@ -1,6 +1,7 @@
 import express from "express";
 import { ROLE } from "../configs/constants";
 import branchRoutes from "../features/manage-branch/route";
+import stampImageRoutes from "../features/manage-stamp-image/routes/retailer";
 import subAdminRoutes from "../features/manage-sub-admin/route";
 import { getUserProfile, refreshAccessToken, userLogout, verifyToken } from "../features/user/controller";
 import retailerAuthRoutes from "../features/user/retailer/route";
@@ -18,5 +19,6 @@ router.post("/user-logout", authAndPermissionCheck("", false), userLogout);
 router.use("/retailer", retailerAuthRoutes);
 router.use("/retailer/branch", authAndPermissionCheck(ROLE.RETAILER), branchRoutes);
 router.use("/retailer/sub-admin", authAndPermissionCheck(ROLE.RETAILER), subAdminRoutes);
+router.use("/retailer/stamp-image", authAndPermissionCheck(ROLE.RETAILER), stampImageRoutes);
 
 export default router;

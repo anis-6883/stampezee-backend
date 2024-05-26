@@ -9,9 +9,9 @@ import {
   softDeleteCategory,
   updateCategory,
 } from "./controller";
+
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
-
 const router = express.Router();
 
 router.post("/", upload.single("image"), createCategory);

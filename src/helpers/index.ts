@@ -7,6 +7,7 @@ export const asyncHandler = (func: any) => async (req: Request, res: Response) =
   try {
     await func(req, res);
   } catch (err) {
+    console.error(err);
     if (err.isJoi) {
       const format: any = {};
       err.details.forEach((detail: any) => {
@@ -90,4 +91,27 @@ export const flattenObject = (obj: any, parentKey: string = "", result: any = {}
     }
   }
   return result;
+};
+
+export const fileValidation = (
+  file: Express.Multer.File,
+  size: number = 1024 * 1024,
+  types: string[] = ["image/jpeg", "image/png", "image/jpg"]
+) => {
+  if (file?.size > size) {
+    return {
+      status: false,
+      message: "File size is too large!",
+    };
+  } else if (!types.includes(file.mimetype)) {
+    return {
+      status: false,
+      message: "Invalid file type!",
+    };
+  } else {
+    return {
+      status: true,
+      message: "File is valid!",
+    };
+  }
 };

@@ -7,8 +7,8 @@ export const settingsSchema = Joi.object({
   notification: Joi.object().messages({
     "object.base": "notification must be object!",
   }),
-  pages: Joi.object().messages({
-    "object.base": "pages must be object!",
+  page: Joi.object().messages({
+    "object.base": "page must be object!",
   }),
   s3Bucket: Joi.object().messages({
     "object.base": "s3Bucket must be object!",
