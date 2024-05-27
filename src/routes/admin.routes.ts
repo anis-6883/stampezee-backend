@@ -1,7 +1,7 @@
 import express from "express";
 import { ROLE } from "../configs/constants";
 import categoryRoutes from "../features/manage-category/route";
-import stampImageRoutes from "../features/manage-stamp-image/routes/super-admin";
+import stampImageRoutes from "../features/manage-stamp-image/route";
 import settingsRoutes from "../features/settings/route";
 import sortingRoutes from "../features/sorting/route";
 import superAdminAuthRoutes from "../features/user/super-admin/route";

@@ -2,7 +2,7 @@ import { Response } from "express";
 import { IApiRequest } from "types";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import Sorting from "../../features/sorting/model";
-import { apiResponse, asyncHandler, fileValidation } from "../../helpers";
+import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
 import Category from "./model";
 import { categorySchema } from "./validation";
 
@@ -71,24 +71,13 @@ export const getAllCategories = asyncHandler(async (req: IApiRequest, res: Respo
     Category.find({ softDeleted: { $eq: false } }).countDocuments(),
   ]);
 
-  const hasNext = total > skip + Number(limit);
-  const hasPrev = Number(page) > 1;
-
   const sorting = await Sorting.findOne({ title: "category" });
   const sortedIds = sorting ? sorting.sortedData : [];
 
   const categoryMap = new Map(docs.map((category) => [category._id.toString(), category]));
   const sortedList = sortedIds.map((id) => categoryMap.get(id)).filter(Boolean);
 
-  const data = {
-    docs: sortedList,
-    page: +page,
-    limit: +limit,
-    totalPage: Math.ceil(total / Number(limit)),
-    totalDocs: total,
-    hasNext,
-    hasPrev,
-  };
+  const data = makePaginate(sortedList, Number(page), Number(limit), skip, total);
 
   return apiResponse(res, 200, true, "Categories fetched successfully!", data);
 });
@@ -194,18 +183,7 @@ export const getAllDeletedCategories = asyncHandler(async (req: IApiRequest, res
     Category.find({ softDeleted: { $eq: true } }).countDocuments(),
   ]);
 
-  const hasNext = total > skip + Number(limit);
-  const hasPrev = Number(page) > 1;
-
-  const data = {
-    docs,
-    page: +page,
-    limit: +limit,
-    totalPage: Math.ceil(total / Number(limit)),
-    totalDocs: total,
-    hasNext,
-    hasPrev,
-  };
+  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
   return apiResponse(res, 200, true, "Deleted categories fetched successfully!", data);
 });

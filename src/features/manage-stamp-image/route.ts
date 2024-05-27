@@ -8,7 +8,7 @@ import {
   getSingleStampImage,
   softDeleteStampImage,
   updateStampImage,
-} from "../controller";
+} from "./controller";
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });

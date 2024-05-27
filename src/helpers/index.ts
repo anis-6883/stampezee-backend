@@ -115,3 +115,18 @@ export const fileValidation = (
     };
   }
 };
+
+export const makePaginate = (docs: any[], page: number, limit: number, skip: number, total: number) => {
+  const hasNext = total > skip + Number(limit);
+  const hasPrev = Number(page) > 1;
+
+  return {
+    docs,
+    page: +page,
+    limit: +limit,
+    totalPage: Math.ceil(total / Number(limit)),
+    totalDocs: total,
+    hasNext,
+    hasPrev,
+  };
+};

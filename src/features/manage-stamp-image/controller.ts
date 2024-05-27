@@ -1,8 +1,9 @@
 import { Response } from "express";
 import { IApiRequest } from "types";
+import { ROLE } from "../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import Sorting from "../../features/sorting/model";
-import { apiResponse, asyncHandler, fileValidation } from "../../helpers";
+import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
 import StampImage from "./model";
 import { stampImageSchema } from "./validation";
 
@@ -24,7 +25,7 @@ export const createStampImage = asyncHandler(async (req: IApiRequest, res: Respo
 
   let imageKey = null;
 
-  if (!req.file) {
+  if (!req?.file) {
     return apiResponse(res, 400, false, "Invalid Request!", { image: "image file is required!" });
   }
 
@@ -35,11 +36,9 @@ export const createStampImage = asyncHandler(async (req: IApiRequest, res: Respo
   }
 
   // Upload File to S3 Bucket
-  if (req.file) {
-    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "stamp-image");
-    if (status) {
-      imageKey = key;
-    }
+  const { status: s3Status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "stamp_image");
+  if (s3Status) {
+    imageKey = key;
   }
 
   const stampImage: any = await StampImage.create({
@@ -47,11 +46,13 @@ export const createStampImage = asyncHandler(async (req: IApiRequest, res: Respo
     image: imageKey,
   });
 
-  await Sorting.updateOne(
-    { title: "stamp-image" },
-    { $push: { sortedData: stampImage._id.toString() } },
-    { upsert: true }
-  );
+  if (req.role === ROLE.SUPER_ADMIN) {
+    await Sorting.updateOne(
+      { title: "default_stamp_image" },
+      { $push: { sortedData: stampImage._id.toString() } },
+      { upsert: true }
+    );
+  }
 
   return apiResponse(res, 201, true, "Stamp image created successfully!", stampImage);
 });
@@ -66,32 +67,36 @@ export const getAllStampImages = asyncHandler(async (req: IApiRequest, res: Resp
   const { page = 1, limit = 10 } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
-  const [docs, total] = await Promise.all([
-    StampImage.find({ softDeleted: { $eq: false } })
-      .limit(Number(limit))
-      .skip(skip)
-      .sort({ createdAt: "asc" }),
-    StampImage.find({ softDeleted: { $eq: false } }).countDocuments(),
-  ]);
+  let docs: any[] = [];
+  let total: number = 0;
 
-  const hasNext = total > skip + Number(limit);
-  const hasPrev = Number(page) > 1;
+  const commonQuery = { softDeleted: { $eq: false } };
+  let roleSpecificQuery = {};
 
-  const sorting = await Sorting.findOne({ title: "stamp-image" });
-  const sortedIds = sorting ? sorting.sortedData : [];
+  if (req.role === ROLE.SUPER_ADMIN) {
+    roleSpecificQuery = { ref: ROLE.SUPER_ADMIN };
+  } else if (req.role === ROLE.RETAILER) {
+    roleSpecificQuery = { userId: req.user._id, ref: ROLE.RETAILER };
+  }
 
-  const stampImageMap = new Map(docs.map((stampImage) => [stampImage._id.toString(), stampImage]));
-  const sortedList = sortedIds.map((id) => stampImageMap.get(id)).filter(Boolean);
+  if (Object.keys(roleSpecificQuery).length > 0) {
+    const finalQuery = { ...commonQuery, ...roleSpecificQuery };
 
-  const data = {
-    docs: sortedList,
-    page: +page,
-    limit: +limit,
-    totalPage: Math.ceil(total / Number(limit)),
-    totalDocs: total,
-    hasNext,
-    hasPrev,
-  };
+    [docs, total] = await Promise.all([
+      StampImage.find(finalQuery).limit(Number(limit)).skip(skip),
+      StampImage.countDocuments(finalQuery),
+    ]);
+  }
+
+  if (req.role === ROLE.SUPER_ADMIN) {
+    const sorting = await Sorting.findOne({ title: "default_stamp_image" });
+    const sortedIds = sorting ? sorting.sortedData : [];
+
+    const stampImageMap = new Map(docs.map((stampImage) => [stampImage._id.toString(), stampImage]));
+    docs = sortedIds.map((id) => stampImageMap.get(id)).filter(Boolean);
+  }
+
+  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
   return apiResponse(res, 200, true, "Stamp images fetched successfully!", data);
 });
@@ -126,7 +131,7 @@ export const updateStampImage = asyncHandler(async (req: IApiRequest, res: Respo
   const { id } = req.params;
   const { softDeleted, image, ...updatedBody } = result;
 
-  const stampImage = await StampImage.findOne({ _id: id });
+  const stampImage = await StampImage.findOne({ _id: id, userId: req.user._id });
   if (!stampImage) return apiResponse(res, 404, false, "Stamp image not found!");
 
   // File Validation
@@ -139,7 +144,7 @@ export const updateStampImage = asyncHandler(async (req: IApiRequest, res: Respo
 
   // Upload File to S3 Bucket
   if (req.file) {
-    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "stamp-image");
+    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "stamp_image");
     if (status) {
       updatedBody.image = key;
     }
@@ -162,17 +167,31 @@ export const updateStampImage = asyncHandler(async (req: IApiRequest, res: Respo
  */
 export const softDeleteStampImage = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
+  let stampImage = null;
 
-  const stampImage = await StampImage.findOneAndUpdate(
-    { _id: id },
-    {
-      softDeleted: true,
-    }
-  );
+  if (req.role === ROLE.SUPER_ADMIN) {
+    stampImage = await StampImage.findOneAndUpdate(
+      { _id: id },
+      {
+        softDeleted: true,
+      }
+    );
+  }
+
+  if (req.role === ROLE.RETAILER) {
+    stampImage = await StampImage.findOneAndUpdate(
+      { _id: id, userId: req.user._id, ref: ROLE.RETAILER },
+      {
+        softDeleted: true,
+      }
+    );
+  }
 
   if (!stampImage) return apiResponse(res, 404, false, "Stamp image not found!");
 
-  await Sorting.updateOne({ title: "stamp-image" }, { $pull: { sortedData: id } });
+  if (req.role === ROLE.SUPER_ADMIN) {
+    await Sorting.updateOne({ title: "default_stamp_image" }, { $pull: { sortedData: id } });
+  }
 
   return apiResponse(res, 200, true, "Stamp image deleted successfully!");
 });
@@ -187,32 +206,34 @@ export const getAllDeletedStampImages = asyncHandler(async (req: IApiRequest, re
   const { page = 1, limit = 10 } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
-  const [docs, total] = await Promise.all([
-    StampImage.find({ softDeleted: { $eq: true } })
-      .limit(Number(limit))
-      .skip(skip)
-      .sort({ createdAt: "asc" }),
-    StampImage.find({ softDeleted: { $eq: true } }).countDocuments(),
-  ]);
+  let docs: any[] = [];
+  let total: number = 0;
 
-  const hasNext = total > skip + Number(limit);
-  const hasPrev = Number(page) > 1;
+  const commonQuery = { softDeleted: { $eq: true } };
+  let roleSpecificQuery = {};
 
-  const data = {
-    docs,
-    page: +page,
-    limit: +limit,
-    totalPage: Math.ceil(total / Number(limit)),
-    totalDocs: total,
-    hasNext,
-    hasPrev,
-  };
+  if (req.role === ROLE.SUPER_ADMIN) {
+    roleSpecificQuery = { ref: ROLE.SUPER_ADMIN };
+  } else if (req.role === ROLE.RETAILER) {
+    roleSpecificQuery = { userId: req.user._id, ref: ROLE.RETAILER };
+  }
+
+  if (Object.keys(roleSpecificQuery).length > 0) {
+    const finalQuery = { ...commonQuery, ...roleSpecificQuery };
+
+    [docs, total] = await Promise.all([
+      StampImage.find(finalQuery).limit(Number(limit)).skip(skip),
+      StampImage.countDocuments(finalQuery),
+    ]);
+  }
+
+  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
   return apiResponse(res, 200, true, "Deleted stamp images fetched successfully!", data);
 });
 
 /**
- * Confirm Delete A Single StampImage
+ * Confirm Delete A Single Stamp Image
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
