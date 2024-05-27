@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { IApiRequest } from "types";
-import { apiResponse, asyncHandler } from "../../helpers";
+import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import Branch from "./model";
 import { branchSchema } from "./validation";
 
@@ -46,18 +46,7 @@ export const getAllBranches = asyncHandler(async (req: IApiRequest, res: Respons
     Branch.find({ retailerId: req.user._id, softDeleted: { $eq: false } }).countDocuments(),
   ]);
 
-  const hasNext = total > skip + Number(limit);
-  const hasPrev = Number(page) > 1;
-
-  const data = {
-    docs,
-    page: +page,
-    limit: +limit,
-    totalPage: Math.ceil(total / Number(limit)),
-    totalDocs: total,
-    hasNext,
-    hasPrev,
-  };
+  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
   return apiResponse(res, 200, true, "Branches fetched successfully!", data);
 });
@@ -143,18 +132,7 @@ export const getAllDeletedBranches = asyncHandler(async (req: IApiRequest, res: 
     Branch.find({ retailerId: req.user._id, softDeleted: { $eq: true } }).countDocuments(),
   ]);
 
-  const hasNext = total > skip + Number(limit);
-  const hasPrev = Number(page) > 1;
-
-  const data = {
-    docs,
-    page: +page,
-    limit: +limit,
-    totalPage: Math.ceil(total / Number(limit)),
-    totalDocs: total,
-    hasNext,
-    hasPrev,
-  };
+  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
   return apiResponse(res, 201, true, "Deleted Branches fetched successfully!", data);
 });

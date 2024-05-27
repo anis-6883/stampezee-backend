@@ -3,7 +3,7 @@ import { Response } from "express";
 import { IApiRequest } from "types";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import Branch from "../../features/manage-branch/model";
-import { apiResponse, asyncHandler, exclude } from "../../helpers";
+import { apiResponse, asyncHandler, exclude, makePaginate } from "../../helpers";
 import SubAdmin from "../user/sub-admin/model";
 import { subAdminSchema, subAdminSchema2 } from "./validation";
 
@@ -68,18 +68,7 @@ export const getAllSubAdmins = asyncHandler(async (req: IApiRequest, res: Respon
     SubAdmin.find({ retailerId: req.user._id, softDeleted: { $eq: false } }).countDocuments(),
   ]);
 
-  const hasNext = total > skip + Number(limit);
-  const hasPrev = Number(page) > 1;
-
-  const data = {
-    docs,
-    page: +page,
-    limit: +limit,
-    totalPage: Math.ceil(total / Number(limit)),
-    totalDocs: total,
-    hasNext,
-    hasPrev,
-  };
+  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
   return apiResponse(res, 200, true, "Sub Admins fetched successfully!", data);
 });
@@ -181,18 +170,7 @@ export const getAllDeletedSubAdmins = asyncHandler(async (req: IApiRequest, res:
     SubAdmin.find({ retailerId: req.user._id, softDeleted: { $eq: true } }).countDocuments(),
   ]);
 
-  const hasNext = total > skip + Number(limit);
-  const hasPrev = Number(page) > 1;
-
-  const data = {
-    docs,
-    page: +page,
-    limit: +limit,
-    totalPage: Math.ceil(total / Number(limit)),
-    totalDocs: total,
-    hasNext,
-    hasPrev,
-  };
+  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
   return apiResponse(res, 201, true, "Deleted Branches fetched successfully!", data);
 });

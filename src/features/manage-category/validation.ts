@@ -6,7 +6,7 @@ const name = Joi.string().trim().lowercase().required().messages({
 });
 
 const description = Joi.string().messages({
-  "string.base": "name must be string!",
+  "string.base": "description must be string!",
 });
 
 const status = Joi.boolean().default(true);
