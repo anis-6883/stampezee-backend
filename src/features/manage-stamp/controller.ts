@@ -1,5 +1,6 @@
 import { Response } from "express";
 import { IApiRequest } from "types";
+import { ROLE } from "../../configs/constants";
 import Branch from "../../features/manage-branch/model";
 import Category from "../../features/manage-category/model";
 import StampImage from "../../features/manage-stamp-image/model";
@@ -76,6 +77,37 @@ export const getSingleStamp = asyncHandler(async (req: IApiRequest, res: Respons
   if (!stamp) return apiResponse(res, 404, false, "Stamp not found!");
 
   return apiResponse(res, 200, true, "Stamp fetched successfully!", stamp);
+});
+
+/**
+ * Get Stamp Categories
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const getBranchCategoryImageList = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const [categories, branches, stampImages] = await Promise.all([
+    Category.find({ softDeleted: { $eq: false } }, { name: 1, image: 1 }).sort({
+      createdAt: "desc",
+    }),
+    Branch.find({ retailerId: req.user._id, softDeleted: { $eq: false } }, { name: 1 }).sort({
+      createdAt: "desc",
+    }),
+    StampImage.find(
+      { softDeleted: { $eq: false }, $or: [{ userId: req.user._id }, { ref: ROLE.SUPER_ADMIN }] },
+      { image: 1, title: 1 }
+    ).sort({
+      createdAt: "desc",
+    }),
+  ]);
+
+  const data = {
+    categories,
+    branches,
+    stampImages,
+  };
+
+  return apiResponse(res, 200, true, "Branches, Categories, Stamp Images fetched successfully!", data);
 });
 
 /**

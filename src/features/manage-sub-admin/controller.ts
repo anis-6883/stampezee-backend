@@ -64,7 +64,7 @@ export const getAllSubAdmins = asyncHandler(async (req: IApiRequest, res: Respon
     SubAdmin.find({ retailerId: req.user._id, softDeleted: { $eq: false } }, { password: 0 })
       .limit(Number(limit))
       .skip(skip)
-      .sort({ createdAt: "asc" }),
+      .sort({ createdAt: "desc" }),
     SubAdmin.find({ retailerId: req.user._id, softDeleted: { $eq: false } }).countDocuments(),
   ]);
 
@@ -166,7 +166,7 @@ export const getAllDeletedSubAdmins = asyncHandler(async (req: IApiRequest, res:
     SubAdmin.find({ retailerId: req.user._id, softDeleted: { $eq: true } }, { password: 0 })
       .limit(Number(limit))
       .skip(skip)
-      .sort({ createdAt: "asc" }),
+      .sort({ createdAt: "desc" }),
     SubAdmin.find({ retailerId: req.user._id, softDeleted: { $eq: true } }).countDocuments(),
   ]);
 
