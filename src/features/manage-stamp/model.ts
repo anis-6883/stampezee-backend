@@ -17,6 +17,11 @@ const schema = new mongoose.Schema(
       ref: "StampImage",
       required: true,
     },
+    categoryId: {
+      type: "ObjectId", // mongoose.Types.ObjectId
+      ref: "Category",
+      required: true,
+    },
     title: {
       type: String,
       required: true,
@@ -57,7 +62,7 @@ const schema = new mongoose.Schema(
     },
     startedAt: {
       type: Date,
-      default: Date.now(),
+      required: true,
     },
     expiredAt: {
       type: Date,
