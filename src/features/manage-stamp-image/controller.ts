@@ -83,7 +83,7 @@ export const getAllStampImages = asyncHandler(async (req: IApiRequest, res: Resp
     const finalQuery = { ...commonQuery, ...roleSpecificQuery };
 
     [docs, total] = await Promise.all([
-      StampImage.find(finalQuery).limit(Number(limit)).skip(skip),
+      StampImage.find(finalQuery).limit(Number(limit)).skip(skip).sort({ createdAt: "desc" }),
       StampImage.countDocuments(finalQuery),
     ]);
   }
@@ -222,7 +222,7 @@ export const getAllDeletedStampImages = asyncHandler(async (req: IApiRequest, re
     const finalQuery = { ...commonQuery, ...roleSpecificQuery };
 
     [docs, total] = await Promise.all([
-      StampImage.find(finalQuery).limit(Number(limit)).skip(skip),
+      StampImage.find(finalQuery).limit(Number(limit)).skip(skip).sort({ createdAt: "desc" }),
       StampImage.countDocuments(finalQuery),
     ]);
   }

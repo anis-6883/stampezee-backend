@@ -67,7 +67,7 @@ export const getAllCategories = asyncHandler(async (req: IApiRequest, res: Respo
     Category.find({ softDeleted: { $eq: false } })
       .limit(Number(limit))
       .skip(skip)
-      .sort({ createdAt: "asc" }),
+      .sort({ createdAt: "desc" }),
     Category.find({ softDeleted: { $eq: false } }).countDocuments(),
   ]);
 
@@ -179,7 +179,7 @@ export const getAllDeletedCategories = asyncHandler(async (req: IApiRequest, res
     Category.find({ softDeleted: { $eq: true } })
       .limit(Number(limit))
       .skip(skip)
-      .sort({ createdAt: "asc" }),
+      .sort({ createdAt: "desc" }),
     Category.find({ softDeleted: { $eq: true } }).countDocuments(),
   ]);
 
