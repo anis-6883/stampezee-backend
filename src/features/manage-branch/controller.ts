@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { IApiRequest } from "types";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import Branch from "./model";
-import { branchSchema } from "./validation";
+import { branchSchema, updateBranchSchema } from "./validation";
 
 /**
  * Create A Branch
@@ -13,7 +13,7 @@ import { branchSchema } from "./validation";
 export const createBranch = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await branchSchema.validateAsync(req.body);
 
-  const { name, address, longitude, latitude, status } = result;
+  const { name, address, longitude, latitude } = result;
 
   await Branch.create({
     name,
@@ -21,7 +21,6 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
       loc: { type: "Point", coordinates: [longitude, latitude] },
       name: address,
     },
-    status,
     retailerId: req.user._id,
   });
 
@@ -42,7 +41,7 @@ export const getAllBranches = asyncHandler(async (req: IApiRequest, res: Respons
     Branch.find({ retailerId: req.user._id, softDeleted: { $eq: false } })
       .limit(Number(limit))
       .skip(skip)
-      .sort({ createdAt: "asc" }),
+      .sort({ createdAt: "desc" }),
     Branch.find({ retailerId: req.user._id, softDeleted: { $eq: false } }).countDocuments(),
   ]);
 
@@ -73,30 +72,57 @@ export const getSingleBranch = asyncHandler(async (req: IApiRequest, res: Respon
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const updateBranch = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = await branchSchema.validateAsync(req.body);
+  const result = await updateBranchSchema.validateAsync(req.body, {
+    abortEarly: false,
+  });
 
   const { id } = req.params;
-  const { name, address, longitude, latitude, status } = result;
+  const { name, address, longitude, latitude } = result;
 
   const branch = await Branch.findOneAndUpdate(
     { _id: id },
     {
-      $set: {
-        name,
+      name,
+      ...(address && {
         address: {
           loc: { type: "Point", coordinates: [longitude, latitude] },
           name: address,
         },
-        status,
-      },
+      }),
     },
     {
       new: true,
     }
   );
+
   if (!branch) return apiResponse(res, 404, false, "Branch not found!");
 
   return apiResponse(res, 200, true, "Branch updated successfully!", branch);
+});
+
+/**
+ * Update Status A Single Branch
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const updateBranchStatus = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { id } = req.params;
+  const { status } = req?.body;
+
+  const branch = await Branch.findOneAndUpdate(
+    { _id: id },
+    {
+      status,
+    },
+    {
+      new: true,
+    }
+  );
+
+  if (!branch) return apiResponse(res, 404, false, "Branch not found!");
+
+  return apiResponse(res, 200, true, "Branch status updated successfully!");
 });
 
 /**
@@ -128,7 +154,7 @@ export const getAllDeletedBranches = asyncHandler(async (req: IApiRequest, res: 
     Branch.find({ retailerId: req.user._id, softDeleted: { $eq: true } })
       .limit(Number(limit))
       .skip(skip)
-      .sort({ createdAt: "asc" }),
+      .sort({ createdAt: "desc" }),
     Branch.find({ retailerId: req.user._id, softDeleted: { $eq: true } }).countDocuments(),
   ]);
 

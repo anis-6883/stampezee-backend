@@ -1,10 +1,11 @@
 import { Response } from "express";
 import { IApiRequest } from "types";
 import Branch from "../../features/manage-branch/model";
+import Category from "../../features/manage-category/model";
 import StampImage from "../../features/manage-stamp-image/model";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import Stamp from "./model";
-import { stampSchema } from "./validation";
+import { stampSchema, updateStampSchema } from "./validation";
 
 /**
  * Create A Stamp
@@ -17,19 +18,22 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
     abortEarly: false,
   });
 
-  const { softDeleted, branchId, stampImageId, ...createBody } = result;
+  const { softDeleted, branchId, categoryId, stampImageId, ...createBody } = result;
 
-  const [branch, stampImage] = await Promise.all([
+  const [branch, stampImage, category] = await Promise.all([
     Branch.findOne({ _id: branchId, retailerId: req.user._id }),
     StampImage.findOne({ _id: stampImageId }),
+    Category.findOne({ _id: categoryId }),
   ]);
 
   if (!branch) return apiResponse(res, 404, false, "Branch not found!");
   if (!stampImage) return apiResponse(res, 404, false, "Stamp Image not found!");
+  if (!category) return apiResponse(res, 404, false, "Category not found!");
 
   createBody.retailerId = req.user._id;
   createBody.branchId = branchId;
   createBody.stampImageId = stampImageId;
+  createBody.categoryId = categoryId;
 
   const stamp: any = await Stamp.create(createBody);
 
@@ -81,20 +85,28 @@ export const getSingleStamp = asyncHandler(async (req: IApiRequest, res: Respons
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const updateStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = await stampSchema.validateAsync(req.body, {
+  const result = await updateStampSchema.validateAsync(req.body, {
     abortEarly: false,
+    allowUnknown: true,
   });
 
   const { id } = req.params;
-  const { softDeleted, branchId, stampImageId, ...updatedBody } = result;
+  const { branchId, categoryId, stampImageId, softDeleted, ...updatedBody } = result;
 
-  const [branch, stampImage] = await Promise.all([
-    Branch.findOne({ _id: branchId, retailerId: req.user._id }),
-    StampImage.findOne({ _id: stampImageId }),
-  ]);
+  if (branchId) {
+    const branch = await Branch.findOne({ _id: branchId, retailerId: req.user._id });
+    if (!branch) return apiResponse(res, 404, false, "Branch not found!");
+  }
 
-  if (!branch) return apiResponse(res, 404, false, "Branch not found!");
-  if (!stampImage) return apiResponse(res, 404, false, "Stamp Image not found!");
+  if (categoryId) {
+    const category = await Category.findOne({ _id: categoryId });
+    if (!category) return apiResponse(res, 404, false, "Category not found!");
+  }
+
+  if (stampImageId) {
+    const stampImage = await StampImage.findOne({ _id: stampImageId });
+    if (!stampImage) return apiResponse(res, 404, false, "Stamp image not found!");
+  }
 
   const stamp = await Stamp.findOne({ _id: id });
   if (!stamp) return apiResponse(res, 404, false, "Stamp not found!");
