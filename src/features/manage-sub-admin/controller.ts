@@ -61,10 +61,47 @@ export const getAllSubAdmins = asyncHandler(async (req: IApiRequest, res: Respon
   const skip: number = (Number(page) - 1) * Number(limit);
 
   const [docs, total] = await Promise.all([
-    SubAdmin.find({ retailerId: req.user._id, softDeleted: { $eq: false } }, { password: 0 })
-      .limit(Number(limit))
-      .skip(skip)
-      .sort({ createdAt: "desc" }),
+    SubAdmin.aggregate([
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
+        $match: { retailerId: req.user._id, softDeleted: { $eq: false } },
+      },
+      {
+        $lookup: {
+          from: "branches",
+          localField: "branchId",
+          foreignField: "_id",
+          as: "branch",
+          pipeline: [
+            {
+              $project: {
+                name: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: "$branch",
+      },
+      {
+        $project: {
+          branchId: 0,
+          password: 0,
+        },
+      },
+    ]),
+
     SubAdmin.find({ retailerId: req.user._id, softDeleted: { $eq: false } }).countDocuments(),
   ]);
 
