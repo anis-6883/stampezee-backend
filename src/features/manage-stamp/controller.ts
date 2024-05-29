@@ -80,7 +80,7 @@ export const getSingleStamp = asyncHandler(async (req: IApiRequest, res: Respons
 });
 
 /**
- * Get Stamp Categories
+ * Get Stamp Categories Branches Stamp Image
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.

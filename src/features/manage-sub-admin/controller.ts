@@ -74,6 +74,19 @@ export const getAllSubAdmins = asyncHandler(async (req: IApiRequest, res: Respon
 });
 
 /**
+ * Get Branches
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const getBranches = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const branches = await Branch.find({ retailerId: req.user._id, softDeleted: { $eq: false } }, { name: 1 }).sort({
+    createdAt: "desc",
+  });
+  return apiResponse(res, 200, true, "Branches fetched successfully!", branches);
+});
+
+/**
  * Get A Single SubAdmin
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
