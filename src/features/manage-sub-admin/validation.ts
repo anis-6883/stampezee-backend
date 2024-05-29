@@ -9,11 +9,6 @@ const lastName = Joi.string().trim().messages({
   "string.base": "lastName must be string!",
 });
 
-const phone = Joi.string().trim().required().messages({
-  "any.required": "phone is required!",
-  "string.base": "phone must be string!",
-});
-
 const email = Joi.string().email().trim().required().messages({
   "any.required": "email is required!",
   "string.base": "email must be string!",
@@ -29,16 +24,6 @@ const strongPassword = Joi.string()
     "string.pattern.base": "At least 6 characters long with 1 uppercase, 1 lowercase & 1 digit",
   });
 
-const country = Joi.string().trim().required().messages({
-  "any.required": "country is required!",
-  "string.base": "country must be string!",
-});
-
-const dialCode = Joi.string().trim().required().messages({
-  "any.required": "dialCode is required!",
-  "string.base": "dialCode must be string!",
-});
-
 const branchId = Joi.string().trim().required().messages({
   "any.required": "branchId is required!",
   "string.base": "branchId must be string!",
@@ -51,9 +36,6 @@ export const subAdminSchema = Joi.object({
   firstName,
   lastName,
   email,
-  phone,
-  country,
-  dialCode,
   password: strongPassword,
   status,
 });
@@ -64,8 +46,5 @@ export const subAdminSchema2 = Joi.object({
   firstName,
   lastName,
   email,
-  phone,
-  country,
-  dialCode,
   status,
 });
