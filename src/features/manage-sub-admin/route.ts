@@ -5,6 +5,7 @@ import {
   createSubAdmin,
   getAllDeletedSubAdmins,
   getAllSubAdmins,
+  getBranches,
   getSingleSubAdmin,
   softDeleteSubAdmin,
   updateSubAdmin,
@@ -16,6 +17,7 @@ const router = express.Router();
 
 router.post("/", upload.single("image"), createSubAdmin);
 router.get("/all", getAllSubAdmins);
+router.get("/branches", getBranches);
 router.get("/deleted", getAllDeletedSubAdmins);
 router.get("/:id", getSingleSubAdmin);
 router.put("/:id", upload.single("image"), updateSubAdmin);
