@@ -5,14 +5,26 @@ const firstName = Joi.string().trim().required().messages({
   "string.base": "firstName must be string!",
 });
 
+const updateFirstName = Joi.string().trim().messages({
+  "string.base": "firstName must be string!",
+  "string.empty": "firstName must be not empty!",
+});
+
 const lastName = Joi.string().trim().messages({
   "string.base": "lastName must be string!",
+  "string.empty": "lastName must be not empty!",
 });
 
 const email = Joi.string().email().trim().required().messages({
   "any.required": "email is required!",
   "string.base": "email must be string!",
   "string.email": "email must be valid format!",
+});
+
+const updateEmail = Joi.string().email().trim().messages({
+  "string.base": "email must be string!",
+  "string.email": "email must be valid format!",
+  "string.empty": "email must be not empty!",
 });
 
 const strongPassword = Joi.string()
@@ -29,6 +41,11 @@ const branchId = Joi.string().trim().required().messages({
   "string.base": "branchId must be string!",
 });
 
+const updateBranchId = Joi.string().trim().messages({
+  "string.base": "branchId must be string!",
+  "string.empty": "branchId must be not empty!",
+});
+
 const status = Joi.boolean().default(true);
 
 export const subAdminSchema = Joi.object({
@@ -42,9 +59,9 @@ export const subAdminSchema = Joi.object({
 
 // Without Password
 export const subAdminSchema2 = Joi.object({
-  branchId,
-  firstName,
+  branchId: updateBranchId,
+  firstName: updateFirstName,
   lastName,
-  email,
+  email: updateEmail,
   status,
 });

@@ -145,17 +145,17 @@ export const getSingleSubAdmin = asyncHandler(async (req: IApiRequest, res: Resp
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const updateSubAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = await subAdminSchema2.validateAsync(req.body);
+  const result = await subAdminSchema2.validateAsync(req.body, { abortEarly: false });
 
   const { id } = req.params;
-  const { softDeleted, retailerId, password, ...updatedBody } = result;
+  const { softDeleted, password, ...updatedBody } = result;
 
-  const [branch, existingSubAdmin] = await Promise.all([
-    Branch.findOne({ _id: updatedBody.branchId, retailerId: req.user._id }),
-    SubAdmin.findOne({ email: updatedBody.email, _id: { $ne: id } }),
-  ]);
+  if (updatedBody.branchId) {
+    const branch = await Branch.findOne({ _id: updatedBody.branchId, retailerId: req.user._id });
+    if (!branch) return apiResponse(res, 400, false, "Branch not found!");
+  }
 
-  if (!branch) return apiResponse(res, 400, false, "Branch not found!");
+  const existingSubAdmin = await SubAdmin.findOne({ email: updatedBody.email, _id: { $ne: id } });
   if (existingSubAdmin) return apiResponse(res, 400, false, "This sub admin already exists!");
 
   // Upload File to S3 Bucket
@@ -169,16 +169,16 @@ export const updateSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
     deleteFileFromS3Bucket(prevImage?.image);
   }
 
-  const subAdmin: any = await SubAdmin.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
+  const subAdmin: any = await SubAdmin.findOneAndUpdate({ _id: id }, updatedBody, {
+    new: true,
+    projection: { password: 0, createdAt: 0, updatedAt: 0 },
+  });
 
   if (!subAdmin) {
     return apiResponse(res, 404, false, "Sub Admin not found!");
   }
 
-  // Remove Sensitive Data
-  const data = exclude(subAdmin._doc, ["password", "createdAt", "updatedAt"]);
-
-  return apiResponse(res, 200, true, "Sub Admin updated successfully!", data);
+  return apiResponse(res, 200, true, "Sub Admin updated successfully!", subAdmin);
 });
 
 /**
