@@ -25,7 +25,7 @@ export const categorySchema = Joi.object({
 });
 
 export const updateCategorySchema = Joi.object({
-  updateName,
+  name: updateName,
   description,
   status,
 });
