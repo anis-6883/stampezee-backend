@@ -5,8 +5,7 @@ const name = Joi.string().trim().lowercase().required().messages({
   "string.base": "name must be string!",
 });
 
-const updateName = Joi.string().trim().lowercase().required().messages({
-  "any.required": "name is required!",
+const updateName = Joi.string().trim().lowercase().messages({
   "string.base": "name must be string!",
   "string.empty": "name must not be empty!",
 });

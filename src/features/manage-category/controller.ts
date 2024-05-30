@@ -4,7 +4,7 @@ import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bu
 import Sorting from "../../features/sorting/model";
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
 import Category from "./model";
-import { categorySchema } from "./validation";
+import { categorySchema, updateCategorySchema } from "./validation";
 
 /**
  * Create A Category
@@ -104,7 +104,7 @@ export const getSingleCategory = asyncHandler(async (req: IApiRequest, res: Resp
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const updateCategory = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = await categorySchema.validateAsync(req.body, {
+  const result = await updateCategorySchema.validateAsync(req.body, {
     allowUnknown: true,
     abortEarly: false,
   });
