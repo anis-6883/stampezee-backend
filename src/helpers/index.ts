@@ -23,12 +23,7 @@ export const apiResponse = (res: Response, statusCode: number, status: boolean, 
   return res.status(statusCode).json({ status, message, data });
 };
 
-export const validateBody = (schema: any, body: Object): Object => {
-  const result = schema.validate(body, {
-    allowUnknown: true,
-    abortEarly: false,
-  });
-
+export const formatErrorMsg = (result: any): string => {
   const format: any = {};
 
   if (result.error) {
@@ -37,7 +32,10 @@ export const validateBody = (schema: any, body: Object): Object => {
     });
   }
 
-  return format;
+  const firstKey = Object.keys(format)[0];
+  const errorMsg = format[firstKey];
+
+  return errorMsg;
 };
 
 export const generateSalt = async () => {

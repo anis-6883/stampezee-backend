@@ -7,12 +7,12 @@ const firstName = Joi.string().trim().required().messages({
 
 const updateFirstName = Joi.string().trim().messages({
   "string.base": "firstName must be string!",
-  "string.empty": "firstName must be not empty!",
+  "string.empty": "firstName must not be empty!",
 });
 
 const lastName = Joi.string().trim().messages({
   "string.base": "lastName must be string!",
-  "string.empty": "lastName must be not empty!",
+  "string.empty": "lastName must not be empty!",
 });
 
 const email = Joi.string().email().trim().required().messages({
@@ -24,7 +24,7 @@ const email = Joi.string().email().trim().required().messages({
 const updateEmail = Joi.string().email().trim().messages({
   "string.base": "email must be string!",
   "string.email": "email must be valid format!",
-  "string.empty": "email must be not empty!",
+  "string.empty": "email must not be empty!",
 });
 
 const strongPassword = Joi.string()
@@ -43,7 +43,7 @@ const branchId = Joi.string().trim().required().messages({
 
 const updateBranchId = Joi.string().trim().messages({
   "string.base": "branchId must be string!",
-  "string.empty": "branchId must be not empty!",
+  "string.empty": "branchId must not be empty!",
 });
 
 const status = Joi.boolean().default(true);

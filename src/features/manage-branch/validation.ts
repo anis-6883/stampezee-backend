@@ -3,12 +3,12 @@ import Joi from "joi";
 const name = Joi.string().trim().required().messages({
   "any.required": "name is required!",
   "string.base": "name must be string!",
-  "string.empty": "name must be not empty!",
+  "string.empty": "name must not be empty!",
 });
 
 const updateName = Joi.string().trim().messages({
   "string.base": "name must be string!",
-  "string.empty": "name must be not empty!",
+  "string.empty": "name must not be empty!",
 });
 
 const address = Joi.string().trim().required().messages({
@@ -18,7 +18,7 @@ const address = Joi.string().trim().required().messages({
 
 const updateAddress = Joi.string().trim().messages({
   "string.base": "address must be string!",
-  "string.empty": "name must be not empty!",
+  "string.empty": "name must not be empty!",
 });
 
 const longitude = Joi.number().required().messages({

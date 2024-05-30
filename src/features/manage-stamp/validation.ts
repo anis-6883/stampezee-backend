@@ -3,30 +3,30 @@ import Joi from "joi";
 const branchId = Joi.string().trim().required().messages({
   "any.required": "branchId is required!",
   "string.base": "branchId must be string!",
-  "string.empty": "branchId must be not empty!",
+  "string.empty": "branchId must not be empty!",
 });
 
 const stampImageId = Joi.string().trim().required().messages({
   "any.required": "stampImageId is required!",
   "string.base": "stampImageId must be string!",
-  "string.empty": "stampImageId must be not empty!",
+  "string.empty": "stampImageId must not be empty!",
 });
 
 const categoryId = Joi.string().trim().required().messages({
   "any.required": "categoryId is required!",
   "string.base": "categoryId must be string!",
-  "string.empty": "categoryId must be not empty!",
+  "string.empty": "categoryId must not be empty!",
 });
 
 const title = Joi.string().trim().required().messages({
   "any.required": "title is required!",
   "string.base": "title must be string!",
-  "string.empty": "title must be not empty!",
+  "string.empty": "title must not be empty!",
 });
 
 const updateTitle = Joi.string().trim().messages({
   "string.base": "title must be string!",
-  "string.empty": "title must be not empty!",
+  "string.empty": "title must not be empty!",
 });
 
 const description = Joi.string().allow("").trim().messages({
@@ -57,7 +57,7 @@ const rewardType = Joi.string().trim().required().lowercase().valid("promotion",
   "any.required": "rewardType is required!",
   "string.base": "rewardType must be string!",
   "any.only": "rewardType must be [promotion, discount]",
-  "string.empty": "rewardType must be not empty!",
+  "string.empty": "rewardType must not be empty!",
 });
 
 const promotionReward = Joi.alternatives().conditional("rewardType", {
@@ -65,7 +65,7 @@ const promotionReward = Joi.alternatives().conditional("rewardType", {
   then: Joi.string().required().messages({
     "any.required": "promotionReward is required!",
     "string.base": "promotionReward must be string!",
-    "string.empty": "promotionReward must be not empty!",
+    "string.empty": "promotionReward must not be empty!",
   }),
   otherwise: Joi.string().allow("").messages({
     "string.base": "promotionReward must be string!",
@@ -77,7 +77,7 @@ const discountReward = Joi.alternatives().conditional("rewardType", {
   then: Joi.number().required().messages({
     "any.required": "discountReward is required!",
     "number.base": "discountReward must be number!",
-    "string.empty": "discountReward must be not empty!",
+    "string.empty": "discountReward must not be empty!",
   }),
   otherwise: Joi.number().messages({
     "number.base": "discountReward must be number!",

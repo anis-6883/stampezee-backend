@@ -14,7 +14,7 @@ export const authAndPermissionCheck =
   async (req: IApiRequest, res: Response, next: NextFunction): Promise<any> => {
     try {
       const token =
-        req?.cookies?.[COOKIE_KEY] || req.headers?.authorization?.replace("Bearer ", "") || req?.cookies?.temp;
+        req.headers?.authorization?.replace("Bearer ", "") || req?.cookies?.[COOKIE_KEY] || req?.cookies?.temp;
       if (!token) return apiResponse(res, 401, false, "Unauthorized Request!");
 
       const decoded: any = jwt.verify(token, process.env.APP_SECRET!);

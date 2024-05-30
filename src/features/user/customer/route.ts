@@ -7,6 +7,7 @@ import {
   customerProfile,
   customerRegistration,
   customerResendOtp,
+  updateLocationDeviceToken,
 } from "./controller";
 
 const router = express.Router();
@@ -16,6 +17,6 @@ router.post("/otp-verify", authAndPermissionCheck(ROLE.CUSTOMER), customerOtpVer
 router.get("/resend-otp", authAndPermissionCheck(ROLE.CUSTOMER), customerResendOtp);
 router.post("/login", customerLogin);
 router.get("/profile", authAndPermissionCheck(ROLE.CUSTOMER), customerProfile);
-router.put("/update-location-token", authAndPermissionCheck(ROLE.CUSTOMER), customerProfile);
+router.put("/update-location-token", authAndPermissionCheck(ROLE.CUSTOMER), updateLocationDeviceToken);
 
 export default router;

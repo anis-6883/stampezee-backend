@@ -1,15 +1,7 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
-import _ from "lodash";
 import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
-import {
-  apiResponse,
-  asyncHandler,
-  exclude,
-  generateSignature,
-  getRandomInteger,
-  validateBody,
-} from "../../../helpers";
+import { apiResponse, asyncHandler, exclude, generateSignature, getRandomInteger } from "../../../helpers";
 import { IApiRequest } from "../../../types";
 import { sendVerificationEmail } from "../service";
 import { loginSchema, retailerRegisterSchema, verifyOtpSchema } from "../validation";
@@ -66,10 +58,9 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = validateBody(verifyOtpSchema, req.body);
-  if (!_.isEmpty(result)) return apiResponse(res, 400, false, "Invalid Request!", result);
+  const result = await verifyOtpSchema.validateAsync(req.body);
 
-  const isVerified = req.user.otp === Number(req.body.otp) && req.user.otpExpiry > new Date();
+  const isVerified = req.user.otp === Number(result.otp) && req.user.otpExpiry > new Date();
   if (!isVerified) return apiResponse(res, 400, false, "Invalid Otp!");
 
   await Retailer.updateOne(
@@ -148,18 +139,17 @@ export const retailerResendOtp = asyncHandler(async (req: IApiRequest, res: Resp
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const retailerLogin = asyncHandler(async (req: Request, res: Response) => {
-  const result = validateBody(loginSchema, req.body);
-  if (!_.isEmpty(result)) return apiResponse(res, 400, false, "Invalid Request!", result);
+  const result = await loginSchema.validateAsync(req.body);
 
-  const retailer: any = await Retailer.findOne({ email: req.body.email });
+  const retailer: any = await Retailer.findOne({ email: result.email });
   if (!retailer) return apiResponse(res, 401, false, "Please, complete your registration first!");
 
   if (!retailer.isVerified) {
-    await Retailer.deleteOne({ email: req.body.email });
+    await Retailer.deleteOne({ email: result.email });
     return apiResponse(res, 401, false, "Please, complete your registration first!");
   }
 
-  const isPasswordValid = await bcrypt.compare(req.body.password, retailer.password);
+  const isPasswordValid = await bcrypt.compare(result.password, retailer.password);
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
   const accessToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "1d");
