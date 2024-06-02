@@ -1,35 +1,5 @@
 import Joi from "joi";
-
-const name = Joi.string().trim().required().messages({
-  "any.required": "name is required!",
-  "string.base": "name must be string!",
-  "string.empty": "name must not be empty!",
-});
-
-const updateName = Joi.string().trim().messages({
-  "string.base": "name must be string!",
-  "string.empty": "name must not be empty!",
-});
-
-const address = Joi.string().trim().required().messages({
-  "any.required": "address is required!",
-  "string.base": "address must be string!",
-});
-
-const updateAddress = Joi.string().trim().messages({
-  "string.base": "address must be string!",
-  "string.empty": "name must not be empty!",
-});
-
-const longitude = Joi.number().required().messages({
-  "any.required": "longitude is required!",
-  "number.base": "longitude must be number!",
-});
-
-const latitude = Joi.number().required().messages({
-  "any.required": "latitude is required!",
-  "number.base": "latitude must be number!",
-});
+import { requiredStringField, stringField } from "../../helpers";
 
 const updateLongitude = Joi.when("address", {
   is: Joi.exist(),
@@ -54,15 +24,15 @@ const updateLatitude = Joi.when("address", {
 });
 
 export const branchSchema = Joi.object({
-  name,
-  address,
-  longitude,
-  latitude,
+  name: requiredStringField("name"),
+  address: requiredStringField("address"),
+  longitude: requiredStringField("longitude"),
+  latitude: requiredStringField("latitude"),
 });
 
 export const updateBranchSchema = Joi.object({
-  name: updateName,
-  address: updateAddress,
+  name: stringField("name"),
+  address: stringField("address"),
   longitude: updateLongitude,
   latitude: updateLatitude,
 });

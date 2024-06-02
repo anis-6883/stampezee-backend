@@ -1,41 +1,5 @@
 import Joi from "joi";
-
-const branchId = Joi.string().trim().required().messages({
-  "any.required": "branchId is required!",
-  "string.base": "branchId must be string!",
-  "string.empty": "branchId must not be empty!",
-});
-
-const stampImageId = Joi.string().trim().required().messages({
-  "any.required": "stampImageId is required!",
-  "string.base": "stampImageId must be string!",
-  "string.empty": "stampImageId must not be empty!",
-});
-
-const categoryId = Joi.string().trim().required().messages({
-  "any.required": "categoryId is required!",
-  "string.base": "categoryId must be string!",
-  "string.empty": "categoryId must not be empty!",
-});
-
-const title = Joi.string().trim().required().messages({
-  "any.required": "title is required!",
-  "string.base": "title must be string!",
-  "string.empty": "title must not be empty!",
-});
-
-const updateTitle = Joi.string().trim().messages({
-  "string.base": "title must be string!",
-  "string.empty": "title must not be empty!",
-});
-
-const description = Joi.string().allow("").trim().messages({
-  "string.base": "description must be string!",
-});
-
-const rules = Joi.string().allow("").messages({
-  "string.base": "rules must be string!",
-});
+import { requiredStringField, stringField } from "../../helpers";
 
 const noOfStampsToCollect = Joi.number().required().min(1).messages({
   "any.required": "noOfStampsToCollect is required!",
@@ -109,12 +73,12 @@ const updateExpiredAt = Joi.date().greater(Joi.ref("startedAt")).messages({
 const status = Joi.boolean().default(true);
 
 export const stampSchema = Joi.object({
-  title,
-  branchId,
-  categoryId,
-  stampImageId,
-  description,
-  rules,
+  title: requiredStringField("title"),
+  branchId: requiredStringField("branchId"),
+  categoryId: requiredStringField("categoryId"),
+  stampImageId: requiredStringField("stampImageId"),
+  description: stringField("description"),
+  rules: stringField("description"),
   noOfStampsToCollect,
   minPurchaseAmount,
   rewardType,
@@ -126,7 +90,7 @@ export const stampSchema = Joi.object({
 });
 
 export const updateStampSchema = Joi.object({
-  title: updateTitle,
+  title: stringField("title"),
   noOfStampsToCollect: updateNoOfStampsToCollect,
   startedAt: updateStartedAt,
   expiredAt: updateExpiredAt,

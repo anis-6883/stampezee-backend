@@ -2,8 +2,9 @@ import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import { IApiRequest } from "types";
 import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
+import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, generateSignature } from "../../../helpers";
-import { loginSchema, superAdminRegisterSchema } from "../validation";
+import { loginSchema, superAdminRegisterSchema, superAdminRegisterSchema2 } from "../validation";
 import SuperAdmin from "./model";
 
 /**
@@ -97,14 +98,63 @@ export const superAdminLogout = asyncHandler(async (_req: Request, res: Response
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const superAdminProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
-  if ("user" in req) {
-    if (!req.user) return apiResponse(res, 401, false, "Unauthorized Request!");
+  if (!req.user) return apiResponse(res, 401, false, "Unauthorized Request!");
 
-    // Remove Sensitive Data
-    const data = exclude(req.user, ["password", "createdAt", "updatedAt"]);
+  // Remove Sensitive Data
+  const data = exclude(req.user, ["password", "createdAt", "updatedAt"]);
 
-    return apiResponse(res, 200, true, "Super Admin Profile", { ...data, role: ROLE.SUPER_ADMIN });
-  } else {
-    return apiResponse(res, 401, false, "Unauthorized!");
+  return apiResponse(res, 200, true, "Super Admin Profile", { ...data, role: ROLE.SUPER_ADMIN });
+});
+
+/**
+ * Update Super Admin Profile
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const updateSuperAdminProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await superAdminRegisterSchema2.validateAsync(req.body, { abortEarly: false });
+  const { softDeleted, ...updatedBody } = result;
+
+  const existingSuperAdmin = await SuperAdmin.findOne({ email: updatedBody.email, _id: { $ne: req.user._id } });
+  if (existingSuperAdmin) return apiResponse(res, 400, false, "This email already exists!");
+
+  // Upload File to S3 Bucket
+  if (req.file) {
+    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "users");
+    if (status) {
+      updatedBody.image = key;
+    }
+    // Delete Existing Image if have
+    const prevImage = await SuperAdmin.findById(req.user._id, { image: 1 });
+    deleteFileFromS3Bucket(prevImage?.image);
   }
+
+  const superAdmin: any = await SuperAdmin.findOneAndUpdate({ _id: req.user._id }, updatedBody, {
+    new: true,
+    projection: { password: 0, createdAt: 0, updatedAt: 0 },
+  });
+
+  if (!superAdmin) {
+    return apiResponse(res, 404, false, "Super Admin not found!");
+  }
+
+  const accessToken = generateSignature({ email: superAdmin.email, role: ROLE.SUPER_ADMIN }, "1d");
+  const refreshToken = generateSignature({ email: superAdmin.email, role: ROLE.SUPER_ADMIN }, "7d");
+
+  res.cookie(COOKIE_KEY, accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "development" ? false : true,
+    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+    expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  });
+
+  res.cookie(REFRESH_TOKEN_KEY, refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "development" ? false : true,
+    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  });
+
+  return apiResponse(res, 200, true, "Super Admin updated successfully!", superAdmin);
 });

@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
+import Joi from "joi";
 import jwt from "jsonwebtoken";
 import { APP_SECRET } from "../configs/constants";
 
@@ -22,6 +23,60 @@ export const asyncHandler = (func: any) => async (req: Request, res: Response) =
 export const apiResponse = (res: Response, statusCode: number, status: boolean, message: string, data?: any) => {
   return res.status(statusCode).json({ status, message, data });
 };
+
+export const emailField = Joi.string().email().trim().messages({
+  "string.base": "email must be string!",
+  "string.email": "email must be valid format!",
+  "string.empty": "email must not be empty!",
+});
+
+export const requiredEmailField = emailField.required().messages({
+  "any.required": "email is required!",
+});
+
+export const requiredStringField = (fieldName: string) =>
+  Joi.string()
+    .trim()
+    .required()
+    .messages({
+      "any.required": `${fieldName} is required!`,
+      "string.base": `${fieldName} must be string!`,
+      "string.empty": `${fieldName} must not be empty!`,
+    });
+
+export const stringField = (fieldName: string) =>
+  Joi.string()
+    .trim()
+    .messages({
+      "string.base": `${fieldName} must be string!`,
+      "string.empty": `${fieldName} must not be empty!`,
+    });
+
+export const requiredLowercaseStringField = (fieldName: string) =>
+  Joi.string()
+    .trim()
+    .lowercase()
+    .required()
+    .messages({
+      "any.required": `${fieldName} is required!`,
+      "string.base": `${fieldName} must be string!`,
+      "string.empty": `${fieldName} must not be empty!`,
+    });
+
+export const lowercaseStringField = (fieldName: string) =>
+  Joi.string()
+    .trim()
+    .lowercase()
+    .messages({
+      "string.base": `${fieldName} must be string!`,
+      "string.empty": `${fieldName} must not be empty!`,
+    });
+
+export const weakPasswordField = Joi.string().required().length(6).messages({
+  "any.required": "password is required!",
+  "string.base": "password must be string!",
+  "string.length": "At least 6 characters long!",
+});
 
 export const formatErrorMsg = (result: any): string => {
   const format: any = {};

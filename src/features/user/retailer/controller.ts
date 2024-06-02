@@ -1,6 +1,8 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
+import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../../configs/s3Bucket";
+import { retailerSchema2 } from "../../../features/manage-retailer/validation";
 import { apiResponse, asyncHandler, exclude, generateSignature, getRandomInteger } from "../../../helpers";
 import { IApiRequest } from "../../../types";
 import { sendVerificationEmail } from "../service";
@@ -214,22 +216,69 @@ export const retailerLogout = asyncHandler(async (_req: Request, res: Response) 
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
-  if ("user" in req) {
-    if (!req.user) return apiResponse(res, 401, false, "Unauthorized Request!");
+  // Remove Sensitive Data
+  const data = exclude(req.user, [
+    "password",
+    "otp",
+    "otpExpiry",
+    "isVerified",
+    "verifiedAt",
+    "createdAt",
+    "updatedAt",
+  ]);
 
-    // Remove Sensitive Data
-    const data = exclude(req.user, [
-      "password",
-      "otp",
-      "otpExpiry",
-      "isVerified",
-      "verifiedAt",
-      "createdAt",
-      "updatedAt",
-    ]);
+  return apiResponse(res, 200, true, "Retailer Profile", { ...data, role: ROLE.RETAILER });
+});
 
-    return apiResponse(res, 200, true, "Retailer Profile", { ...data, role: ROLE.RETAILER });
-  } else {
-    return apiResponse(res, 401, false, "Unauthorized!");
+/**
+ * Update Retailer Profile
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const updateRetailerProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await retailerSchema2.validateAsync(req.body, { abortEarly: false });
+  const { softDeleted, password, ...updatedBody } = result;
+
+  const existingRetailer = await Retailer.findOne({ email: updatedBody.email, _id: { $ne: req.user._id } });
+  if (existingRetailer) return apiResponse(res, 400, false, "This retailer already exists!");
+
+  // Upload File to S3 Bucket
+  if (req.file) {
+    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "users");
+    if (status) {
+      updatedBody.image = key;
+    }
+    // Delete Existing Image if have
+    const prevImage = await Retailer.findById(req.user._id, { image: 1 });
+    deleteFileFromS3Bucket(prevImage?.image);
   }
+
+  const retailer: any = await Retailer.findOneAndUpdate({ _id: req.user._id }, updatedBody, {
+    new: true,
+    projection: { password: 0, createdAt: 0, updatedAt: 0 },
+  });
+
+  if (!retailer) {
+    return apiResponse(res, 404, false, "Retailer not found!");
+  }
+
+  const accessToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "1d");
+  const refreshToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "7d");
+
+  res.cookie(COOKIE_KEY, accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "development" ? false : true,
+    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+    expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  });
+
+  res.cookie(REFRESH_TOKEN_KEY, refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "development" ? false : true,
+    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  });
+
+  return apiResponse(res, 200, true, "Retailer profile updated successfully!", retailer);
 });

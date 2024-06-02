@@ -42,16 +42,10 @@ export const refreshAccessToken = asyncHandler(async (req: IApiRequest, res: Res
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getUserProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
-  if ("user" in req) {
-    if (!req.user) return apiResponse(res, 401, false, "Unauthorized Request!");
+  // Remove Sensitive Data
+  const data = exclude(req.user, ["password", "createdAt", "updatedAt"]);
 
-    // Remove Sensitive Data
-    const data = exclude(req.user, ["password", "createdAt", "updatedAt"]);
-
-    return apiResponse(res, 200, true, "Profile fetched successfully!", { ...data, role: req.role });
-  } else {
-    return apiResponse(res, 401, false, "Unauthorized!");
-  }
+  return apiResponse(res, 200, true, "Profile fetched successfully!", { ...data, role: req.role });
 });
 
 /**
