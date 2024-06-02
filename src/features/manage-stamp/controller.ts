@@ -52,10 +52,94 @@ export const getAllStamps = asyncHandler(async (req: IApiRequest, res: Response)
   const skip: number = (Number(page) - 1) * Number(limit);
 
   const [docs, total] = await Promise.all([
-    Stamp.find({ retailerId: req.user._id, softDeleted: { $eq: false } })
-      .limit(Number(limit))
-      .skip(skip)
-      .sort({ createdAt: "asc" }),
+    Stamp.aggregate([
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
+        $match: { retailerId: req.user._id, softDeleted: { $eq: false } },
+      },
+      {
+        $lookup: {
+          from: "branches",
+          localField: "branchId",
+          foreignField: "_id",
+          as: "branch",
+          pipeline: [
+            {
+              $project: {
+                name: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "categoryId",
+          foreignField: "_id",
+          as: "category",
+          pipeline: [
+            {
+              $project: {
+                name: 1,
+                image: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: "stampimages",
+          localField: "stampImageId",
+          foreignField: "_id",
+          as: "stampImage",
+          pipeline: [
+            {
+              $project: {
+                title: 1,
+                image: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: "$branch",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $unwind: {
+          path: "$category",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $unwind: {
+          path: "$stampImage",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          branchId: 0,
+          categoryId: 0,
+          stampImageId: 0,
+        },
+      },
+    ]),
     Stamp.find({ retailerId: req.user._id, softDeleted: { $eq: false } }).countDocuments(),
   ]);
 
@@ -95,7 +179,7 @@ export const getBranchCategoryImageList = asyncHandler(async (req: IApiRequest, 
     }),
     StampImage.find(
       { softDeleted: { $eq: false }, $or: [{ userId: req.user._id }, { ref: ROLE.SUPER_ADMIN }] },
-      { image: 1, title: 1 }
+      { image: 1, title: 1, ref: 1 }
     ).sort({
       createdAt: "desc",
     }),
