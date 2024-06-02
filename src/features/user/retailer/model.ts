@@ -50,7 +50,7 @@ const schema = new mongoose.Schema(
     },
     ref: {
       type: "String",
-      enum: ["self", "admin"],
+      enum: ["self", "super_admin"],
       default: "self",
     },
     storeName: {
