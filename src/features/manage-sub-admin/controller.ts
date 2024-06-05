@@ -42,6 +42,7 @@ export const createSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
   const subAdmin: any = await SubAdmin.create({
     ...createBody,
     image: imageKey,
+    fullName: createBody?.lastName ? `${createBody.firstName} ${createBody.lastName}` : createBody.firstName,
   });
 
   // Remove Sensitive Data
@@ -57,8 +58,15 @@ export const createSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getAllSubAdmins = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10 } = req.query;
+  const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
+
+  const query: any = { retailerId: req.user._id, softDeleted: false };
+  if (search) {
+    const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
+    const orQuery = [{ fullName: regex }, { email: regex }];
+    query.$or = orQuery;
+  }
 
   const [docs, total] = await Promise.all([
     SubAdmin.aggregate([
@@ -74,7 +82,7 @@ export const getAllSubAdmins = asyncHandler(async (req: IApiRequest, res: Respon
         $limit: Number(limit),
       },
       {
-        $match: { retailerId: req.user._id, softDeleted: { $eq: false } },
+        $match: query,
       },
       {
         $lookup: {
@@ -179,6 +187,31 @@ export const updateSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
   }
 
   return apiResponse(res, 200, true, "Sub Admin updated successfully!", subAdmin);
+});
+
+/**
+ * Update Status A Single Sub-Admin
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const updateSubAdminStatus = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { id } = req.params;
+  const { status } = req?.body;
+
+  const subAdmin = await SubAdmin.findOneAndUpdate(
+    { _id: id },
+    {
+      status,
+    },
+    {
+      new: true,
+    }
+  );
+
+  if (!subAdmin) return apiResponse(res, 404, false, "Sub admin not found!");
+
+  return apiResponse(res, 200, true, "Sub admin status updated successfully!");
 });
 
 /**

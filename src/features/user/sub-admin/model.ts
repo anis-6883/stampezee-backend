@@ -22,6 +22,11 @@ const schema = new mongoose.Schema(
       trim: true,
       default: null,
     },
+    fullName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     email: {
       type: String,
       required: true,
