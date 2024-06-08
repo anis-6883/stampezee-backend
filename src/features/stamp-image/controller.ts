@@ -2,8 +2,8 @@ import { Response } from "express";
 import { IApiRequest } from "types";
 import { ROLE } from "../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
-import Sorting from "../../features/sorting/model";
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
+import Sorting from "../sorting/model";
 import StampImage from "./model";
 import { stampImageSchema } from "./validation";
 

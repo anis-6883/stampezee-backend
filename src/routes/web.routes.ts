@@ -1,9 +1,9 @@
 import express from "express";
 import { ROLE } from "../configs/constants";
-import branchRoutes from "../features/manage-branch/route";
-import stampImageRoutes from "../features/manage-stamp-image/route";
-import stampRoutes from "../features/manage-stamp/route";
-import subAdminRoutes from "../features/manage-sub-admin/route";
+import branchRoutes from "../features/branch/route";
+import stampImageRoutes from "../features/stamp-image/route";
+import stampRoutes from "../features/stamp/route";
+import subAdminRoutes from "../features/sub-admin/route";
 import { getUserProfile, refreshAccessToken, userLogout, verifyToken } from "../features/user/controller";
 import retailerAuthRoutes from "../features/user/retailer/route";
 import { authAndPermissionCheck } from "../middlewares/authMiddleware";

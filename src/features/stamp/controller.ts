@@ -1,10 +1,10 @@
 import { Response } from "express";
 import { IApiRequest } from "types";
 import { ROLE } from "../../configs/constants";
-import Branch from "../../features/manage-branch/model";
-import Category from "../../features/manage-category/model";
-import StampImage from "../../features/manage-stamp-image/model";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import Branch from "../branch/model";
+import Category from "../category/model";
+import StampImage from "../stamp-image/model";
 import Stamp from "./model";
 import { stampSchema, updateStampSchema } from "./validation";
 

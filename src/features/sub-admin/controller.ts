@@ -2,8 +2,8 @@ import bcrypt from "bcrypt";
 import { Response } from "express";
 import { IApiRequest } from "types";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
-import Branch from "../../features/manage-branch/model";
 import { apiResponse, asyncHandler, exclude, makePaginate } from "../../helpers";
+import Branch from "../branch/model";
 import SubAdmin from "../user/sub-admin/model";
 import { subAdminSchema, subAdminSchema2 } from "./validation";
 
