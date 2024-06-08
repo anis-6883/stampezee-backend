@@ -53,6 +53,10 @@ const schema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    softDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

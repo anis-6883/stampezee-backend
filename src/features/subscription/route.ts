@@ -1,25 +1,27 @@
 import express from "express";
 import multer from "multer";
 import {
-  confirmDeleteCategory,
-  createCategory,
-  getAllCategories,
-  getAllDeletedCategories,
-  getSingleCategory,
-  softDeleteCategory,
-  updateCategory,
+  confirmDeleteSubscription,
+  createSubscription,
+  getAllDeletedSubscription,
+  getAllSubscriptions,
+  getSingleSubscription,
+  softDeleteSubscription,
+  updateSubscription,
+  updateSubscriptionStatus,
 } from "./controller";
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 const router = express.Router();
 
-router.post("/", upload.single("image"), createCategory);
-router.get("/all", getAllCategories);
-router.get("/deleted", getAllDeletedCategories);
-router.get("/:id", getSingleCategory);
-router.put("/:id", upload.single("image"), updateCategory);
-router.delete("/:id", softDeleteCategory);
-router.delete("/confirm/:id", confirmDeleteCategory);
+router.post("/", upload.single("image"), createSubscription);
+router.get("/all", getAllSubscriptions);
+router.get("/deleted", getAllDeletedSubscription);
+router.put("/status/:id", updateSubscriptionStatus);
+router.get("/:id", getSingleSubscription);
+router.put("/:id", upload.single("image"), updateSubscription);
+router.delete("/:id", softDeleteSubscription);
+router.delete("/confirm/:id", confirmDeleteSubscription);
 
 export default router;

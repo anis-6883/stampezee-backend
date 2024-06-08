@@ -2,28 +2,25 @@ import { Response } from "express";
 import { IApiRequest } from "types";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
-import Sorting from "../sorting/model";
-import Category from "./model";
-import { categorySchema, updateCategorySchema } from "./validation";
+import Subscription from "./model";
+import { subscriptionSchema, updateSubscriptionSchema } from "./validation";
 
 /**
- * Create A Category
+ * Create A Subscription
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const createCategory = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = await categorySchema.validateAsync(req.body, {
+export const createSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await subscriptionSchema.validateAsync(req.body, {
     allowUnknown: true,
     abortEarly: false,
   });
 
-  const { softDeleted, ...createBody } = result;
+  result.superAdminId = req.user._id;
 
-  createBody.superAdminId = req.user._id;
-
-  const existingCategory = await Category.findOne({ name: createBody.name });
-  if (existingCategory) return apiResponse(res, 400, false, "This category already exists!");
+  const existingSubscription = await Subscription.findOne({ slug: result.slug });
+  if (existingSubscription) return apiResponse(res, 400, false, "This subscription already exists!");
 
   let imageKey = null;
 
@@ -37,86 +34,71 @@ export const createCategory = asyncHandler(async (req: IApiRequest, res: Respons
 
   // Upload File to S3 Bucket
   if (req.file) {
-    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "category");
+    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "subscription");
     if (status) {
       imageKey = key;
     }
   }
 
-  const category: any = await Category.create({
-    ...createBody,
+  const subscription: any = await Subscription.create({
+    ...result,
     image: imageKey,
   });
 
-  await Sorting.updateOne({ title: "category" }, { $push: { sortedData: category._id.toString() } }, { upsert: true });
-
-  return apiResponse(res, 201, true, "Category created successfully!", category);
+  return apiResponse(res, 201, true, "Subscription created successfully!", subscription);
 });
 
 /**
- * Get All Categories
+ * Get All Subscriptions
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllCategories = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getAllSubscriptions = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { page = 1, limit = 10 } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
   const [docs, total] = await Promise.all([
-    Category.find({ softDeleted: { $eq: false } })
-      .limit(Number(limit))
-      .skip(skip)
-      .sort({ createdAt: "desc" }),
-    Category.find({ softDeleted: { $eq: false } }).countDocuments(),
+    Subscription.find({ softDeleted: false }).limit(Number(limit)).skip(skip).sort({ createdAt: "desc" }),
+    Subscription.find({ softDeleted: false }).countDocuments(),
   ]);
 
-  const sorting = await Sorting.findOne({ title: "category" });
-  const sortedIds = sorting ? sorting.sortedData : [];
+  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  const categoryMap = new Map(docs.map((category) => [category._id.toString(), category]));
-  const sortedList = sortedIds.map((id) => categoryMap.get(id)).filter(Boolean);
-
-  const data = makePaginate(sortedList, Number(page), Number(limit), skip, total);
-
-  return apiResponse(res, 200, true, "Categories fetched successfully!", data);
+  return apiResponse(res, 200, true, "Subscriptions fetched successfully!", data);
 });
 
 /**
- * Get A Single Category
+ * Get A Single Subscription
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getSingleCategory = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getSingleSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
-  const category = await Category.findOne({ _id: id });
-  if (!category) return apiResponse(res, 404, false, "Category not found!");
+  const subscription = await Subscription.findOne({ _id: id });
+  if (!subscription) return apiResponse(res, 404, false, "Subscription not found!");
 
-  return apiResponse(res, 200, true, "Category fetched successfully!", category);
+  return apiResponse(res, 200, true, "Subscription fetched successfully!", subscription);
 });
 
 /**
- * Update A Single Category
+ * Update A Single Subscription
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const updateCategory = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = await updateCategorySchema.validateAsync(req.body, {
-    allowUnknown: true,
+export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await updateSubscriptionSchema.validateAsync(req.body, {
     abortEarly: false,
   });
 
   const { id } = req.params;
   const { softDeleted, image, ...updatedBody } = result;
 
-  const category = await Category.findOne({ _id: id });
-  if (!category) return apiResponse(res, 404, false, "Category not found!");
-
-  const existingCategory = await Category.findOne({ name: updatedBody.name, _id: { $ne: id } });
-  if (existingCategory) return apiResponse(res, 400, false, "This category name already exists!");
+  const subscription = await Subscription.findOne({ _id: id });
+  if (!subscription) return apiResponse(res, 404, false, "Subscription not found!");
 
   // File Validation
   if (req.file) {
@@ -128,81 +110,101 @@ export const updateCategory = asyncHandler(async (req: IApiRequest, res: Respons
 
   // Upload File to S3 Bucket
   if (req.file) {
-    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "category");
+    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "subscription");
     if (status) {
       updatedBody.image = key;
     }
     // Delete Existing Image if have
-    const prevImage = await Category.findById(id, { image: 1 });
+    const prevImage = await Subscription.findById(id, { image: 1 });
     deleteFileFromS3Bucket(prevImage?.image);
   }
 
-  const updatedData: any = await Category.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
+  const updatedData: any = await Subscription.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
 
-  return apiResponse(res, 200, true, "Category updated successfully!", updatedData);
+  return apiResponse(res, 200, true, "Subscription updated successfully!", updatedData);
 });
 
 /**
- * Soft Delete A Category
+ * Update Status A Subscription
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const softDeleteCategory = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const updateSubscriptionStatus = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { id } = req.params;
+  const { status } = req?.body;
+
+  const subscription = await Subscription.findOneAndUpdate(
+    { _id: id },
+    {
+      status,
+    },
+    {
+      new: true,
+    }
+  );
+
+  if (!subscription) return apiResponse(res, 404, false, "Subscription not found!");
+
+  return apiResponse(res, 200, true, "Subscription status updated successfully!");
+});
+
+/**
+ * Soft Delete A Subscription
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const softDeleteSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
-  const category = await Category.findOneAndUpdate(
+  const subscription = await Subscription.findOneAndUpdate(
     { _id: id },
     {
       softDeleted: true,
     }
   );
 
-  if (!category) return apiResponse(res, 404, false, "Category not found!");
+  if (!subscription) return apiResponse(res, 404, false, "Subscription not found!");
 
-  await Sorting.updateOne({ title: "category" }, { $pull: { sortedData: id } });
-
-  return apiResponse(res, 200, true, "Category deleted successfully!");
+  return apiResponse(res, 200, true, "Subscription deleted successfully!");
 });
 
 /**
- * Get All Deleted Categories
+ * Get All Deleted Subscription
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllDeletedCategories = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getAllDeletedSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { page = 1, limit = 10 } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
   const [docs, total] = await Promise.all([
-    Category.find({ softDeleted: { $eq: true } })
-      .limit(Number(limit))
-      .skip(skip)
-      .sort({ createdAt: "desc" }),
-    Category.find({ softDeleted: { $eq: true } }).countDocuments(),
+    Subscription.find({ softDeleted: true }).limit(Number(limit)).skip(skip).sort({ createdAt: "desc" }),
+    Subscription.find({ softDeleted: true }).countDocuments(),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  return apiResponse(res, 200, true, "Deleted categories fetched successfully!", data);
+  return apiResponse(res, 200, true, "Deleted subscSubscriptions fetched successfully!", data);
 });
 
 /**
- * Confirm Delete A Single Category
+ * Confirm Delete A Single Subscription
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const confirmDeleteCategory = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const confirmDeleteSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
   // Delete Existing Image if have
-  const prevImage = await Category.findById(id, { image: 1 });
+  const prevImage = await Subscription.findById(id, { image: 1 });
   deleteFileFromS3Bucket(prevImage?.image);
 
-  const category = await Category.findOneAndDelete({ _id: id });
-  if (!category) return apiResponse(res, 404, false, "Category not found!");
+  const subscription = await Subscription.findOneAndDelete({ _id: id });
+  if (!subscription) return apiResponse(res, 404, false, "Subscription not found!");
 
-  return apiResponse(res, 200, true, "Category deleted successfully!");
+  return apiResponse(res, 200, true, "Subscription deleted successfully!");
 });
