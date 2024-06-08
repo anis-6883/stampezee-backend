@@ -124,7 +124,7 @@ export const retailerResendOtp = asyncHandler(async (req: IApiRequest, res: Resp
   }
 
   if (req.user.otpExpiry > new Date()) {
-    return apiResponse(res, 400, false, "Please, wait for 2 minutes before resend otp!");
+    return apiResponse(res, 400, false, "Wait 2 minutes to resend OTP!");
   }
 
   await Retailer.updateOne({ email: req.user.email }, { otp, otpExpiry });
