@@ -72,11 +72,15 @@ export const lowercaseStringField = (fieldName: string) =>
       "string.empty": `${fieldName} must not be empty!`,
     });
 
-export const weakPasswordField = Joi.string().required().min(6).messages({
-  "any.required": "password is required!",
-  "string.base": "password must be string!",
-  "min.length": "At least 6 characters long!",
-});
+export const weakPasswordField = (length: number) =>
+  Joi.string()
+    .required()
+    .min(length)
+    .messages({
+      "any.required": "password is required!",
+      "string.base": "password must be string!",
+      "string.min": `password must be ${length} characters long!`,
+    });
 
 export const formatErrorMsg = (result: any): string => {
   const format: any = {};

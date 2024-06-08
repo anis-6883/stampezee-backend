@@ -4,7 +4,7 @@ import { emailField, requiredEmailField, requiredStringField, stringField, weakP
 // Main schemas
 export const retailerSchema = Joi.object({
   email: requiredEmailField,
-  password: weakPasswordField,
+  password: weakPasswordField(8),
   storeName: requiredStringField("storeName"),
   firstName: requiredStringField("firstName"),
   lastName: stringField("lastName"),

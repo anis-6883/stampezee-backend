@@ -33,7 +33,7 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
   if (existingRetailer) {
     await Retailer.updateOne(
       { email: retailerBody.email },
-      { $set: { otp: retailerBody.otp, otpExpiry: retailerBody.otpExpiry } }
+      { otp: retailerBody.otp, otpExpiry: retailerBody.otpExpiry }
     );
   } else {
     await Retailer.create(retailerBody);
@@ -67,7 +67,7 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
 
   await Retailer.updateOne(
     { email: req.user.email },
-    { $set: { isVerified: true, verifiedAt: new Date(), otp: null, otpExpiry: null } }
+    { isVerified: true, verifiedAt: new Date(), otp: null, otpExpiry: null }
   );
 
   const accessToken = generateSignature({ email: req.user.email, role: ROLE.RETAILER }, "1d");
@@ -127,7 +127,7 @@ export const retailerResendOtp = asyncHandler(async (req: IApiRequest, res: Resp
     return apiResponse(res, 400, false, "Please, wait for 2 minutes before resend otp!");
   }
 
-  await Retailer.updateOne({ email: req.user.email }, { $set: { otp, otpExpiry } });
+  await Retailer.updateOne({ email: req.user.email }, { otp, otpExpiry });
 
   sendVerificationEmail(req.user.email, otp);
 
@@ -172,15 +172,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   });
 
   // Remove Sensitive Data
-  const data = exclude(retailer._doc, [
-    "password",
-    "otp",
-    "otpExpiry",
-    "isVerified",
-    "verifiedAt",
-    "createdAt",
-    "updatedAt",
-  ]);
+  const data = exclude(retailer._doc, ["password", "otp", "otpExpiry"]);
 
   return apiResponse(res, 200, true, "Retailer Login Successfully!", { ...data, role: ROLE.RETAILER });
 });
@@ -217,15 +209,7 @@ export const retailerLogout = asyncHandler(async (_req: Request, res: Response) 
  */
 export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
   // Remove Sensitive Data
-  const data = exclude(req.user, [
-    "password",
-    "otp",
-    "otpExpiry",
-    "isVerified",
-    "verifiedAt",
-    "createdAt",
-    "updatedAt",
-  ]);
+  const data = exclude(req.user, ["password", "otp", "otpExpiry"]);
 
   return apiResponse(res, 200, true, "Retailer Profile", { ...data, role: ROLE.RETAILER });
 });

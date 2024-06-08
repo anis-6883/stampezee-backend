@@ -1,15 +1,6 @@
 import Joi from "joi";
 import { emailField, requiredEmailField, requiredStringField, stringField, weakPasswordField } from "../../helpers";
 
-const strongPassword = Joi.string()
-  .required()
-  .pattern(new RegExp("^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?!.*\\s).{6,}$"))
-  .messages({
-    "any.required": "password is required!",
-    "string.base": "password must be string!",
-    "string.pattern.base": "At least 6 characters long with 1 uppercase, 1 lowercase & 1 digit",
-  });
-
 const updateLongitude = Joi.when("address", {
   is: Joi.exist(),
   then: Joi.number().required().messages({
@@ -34,7 +25,7 @@ const updateLatitude = Joi.when("address", {
 
 export const customerRegisterSchema = Joi.object({
   email: requiredEmailField,
-  password: weakPasswordField,
+  password: weakPasswordField(6),
   fullName: requiredStringField("fullName"),
   phone: requiredStringField("phone"),
   country: requiredStringField("country"),
@@ -43,7 +34,7 @@ export const customerRegisterSchema = Joi.object({
 
 export const retailerRegisterSchema = Joi.object({
   email: requiredEmailField,
-  password: strongPassword,
+  password: weakPasswordField(8),
   storeName: requiredStringField("storeName"),
   firstName: requiredStringField("firstName"),
   lastName: stringField("lastName"),
@@ -60,7 +51,7 @@ export const superAdminRegisterSchema = Joi.object({
   firstName: requiredStringField("firstName"),
   lastName: stringField("lastName"),
   email: requiredEmailField,
-  password: weakPasswordField,
+  password: weakPasswordField(6),
 });
 
 export const superAdminRegisterSchema2 = Joi.object({
