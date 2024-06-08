@@ -160,6 +160,31 @@ export const updateStampImage = asyncHandler(async (req: IApiRequest, res: Respo
 });
 
 /**
+ * Update Status A Stamp Image
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const updateStampImageStatus = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { id } = req.params;
+  const { status } = req?.body;
+
+  const stampImage = await StampImage.findOneAndUpdate(
+    { _id: id, userId: req?.user?._id },
+    {
+      status,
+    },
+    {
+      new: true,
+    }
+  );
+
+  if (!stampImage) return apiResponse(res, 404, false, "Stamp image not found!");
+
+  return apiResponse(res, 200, true, "Stamp image status updated successfully!");
+});
+
+/**
  * Soft Delete A Stamp Image
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.

@@ -7,10 +7,43 @@ const schema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    description: {
-      type: Array,
-      trim: true,
+    slug: {
+      type: String,
       required: true,
+      trim: true,
+      unique: true,
+    },
+    descriptions: {
+      type: [String],
+      validate: {
+        validator: (value: [string]) => Array.isArray(value) && value.length > 0,
+        message: "At least one description is required!",
+      },
+    },
+    price: {
+      type: Number,
+      required: true,
+      trim: true,
+    },
+    duration: {
+      type: Number,
+      trim: true,
+      default: 30,
+    },
+    type: {
+      type: String,
+      required: true,
+      enum: ["addon", "subscription"],
+    },
+    allowTotalBranch: {
+      type: Number,
+      trim: true,
+      default: null,
+    },
+    allowTotalTeamMember: {
+      type: Number,
+      trim: true,
+      default: null,
     },
     image: {
       type: String,
@@ -20,10 +53,6 @@ const schema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-    softDeleted: {
-      type: Boolean,
-      default: false,
-    },
   },
   {
     timestamps: true,
@@ -31,6 +60,6 @@ const schema = new mongoose.Schema(
   }
 );
 
-const Category = mongoose.model("Category", schema);
+const Subscription = mongoose.model("Subscription", schema);
 
-export default Category;
+export default Subscription;

@@ -11,7 +11,7 @@ import { authAndPermissionCheck } from "../middlewares/authMiddleware";
 const router = express.Router();
 
 router.use("/super-admin", superAdminAuthRoutes);
-router.use("/super-admin/settings", settingsRoutes);
+router.use("/super-admin/settings", authAndPermissionCheck(ROLE.SUPER_ADMIN), settingsRoutes);
 router.use("/super-admin/sort", authAndPermissionCheck(ROLE.SUPER_ADMIN), sortingRoutes);
 router.use("/super-admin/category", authAndPermissionCheck(ROLE.SUPER_ADMIN), categoryRoutes);
 router.use("/super-admin/stamp-image", authAndPermissionCheck(ROLE.SUPER_ADMIN), stampImageRoutes);
