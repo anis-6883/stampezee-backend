@@ -1,6 +1,7 @@
 import express from "express";
 import { ROLE } from "../configs/constants";
 import branchRoutes from "../features/branch/route";
+import subscriptionRoutes from "../features/enroll-subscription/route";
 import stampImageRoutes from "../features/stamp-image/route";
 import stampRoutes from "../features/stamp/route";
 import subAdminRoutes from "../features/sub-admin/route";
@@ -16,7 +17,10 @@ router.get("/refresh-token", authAndPermissionCheck("", false), refreshAccessTok
 router.get("/get-profile", authAndPermissionCheck("", false), getUserProfile);
 router.post("/user-logout", authAndPermissionCheck("", false), userLogout);
 
-// Feature Routes
+// Subscription Routes
+router.use("/enroll-subscriptions", subscriptionRoutes);
+
+// Retailer Panel Feature Routes
 router.use("/retailer", retailerAuthRoutes);
 router.use("/retailer/branch", authAndPermissionCheck(ROLE.RETAILER), branchRoutes);
 router.use("/retailer/sub-admin", authAndPermissionCheck(ROLE.RETAILER), subAdminRoutes);
