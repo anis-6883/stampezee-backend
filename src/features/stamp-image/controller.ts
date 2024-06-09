@@ -5,7 +5,7 @@ import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bu
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
 import Sorting from "../sorting/model";
 import StampImage from "./model";
-import { stampImageSchema } from "./validation";
+import { stampImageSchema, stampImageUpdateSchema } from "./validation";
 
 /**
  * Create A Stamp Image
@@ -15,7 +15,6 @@ import { stampImageSchema } from "./validation";
  */
 export const createStampImage = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await stampImageSchema.validateAsync(req.body, {
-    allowUnknown: true,
     abortEarly: false,
   });
 
@@ -64,14 +63,19 @@ export const createStampImage = asyncHandler(async (req: IApiRequest, res: Respo
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getAllStampImages = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10 } = req.query;
+  const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
   let docs: any[] = [];
   let total: number = 0;
 
-  const commonQuery = { softDeleted: { $eq: false } };
+  const commonQuery: any = { softDeleted: { $eq: false } };
   let roleSpecificQuery = {};
+
+  if (search) {
+    const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
+    commonQuery.title = regex;
+  }
 
   if (req.role === ROLE.SUPER_ADMIN) {
     roleSpecificQuery = { ref: ROLE.SUPER_ADMIN };
@@ -123,8 +127,7 @@ export const getSingleStampImage = asyncHandler(async (req: IApiRequest, res: Re
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const updateStampImage = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = await stampImageSchema.validateAsync(req.body, {
-    allowUnknown: true,
+  const result = await stampImageUpdateSchema.validateAsync(req.body, {
     abortEarly: false,
   });
 
