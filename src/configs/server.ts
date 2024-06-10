@@ -23,17 +23,17 @@ app.use(express.static("public"));
 app.use(cors(config[env].corsOptions));
 app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: true, limit: "100kb" }));
-app.use(verifyApiKeyHeader);
 
 // Connect to MongoDB with Mongoose
 connectToDatabase(config[env].databaseURI);
 
 // Home Route
 app.get("/", (req, res) => {
-  return res.status(200).json({ message: "Assalamu Alaikum World!" });
+  return res.status(200).json({ status: true, message: "Assalamu Alaikum! Welcome to StampEzee." });
 });
 
 // Main Routes
+app.use(verifyApiKeyHeader);
 app.use("/api", webRoutes); // web
 app.use("/api/v1", mobileRoutes); // mobile
 app.use("/api/secret-root/admin", adminRoutes); // admin
