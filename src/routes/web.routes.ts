@@ -18,7 +18,7 @@ router.get("/get-profile", authAndPermissionCheck("", false), getUserProfile);
 router.post("/user-logout", authAndPermissionCheck("", false), userLogout);
 
 // Subscription Routes
-router.use("/enroll-subscriptions", subscriptionRoutes);
+router.use("/subscription-plans", subscriptionRoutes);
 
 // Retailer Panel Feature Routes
 router.use("/retailer", retailerAuthRoutes);

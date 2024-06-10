@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { IApiRequest } from "types";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import Branch from "./model";
-import { branchSchema, updateBranchSchema } from "./validation";
+import { branchSchema, branchStatusSchema, updateBranchSchema } from "./validation";
 
 /**
  * Create A Branch
@@ -110,8 +110,11 @@ export const updateBranch = asyncHandler(async (req: IApiRequest, res: Response)
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const updateBranchStatus = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await branchStatusSchema.validateAsync(req.body, {
+    abortEarly: false,
+  });
   const { id } = req.params;
-  const { status } = req?.body;
+  const { status } = result;
 
   const branch = await Branch.findOneAndUpdate(
     { _id: id },

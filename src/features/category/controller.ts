@@ -4,7 +4,7 @@ import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bu
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
 import Sorting from "../sorting/model";
 import Category from "./model";
-import { categorySchema, updateCategorySchema } from "./validation";
+import { categorySchema, categoryStatusSchema, updateCategorySchema } from "./validation";
 
 /**
  * Create A Category
@@ -14,7 +14,6 @@ import { categorySchema, updateCategorySchema } from "./validation";
  */
 export const createCategory = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await categorySchema.validateAsync(req.body, {
-    allowUnknown: true,
     abortEarly: false,
   });
 
@@ -105,7 +104,6 @@ export const getSingleCategory = asyncHandler(async (req: IApiRequest, res: Resp
  */
 export const updateCategory = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await updateCategorySchema.validateAsync(req.body, {
-    allowUnknown: true,
     abortEarly: false,
   });
 
@@ -140,6 +138,35 @@ export const updateCategory = asyncHandler(async (req: IApiRequest, res: Respons
   const updatedData: any = await Category.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
 
   return apiResponse(res, 200, true, "Category updated successfully!", updatedData);
+});
+
+/**
+ * Update Status A Single Category
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const updateCategoryStatus = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await categoryStatusSchema.validateAsync(req.body, {
+    abortEarly: false,
+  });
+
+  const { id } = req.params;
+  const { status } = result;
+
+  const category = await Category.findOneAndUpdate(
+    { _id: id },
+    {
+      status,
+    },
+    {
+      new: true,
+    }
+  );
+
+  if (!category) return apiResponse(res, 404, false, "Category not found!");
+
+  return apiResponse(res, 200, true, "Category status updated successfully!");
 });
 
 /**

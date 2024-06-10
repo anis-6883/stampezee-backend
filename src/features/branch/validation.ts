@@ -36,3 +36,11 @@ export const updateBranchSchema = Joi.object({
   longitude: updateLongitude,
   latitude: updateLatitude,
 });
+
+export const branchStatusSchema = Joi.object({
+  status: Joi.boolean().required().messages({
+    "any.required": "status is required!",
+    "boolean.base": "status must be boolean!",
+    "boolean.empty": "status must not be empty!",
+  }),
+});

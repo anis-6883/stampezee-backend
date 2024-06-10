@@ -4,6 +4,7 @@ import "dotenv/config";
 import express from "express";
 import helmet from "helmet";
 import logger from "morgan";
+import { successEnrollSubscription } from "../features/enroll-subscription/controller";
 import errorMiddleware from "../middlewares/errorMiddleware";
 import verifyApiKeyHeader from "../middlewares/verifyApiKeyHeader";
 import adminRoutes from "../routes/admin.routes";
@@ -31,6 +32,9 @@ connectToDatabase(config[env].databaseURI);
 app.get("/", (req, res) => {
   return res.status(200).json({ status: true, message: "Assalamu Alaikum! Welcome to StampEzee." });
 });
+
+// Payment Success Route
+app.get("/payment/complete", successEnrollSubscription);
 
 // Main Routes
 app.use(verifyApiKeyHeader);

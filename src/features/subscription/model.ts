@@ -35,6 +35,11 @@ const schema = new mongoose.Schema(
       required: true,
       enum: ["addon", "subscription"],
     },
+    limit: {
+      type: Number,
+      trim: true,
+      default: null,
+    },
     allowTotalBranch: {
       type: Number,
       trim: true,

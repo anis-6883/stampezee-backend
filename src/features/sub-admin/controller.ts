@@ -5,7 +5,7 @@ import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bu
 import { apiResponse, asyncHandler, exclude, makePaginate } from "../../helpers";
 import Branch from "../branch/model";
 import SubAdmin from "../user/sub-admin/model";
-import { subAdminSchema, subAdminSchema2 } from "./validation";
+import { subAdminSchema, subAdminSchema2, subAdminStatusSchema } from "./validation";
 
 /**
  * Create A Sub Admin
@@ -196,8 +196,11 @@ export const updateSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const updateSubAdminStatus = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await subAdminStatusSchema.validateAsync(req.body, {
+    abortEarly: false,
+  });
   const { id } = req.params;
-  const { status } = req?.body;
+  const { status } = result;
 
   const subAdmin = await SubAdmin.findOneAndUpdate(
     { _id: id },

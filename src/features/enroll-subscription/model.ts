@@ -9,8 +9,12 @@ const schema = new mongoose.Schema(
       required: true,
     },
     planSnapshot: {
-      type: Subscription,
+      type: [Subscription],
       required: true,
+      validate: {
+        validator: (value: [string]) => Array.isArray(value) && value.length > 0,
+        message: "At least one subscription is required!",
+      },
     },
     paymentStatus: {
       type: String,

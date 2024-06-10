@@ -5,7 +5,7 @@ import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bu
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
 import Sorting from "../sorting/model";
 import StampImage from "./model";
-import { stampImageSchema, stampImageUpdateSchema } from "./validation";
+import { stampImageSchema, stampImageStatusSchema, stampImageUpdateSchema } from "./validation";
 
 /**
  * Create A Stamp Image
@@ -169,8 +169,11 @@ export const updateStampImage = asyncHandler(async (req: IApiRequest, res: Respo
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const updateStampImageStatus = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await stampImageStatusSchema.validateAsync(req.body, {
+    abortEarly: false,
+  });
   const { id } = req.params;
-  const { status } = req?.body;
+  const { status } = result;
 
   const stampImage = await StampImage.findOneAndUpdate(
     { _id: id, userId: req?.user?._id },

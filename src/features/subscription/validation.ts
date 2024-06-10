@@ -29,7 +29,7 @@ export const subscriptionSchema = Joi.object({
   allowTotalBranch: Joi.alternatives().conditional("type", {
     is: "subscription",
     then: Joi.number().required().messages({
-      "any.required": "allowTotalBranch is required!",
+      "any.required": "allowTotalBranch is required when type is subscription!",
       "number.base": "allowTotalBranch must be number!",
       "number.empty": "allowTotalBranch must not be empty!",
     }),
@@ -40,12 +40,23 @@ export const subscriptionSchema = Joi.object({
   allowTotalTeamMember: Joi.alternatives().conditional("type", {
     is: "subscription",
     then: Joi.number().required().messages({
-      "any.required": "allowTotalTeamMember is required!",
+      "any.required": "allowTotalTeamMember is required when type is subscription!",
       "number.base": "allowTotalTeamMember must be number!",
       "number.empty": "allowTotalTeamMember must not be empty!",
     }),
-    otherwise: Joi.number().allow("").messages({
+    otherwise: Joi.number().messages({
       "number.base": "allowTotalTeamMember must be number!",
+    }),
+  }),
+  limit: Joi.alternatives().conditional("type", {
+    is: "addon",
+    then: Joi.number().required().messages({
+      "any.required": "limit is required when type is addon!",
+      "number.base": "limit must be number!",
+      "number.empty": "limit must not be empty!",
+    }),
+    otherwise: Joi.number().messages({
+      "number.base": "limit must be number!",
     }),
   }),
 });
@@ -70,5 +81,17 @@ export const updateSubscriptionSchema = Joi.object({
   allowTotalTeamMember: Joi.number().messages({
     "number.base": "allowTotalBranch must be number!",
     "number.empty": "allowTotalBranch must not be empty!",
+  }),
+  limit: Joi.number().messages({
+    "number.base": "limit must be number!",
+    "number.empty": "limit must not be empty!",
+  }),
+});
+
+export const subscriptionStatusSchema = Joi.object({
+  status: Joi.boolean().required().messages({
+    "any.required": "status is required!",
+    "boolean.base": "status must be boolean!",
+    "boolean.empty": "status must not be empty!",
   }),
 });

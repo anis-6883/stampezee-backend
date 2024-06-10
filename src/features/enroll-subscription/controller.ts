@@ -36,15 +36,37 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           product_data: {
             name: "Basic Plan",
           },
-          unit_amount: 50,
+          unit_amount: 9.99 * 100,
         },
         quantity: 1,
       },
     ],
     mode: "payment",
-    success_url: "http://localhost:3000/payment/complete",
-    cancel_url: "http://localhost:3000/payment/cancel",
+    success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}`,
+    cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
   });
 
-  return apiResponse(res, 200, true, "Stripe connect successfully!", session);
+  // res.redirect(session?.url);
+  return apiResponse(res, 200, true, "Checkout Page Successful!", session?.url);
+});
+
+/**
+ * Success Enroll Subscription
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const successEnrollSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
+  if (req.query.stripe_success_token === process.env.STRIPE_SUCCESS_TOKEN) {
+    // @ts-ignore
+    const payment = await stripe.checkout.sessions.retrieve(req.query.session_id, {
+      expand: ["payment_intent.payment_method"],
+    });
+
+    console.log("Payment: ", payment);
+
+    return res.redirect(`${process.env.FRONTEND_URL}/payment/complete`);
+  } else {
+    return apiResponse(res, 400, false, "Invalid Request!");
+  }
 });

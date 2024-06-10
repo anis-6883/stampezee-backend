@@ -7,7 +7,6 @@ export const subAdminSchema = Joi.object({
   branchId: requiredStringField("branchId"),
   firstName: requiredStringField("firstName"),
   lastName: stringField("lastName"),
-  status: Joi.boolean().default(true),
 });
 
 // Without Password
@@ -16,5 +15,12 @@ export const subAdminSchema2 = Joi.object({
   branchId: stringField("branchId"),
   firstName: stringField("firstName"),
   lastName: stringField("lastName"),
-  status: Joi.boolean().default(true),
+});
+
+export const subAdminStatusSchema = Joi.object({
+  status: Joi.boolean().required().messages({
+    "any.required": "status is required!",
+    "boolean.base": "status must be boolean!",
+    "boolean.empty": "status must not be empty!",
+  }),
 });

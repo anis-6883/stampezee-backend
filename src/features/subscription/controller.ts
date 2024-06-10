@@ -3,7 +3,7 @@ import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bu
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
 import Subscription from "./model";
-import { subscriptionSchema, updateSubscriptionSchema } from "./validation";
+import { subscriptionSchema, subscriptionStatusSchema, updateSubscriptionSchema } from "./validation";
 
 /**
  * Create A Subscription
@@ -13,7 +13,6 @@ import { subscriptionSchema, updateSubscriptionSchema } from "./validation";
  */
 export const createSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await subscriptionSchema.validateAsync(req.body, {
-    allowUnknown: true,
     abortEarly: false,
   });
 
@@ -131,8 +130,11 @@ export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Res
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const updateSubscriptionStatus = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await subscriptionStatusSchema.validateAsync(req.body, {
+    abortEarly: false,
+  });
   const { id } = req.params;
-  const { status } = req?.body;
+  const { status } = result;
 
   const subscription = await Subscription.findOneAndUpdate(
     { _id: id },
