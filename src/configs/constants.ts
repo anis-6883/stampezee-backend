@@ -9,3 +9,14 @@ export const ROLE = {
   SUB_ADMIN: "sub_admin",
   CUSTOMER: "customer",
 };
+
+export const PACKAGES = {
+  TRIAL: "trial",
+  BASIC: "basic",
+  PRO: "pro",
+  ADVANCED: "advanced",
+  STAMP: "stamp",
+  BRANCH: "branch",
+  PUSH_NOTIFICATION_USER: "push_notification_user",
+  PUSH_NOTIFICATION_LOCATION: "push_notification_location",
+};

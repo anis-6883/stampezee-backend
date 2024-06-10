@@ -1,8 +1,11 @@
 import { Response } from "express";
 import Stripe from "stripe";
+import { PACKAGES } from "../../configs/constants";
 import { apiResponse, asyncHandler } from "../../helpers";
 import { IApiRequest } from "../../types";
 import Subscription from "../subscription/model";
+import EnrollSubscription from "./model";
+import { enrollSubscriptionSchema } from "./validation";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -28,26 +31,50 @@ export const getAllSubscriptions = asyncHandler(async (req: IApiRequest, res: Re
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const session = await stripe.checkout.sessions.create({
-    line_items: [
-      {
-        price_data: {
-          currency: "cad",
-          product_data: {
-            name: "Basic Plan",
-          },
-          unit_amount: 9.99 * 100,
-        },
-        quantity: 1,
-      },
-    ],
-    mode: "payment",
-    success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}`,
-    cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
+  const result = await enrollSubscriptionSchema.validateAsync(req.body, {
+    abortEarly: false,
   });
 
+  const { slugs }: { slugs: string[] } = result;
+
+  if (slugs.includes(PACKAGES.TRIAL) && slugs.length > 1) {
+    return apiResponse(res, 400, false, "Invalid Request!", {
+      slugs: "Trial packages do not include any additional packages!",
+    });
+  }
+
+  if (slugs.includes(PACKAGES.TRIAL)) {
+    const subscription = await Subscription.findOne({ slug: "trial" });
+
+    const enrollSubscription = await EnrollSubscription.create({
+      retailerId: req.user._id,
+      planSnapshot: [subscription],
+      paymentStatus: "trial",
+    });
+
+    console.log(enrollSubscription);
+  }
+
+  // const session = await stripe.checkout.sessions.create({
+  //   line_items: [
+  //     {
+  //       price_data: {
+  //         currency: "cad",
+  //         product_data: {
+  //           name: "Basic Plan",
+  //         },
+  //         unit_amount: 9.99 * 100,
+  //       },
+  //       quantity: 1,
+  //     },
+  //   ],
+  //   mode: "payment",
+  //   success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}`,
+  //   cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
+  // });
+
   // res.redirect(session?.url);
-  return apiResponse(res, 200, true, "Checkout Page Successful!", session?.url);
+  return apiResponse(res, 200, true, "Checkout Page Successful!");
 });
 
 /**
