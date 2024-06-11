@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { schema as subscriptionSchema } from "../subscription/model";
 
-const schema = new mongoose.Schema(
+const enrollSubscriptionSchema = new mongoose.Schema(
   {
     retailerId: {
       type: "ObjectId", // mongoose.Types.ObjectId
@@ -18,7 +18,7 @@ const schema = new mongoose.Schema(
     },
     paymentStatus: {
       type: String,
-      enum: ["pending", "completed", "trial"],
+      enum: ["trial", "pending", "completed"],
       required: true,
     },
     validityFrom: {
@@ -36,6 +36,37 @@ const schema = new mongoose.Schema(
   }
 );
 
-const EnrollSubscription = mongoose.model("EnrollSubscription", schema);
+const enrollPaymentSchema = new mongoose.Schema(
+  {
+    enrollSubscriptionId: {
+      type: "ObjectId", // mongoose.Types.ObjectId
+      ref: "EnrollSubscription",
+      required: true,
+    },
+    paymentId: {
+      type: String,
+      required: true,
+    },
+    paymentIntentId: {
+      type: String,
+      required: true,
+    },
+    amountTotal: {
+      type: Number,
+      required: true,
+    },
+    paymentStatus: {
+      type: String,
+      required: true,
+    },
+  },
+  {
+    timestamps: true,
+    versionKey: false,
+  }
+);
 
-export default EnrollSubscription;
+const EnrollSubscription = mongoose.model("EnrollSubscription", enrollSubscriptionSchema);
+const EnrollPayment = mongoose.model("EnrollPayment", enrollPaymentSchema);
+
+export { EnrollPayment, EnrollSubscription };

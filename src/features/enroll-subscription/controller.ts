@@ -2,10 +2,10 @@ import { Response } from "express";
 import Stripe from "stripe";
 import { PACKAGES } from "../../configs/constants";
 import { apiResponse, asyncHandler, checkCombination, checkDuplicates } from "../../helpers";
-import { IApiRequest } from "../../types";
+import { IApiRequest, ILineItem } from "../../types";
 import Subscription from "../subscription/model";
 import Retailer from "../user/retailer/model";
-import EnrollSubscription from "./model";
+import { EnrollPayment, EnrollSubscription } from "./model";
 import { enrollSubscriptionSchema } from "./validation";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -48,8 +48,18 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       const subscription = await Subscription.findOne({ slug: "trial" });
 
       if (subscription) {
+        const today = new Date();
+        const futureDate = new Date(today);
+        futureDate.setDate(today.getDate() + subscription.duration);
+
         Promise.all([
-          EnrollSubscription.create({ retailerId: req.user._id, planSnapshot: [subscription], paymentStatus: "trial" }),
+          EnrollSubscription.create({
+            retailerId: req.user._id,
+            planSnapshot: [subscription],
+            paymentStatus: "trial",
+            validityFrom: Date.now(),
+            validityTo: futureDate,
+          }),
           Retailer.findByIdAndUpdate(req.user._id, { takeFreeTrial: true }),
         ]);
         return apiResponse(res, 200, true, "Free trial enrolled successfully!");
@@ -61,37 +71,48 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
   // Enroll Paid Subscription
   if (checkCombination(slugs, [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED]) && checkDuplicates(slugs)) {
-    const subscriptions = await Subscription.find({ slug: { $in: slugs } });
-    console.log(slugs);
-    console.log(subscriptions);
+    const subscriptions: any = await Subscription.find({ slug: { $in: slugs } });
 
-    const line_items = [];
-
-    subscriptions.forEach((subscription) => {
-      console.log("Title: ", subscription.title);
+    const enrollSubscription = await EnrollSubscription.create({
+      retailerId: req.user._id,
+      planSnapshot: subscriptions,
+      paymentStatus: "pending",
     });
 
-    // const session = await stripe.checkout.sessions.create({
-    //   line_items: [
-    //     {
-    //       price_data: {
-    //         currency: "cad",
-    //         product_data: {
-    //           name: "Basic Plan",
-    //         },
-    //         unit_amount: 9.99 * 100,
-    //       },
-    //       quantity: 1,
-    //     },
-    //   ],
-    //   mode: "payment",
-    //   success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}`,
-    //   cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
-    // });
+    const line_items: ILineItem[] = [];
+    let duration = 0;
+
+    subscriptions.forEach((subscription: any) => {
+      line_items.push({
+        price_data: {
+          currency: "cad",
+          product_data: {
+            name: subscription.title,
+          },
+          unit_amount: Math.ceil(subscription.price * 100),
+        },
+        quantity: 1,
+      });
+
+      if (subscription.type === "subscription") {
+        duration = subscription.duration;
+      }
+    });
+
+    const session = await stripe.checkout.sessions.create({
+      line_items,
+      mode: "payment",
+      metadata: {
+        enrollSubscriptionId: String(enrollSubscription._id),
+        duration,
+      },
+      success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}`,
+      cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
+    });
 
     // res.redirect(session?.url);
 
-    return apiResponse(res, 200, true, "Subscriptions!", subscriptions);
+    return apiResponse(res, 200, true, "Send to Payment Page!", session);
   }
   throw "Only one subscription and no duplicate addons are allowed!";
 });
@@ -103,16 +124,43 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const successEnrollSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
-  if (req.query.stripe_success_token === process.env.STRIPE_SUCCESS_TOKEN) {
-    // @ts-ignore
-    const payment = await stripe.checkout.sessions.retrieve(req.query.session_id, {
+  if (req.query.stripe_success_token === process.env.STRIPE_SUCCESS_TOKEN && req?.query?.session_id) {
+    const payment: any = await stripe.checkout.sessions.retrieve(String(req.query.session_id), {
       expand: ["payment_intent.payment_method"],
     });
 
-    console.log("Payment: ", payment);
+    console.log("payment.id: ", payment.id);
+    console.log("payment.payment_intent.id: ", payment.payment_intent.id);
+    console.log("payment.payment_intent.status: ", payment.payment_intent.status);
+    console.log("payment.metadata.enrollSubscriptionId: ", payment.metadata.enrollSubscriptionId);
+    console.log("payment.metadata.duration: ", payment.metadata.duration);
+    console.log("payment.amount_total: ", payment.amount_total);
 
-    return res.redirect(`${process.env.FRONTEND_URL}/payment/complete`);
+    if (payment.payment_intent.status === "succeeded") {
+      const today = new Date();
+      const futureDate = new Date(today);
+      futureDate.setDate(today.getDate() + payment.metadata.duration);
+
+      await EnrollSubscription.findByIdAndUpdate(payment.metadata.enrollSubscriptionId, {
+        paymentStatus: "completed",
+        validityFrom: Date.now(),
+        validityTo: futureDate,
+      });
+
+      await EnrollPayment.create({
+        enrollSubscriptionId: payment.metadata.enrollSubscriptionId,
+        paymentId: payment.id,
+        paymentIntentId: payment.payment_intent.id,
+        paymentStatus: payment.payment_intent.status,
+        amountTotal: payment.amount_total,
+      });
+
+      // console.log("Payment: ", payment);
+
+      return res.redirect(`${process.env.FRONTEND_URL}/payment/complete`);
+    }
+    throw "Something went wrong in payment!";
   } else {
-    return apiResponse(res, 400, false, "Invalid Request!");
+    throw "Something went wrong in payment!";
   }
 });

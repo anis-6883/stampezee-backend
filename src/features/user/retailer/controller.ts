@@ -146,7 +146,9 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   const retailer: any = await Retailer.findOne({ email: result.email });
   if (!retailer) return apiResponse(res, 401, false, "Please, complete your registration first!");
 
-  if (!retailer.isVerified) {
+  if (!retailer.status) return apiResponse(res, 401, false, "Your account has been blocked by admin!");
+
+  if (!retailer.isVerified && retailer.ref === "self") {
     await Retailer.deleteOne({ email: result.email });
     return apiResponse(res, 401, false, "Please, complete your registration first!");
   }
