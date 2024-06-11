@@ -71,4 +71,5 @@ const schema = new mongoose.Schema(
 
 const Subscription = mongoose.model("Subscription", schema);
 
+export { schema };
 export default Subscription;

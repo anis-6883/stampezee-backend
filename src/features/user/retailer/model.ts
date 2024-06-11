@@ -103,6 +103,10 @@ const schema = new mongoose.Schema(
       trim: true,
       default: null,
     },
+    takeFreeTrial: {
+      type: Boolean,
+      default: false,
+    },
     softDeleted: {
       type: Boolean,
       default: false,

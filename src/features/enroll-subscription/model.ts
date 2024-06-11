@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-// import Subscription from "../subscription/model";
+import { schema as subscriptionSchema } from "../subscription/model";
 
 const schema = new mongoose.Schema(
   {
@@ -9,7 +9,7 @@ const schema = new mongoose.Schema(
       required: true,
     },
     planSnapshot: {
-      type: [Object],
+      type: [subscriptionSchema],
       required: true,
       validate: {
         validator: (value: [string]) => Array.isArray(value) && value.length > 0,

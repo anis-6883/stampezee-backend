@@ -4,7 +4,7 @@ import { IApiRequest } from "types";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, makePaginate } from "../../helpers";
 import Retailer from "../user/retailer/model";
-import { retailerSchema, retailerSchema2 } from "./validation";
+import { retailerSchema, retailerSchemaUpdate, retailerStatusSchema } from "./validation";
 
 /**
  * Create A Retailer
@@ -93,7 +93,7 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const updateRetailer = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = await retailerSchema2.validateAsync(req.body, { abortEarly: false });
+  const result = await retailerSchemaUpdate.validateAsync(req.body, { abortEarly: false });
 
   const { id } = req.params;
   const { softDeleted, password, ...updatedBody } = result;
@@ -122,6 +122,34 @@ export const updateRetailer = asyncHandler(async (req: IApiRequest, res: Respons
   }
 
   return apiResponse(res, 200, true, "Retailer updated successfully!", retailer);
+});
+
+/**
+ * Update Status A Retailer
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const updateRetailerStatus = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await retailerStatusSchema.validateAsync(req.body, {
+    abortEarly: false,
+  });
+  const { id } = req.params;
+  const { status } = result;
+
+  const retailer = await Retailer.findOneAndUpdate(
+    { _id: id },
+    {
+      status,
+    },
+    {
+      new: true,
+    }
+  );
+
+  if (!retailer) return apiResponse(res, 404, false, "Retailer not found!");
+
+  return apiResponse(res, 200, true, "Retailer status updated successfully!");
 });
 
 /**

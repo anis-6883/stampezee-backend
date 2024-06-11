@@ -4,7 +4,7 @@ import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants"
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, generateSignature, getRandomInteger } from "../../../helpers";
 import { IApiRequest } from "../../../types";
-import { retailerSchema2 } from "../../retailer/validation";
+import { retailerSchemaUpdate } from "../../retailer/validation";
 import { sendVerificationEmail } from "../service";
 import { loginSchema, retailerRegisterSchema, verifyOtpSchema } from "../validation";
 import Retailer from "./model";
@@ -221,7 +221,7 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const updateRetailerProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = await retailerSchema2.validateAsync(req.body, { abortEarly: false });
+  const result = await retailerSchemaUpdate.validateAsync(req.body, { abortEarly: false });
   const { softDeleted, password, ...updatedBody } = result;
 
   const existingRetailer = await Retailer.findOne({ email: updatedBody.email, _id: { $ne: req.user._id } });

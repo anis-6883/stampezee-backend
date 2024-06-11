@@ -21,7 +21,7 @@ export const retailerSchema = Joi.object({
 });
 
 // Without Password
-export const retailerSchema2 = Joi.object({
+export const retailerSchemaUpdate = Joi.object({
   email: emailField,
   storeName: stringField("storeName"),
   firstName: stringField("firstName"),
@@ -36,4 +36,12 @@ export const retailerSchema2 = Joi.object({
   status: Joi.boolean().default(true),
   about: stringField("about"),
   website: stringField("website"),
+});
+
+export const retailerStatusSchema = Joi.object({
+  status: Joi.boolean().required().messages({
+    "any.required": "status is required!",
+    "boolean.base": "status must be boolean!",
+    "boolean.empty": "status must not be empty!",
+  }),
 });

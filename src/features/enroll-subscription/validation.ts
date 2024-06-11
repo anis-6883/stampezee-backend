@@ -13,13 +13,15 @@ export const enrollSubscriptionSchema = Joi.object({
             PACKAGES.BASIC,
             PACKAGES.PRO,
             PACKAGES.ADVANCED,
+            PACKAGES.STAMP,
+            PACKAGES.BRANCH,
             PACKAGES.PUSH_NOTIFICATION_USER,
             PACKAGES.PUSH_NOTIFICATION_LOCATION,
           ]
         )
         .messages({
           "string.empty": "slugs must not be empty!",
-          "any.only": `type must be [${PACKAGES.TRIAL},${PACKAGES.BASIC},${PACKAGES.PRO},${PACKAGES.ADVANCED},${PACKAGES.PUSH_NOTIFICATION_USER},${PACKAGES.PUSH_NOTIFICATION_LOCATION}]`,
+          "any.only": `type must be [${PACKAGES.TRIAL},${PACKAGES.BASIC},${PACKAGES.PRO},${PACKAGES.ADVANCED},${PACKAGES.STAMP},${PACKAGES.BRANCH},${PACKAGES.PUSH_NOTIFICATION_USER},${PACKAGES.PUSH_NOTIFICATION_LOCATION}]`,
         })
     )
     .messages({

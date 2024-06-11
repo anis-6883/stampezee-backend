@@ -8,7 +8,7 @@ export const asyncHandler = (func: any) => async (req: Request, res: Response) =
   try {
     await func(req, res);
   } catch (err) {
-    console.error(err);
+    // console.error(err);
     if (err.isJoi) {
       const format: any = {};
       err.details.forEach((detail: any) => {
@@ -16,7 +16,7 @@ export const asyncHandler = (func: any) => async (req: Request, res: Response) =
       });
       return apiResponse(res, 400, false, "Invalid Request!", format);
     }
-    return apiResponse(res, 400, false, "Server Error!");
+    return apiResponse(res, 400, false, err || "Something went wrong!");
   }
 };
 
@@ -186,4 +186,32 @@ export const makePaginate = (docs: any[], page: number, limit: number, skip: num
     hasNext,
     hasPrev,
   };
+};
+
+export const checkCombination = (arr: string[], words: string[]): boolean => {
+  let count = 0;
+
+  for (let letter of words) {
+    if (arr.includes(letter)) {
+      count++;
+      if (count > 1) {
+        return false; // Present
+      }
+    }
+  }
+
+  return true;
+};
+
+export const checkDuplicates = (arr: string[]): boolean => {
+  const uniqueElements = new Set();
+
+  for (let element of arr) {
+    if (uniqueElements.has(element)) {
+      return false; // Present
+    }
+    uniqueElements.add(element);
+  }
+
+  return true;
 };

@@ -1,9 +1,10 @@
 import { Response } from "express";
 import Stripe from "stripe";
 import { PACKAGES } from "../../configs/constants";
-import { apiResponse, asyncHandler } from "../../helpers";
+import { apiResponse, asyncHandler, checkCombination, checkDuplicates } from "../../helpers";
 import { IApiRequest } from "../../types";
 import Subscription from "../subscription/model";
+import Retailer from "../user/retailer/model";
 import EnrollSubscription from "./model";
 import { enrollSubscriptionSchema } from "./validation";
 
@@ -38,43 +39,61 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
   const { slugs }: { slugs: string[] } = result;
 
   if (slugs.includes(PACKAGES.TRIAL) && slugs.length > 1) {
-    return apiResponse(res, 400, false, "Invalid Request!", {
-      slugs: "Trial packages do not include any additional packages!",
-    });
+    throw "Trial packages do not include any additional packages!";
   }
 
+  // Enroll Free Trial
   if (slugs.includes(PACKAGES.TRIAL)) {
-    const subscription = await Subscription.findOne({ slug: "trial" });
+    if (!req.user.takeFreeTrial) {
+      const subscription = await Subscription.findOne({ slug: "trial" });
 
-    const enrollSubscription = await EnrollSubscription.create({
-      retailerId: req.user._id,
-      planSnapshot: [subscription],
-      paymentStatus: "trial",
-    });
-
-    console.log(enrollSubscription);
+      if (subscription) {
+        Promise.all([
+          EnrollSubscription.create({ retailerId: req.user._id, planSnapshot: [subscription], paymentStatus: "trial" }),
+          Retailer.findByIdAndUpdate(req.user._id, { takeFreeTrial: true }),
+        ]);
+        return apiResponse(res, 200, true, "Free trial enrolled successfully!");
+      }
+      throw "Free trial package not found!";
+    }
+    throw "Free trial already taken!";
   }
 
-  // const session = await stripe.checkout.sessions.create({
-  //   line_items: [
-  //     {
-  //       price_data: {
-  //         currency: "cad",
-  //         product_data: {
-  //           name: "Basic Plan",
-  //         },
-  //         unit_amount: 9.99 * 100,
-  //       },
-  //       quantity: 1,
-  //     },
-  //   ],
-  //   mode: "payment",
-  //   success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}`,
-  //   cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
-  // });
+  // Enroll Paid Subscription
+  if (checkCombination(slugs, [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED]) && checkDuplicates(slugs)) {
+    const subscriptions = await Subscription.find({ slug: { $in: slugs } });
+    console.log(slugs);
+    console.log(subscriptions);
 
-  // res.redirect(session?.url);
-  return apiResponse(res, 200, true, "Checkout Page Successful!");
+    const line_items = [];
+
+    subscriptions.forEach((subscription) => {
+      console.log("Title: ", subscription.title);
+    });
+
+    // const session = await stripe.checkout.sessions.create({
+    //   line_items: [
+    //     {
+    //       price_data: {
+    //         currency: "cad",
+    //         product_data: {
+    //           name: "Basic Plan",
+    //         },
+    //         unit_amount: 9.99 * 100,
+    //       },
+    //       quantity: 1,
+    //     },
+    //   ],
+    //   mode: "payment",
+    //   success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}`,
+    //   cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
+    // });
+
+    // res.redirect(session?.url);
+
+    return apiResponse(res, 200, true, "Subscriptions!", subscriptions);
+  }
+  throw "Only one subscription and no duplicate addons are allowed!";
 });
 
 /**
