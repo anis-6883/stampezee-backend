@@ -36,7 +36,10 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
       { otp: retailerBody.otp, otpExpiry: retailerBody.otpExpiry }
     );
   } else {
-    await Retailer.create(retailerBody);
+    await Retailer.create({
+      ...retailerBody,
+      fullName: retailerBody?.lastName ? `${retailerBody.firstName} ${retailerBody.lastName}` : retailerBody.firstName,
+    });
   }
 
   const tempToken = generateSignature({ email: retailerBody.email, role: ROLE.RETAILER }, "15m"); // 15 min

@@ -37,7 +37,7 @@ export const getAllBranches = asyncHandler(async (req: IApiRequest, res: Respons
   const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
-  const query: any = { retailerId: req.user._id, softDeleted: { $eq: false } };
+  const query: any = { retailerId: req.user._id, softDeleted: false };
   if (search) {
     const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
     query.name = regex;
@@ -153,15 +153,18 @@ export const softDeleteBranch = asyncHandler(async (req: IApiRequest, res: Respo
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getAllDeletedBranches = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10 } = req.query;
+  const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
+  const query: any = { retailerId: req.user._id, softDeleted: true };
+  if (search) {
+    const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
+    query.name = regex;
+  }
+
   const [docs, total] = await Promise.all([
-    Branch.find({ retailerId: req.user._id, softDeleted: { $eq: true } })
-      .limit(Number(limit))
-      .skip(skip)
-      .sort({ createdAt: "desc" }),
-    Branch.find({ retailerId: req.user._id, softDeleted: { $eq: true } }).countDocuments(),
+    Branch.find(query).limit(Number(limit)).skip(skip).sort({ createdAt: "desc" }),
+    Branch.find(query).countDocuments(),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);

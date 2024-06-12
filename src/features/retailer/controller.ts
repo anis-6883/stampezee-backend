@@ -36,6 +36,7 @@ export const createRetailer = asyncHandler(async (req: IApiRequest, res: Respons
 
   const retailer: any = await Retailer.create({
     ...createBody,
+    fullName: createBody?.lastName ? `${createBody.firstName} ${createBody.lastName}` : createBody.firstName,
     image: imageKey,
     isVerified: true,
     verifiedAt: Date.now(),
@@ -55,15 +56,20 @@ export const createRetailer = asyncHandler(async (req: IApiRequest, res: Respons
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getAllRetailers = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10 } = req.query;
+  const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
+  const query: any = { softDeleted: false };
+
+  if (search) {
+    const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
+    const orQuery = [{ fullName: regex }, { email: regex }, { storeName: regex }];
+    query.$or = orQuery;
+  }
+
   const [docs, total] = await Promise.all([
-    Retailer.find({ softDeleted: { $eq: false } }, { password: 0 })
-      .limit(Number(limit))
-      .skip(skip)
-      .sort({ createdAt: "desc" }),
-    Retailer.find({ softDeleted: { $eq: false } }).countDocuments(),
+    Retailer.find(query, { password: 0 }).limit(Number(limit)).skip(skip).sort({ createdAt: "desc" }),
+    Retailer.find(query).countDocuments(),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
@@ -180,15 +186,20 @@ export const softDeleteRetailer = asyncHandler(async (req: IApiRequest, res: Res
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getAllDeletedRetailers = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10 } = req.query;
+  const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
+  const query: any = { softDeleted: true };
+
+  if (search) {
+    const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
+    const orQuery = [{ fullName: regex }, { email: regex }, { storeName: regex }];
+    query.$or = orQuery;
+  }
+
   const [docs, total] = await Promise.all([
-    Retailer.find({ softDeleted: { $eq: true } }, { password: 0 })
-      .limit(Number(limit))
-      .skip(skip)
-      .sort({ createdAt: "desc" }),
-    Retailer.find({ softDeleted: { $eq: true } }).countDocuments(),
+    Retailer.find(query, { password: 0 }).limit(Number(limit)).skip(skip).sort({ createdAt: "desc" }),
+    Retailer.find(query).countDocuments(),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);

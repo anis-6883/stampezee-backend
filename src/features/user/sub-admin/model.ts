@@ -13,7 +13,7 @@ const schema = new mongoose.Schema(
       required: true,
     },
     firstName: {
-      type: String,
+      type: String, // FullName helps to Search
       required: true,
       trim: true,
     },
