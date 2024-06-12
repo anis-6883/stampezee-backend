@@ -8,7 +8,7 @@ export const asyncHandler = (func: any) => async (req: Request, res: Response) =
   try {
     await func(req, res);
   } catch (err) {
-    // console.error(err);
+    console.error(err);
     if (err.isJoi) {
       const format: any = {};
       err.details.forEach((detail: any) => {

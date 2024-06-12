@@ -1,6 +1,13 @@
 import { Request } from "express";
 import mongoose from "mongoose";
 
+export interface IEnrollPayment {
+  id: string;
+  metadata: any;
+  payment_intent: any;
+  amount_total: number;
+}
+
 export interface IConfig {
   [key: string]: {
     corsOptions: {

@@ -2,7 +2,7 @@ import { Response } from "express";
 import Stripe from "stripe";
 import { PACKAGES } from "../../configs/constants";
 import { apiResponse, asyncHandler, checkCombination, checkDuplicates } from "../../helpers";
-import { IApiRequest, ILineItem } from "../../types";
+import { IApiRequest, IEnrollPayment, ILineItem } from "../../types";
 import Subscription from "../subscription/model";
 import Retailer from "../user/retailer/model";
 import { EnrollPayment, EnrollSubscription } from "./model";
@@ -49,16 +49,16 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
       if (subscription) {
         const today = new Date();
-        const futureDate = new Date(today);
-        futureDate.setDate(today.getDate() + subscription.duration);
+        const expireDate = new Date(today);
+        expireDate.setDate(today.getDate() + subscription.duration);
 
         Promise.all([
           EnrollSubscription.create({
             retailerId: req.user._id,
-            planSnapshot: [subscription],
+            planSnapshot: subscription,
             paymentStatus: "trial",
             validityFrom: Date.now(),
-            validityTo: futureDate,
+            validityTo: expireDate,
           }),
           Retailer.findByIdAndUpdate(req.user._id, { takeFreeTrial: true }),
         ]);
@@ -71,18 +71,20 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
   // Enroll Paid Subscription
   if (checkCombination(slugs, [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED]) && checkDuplicates(slugs)) {
-    const subscriptions: any = await Subscription.find({ slug: { $in: slugs } });
+    const subscriptions: any[] = await Subscription.find({ slug: { $in: slugs } });
 
-    const enrollSubscription = await EnrollSubscription.create({
-      retailerId: req.user._id,
-      planSnapshot: subscriptions,
-      paymentStatus: "pending",
-    });
-
+    let enrollIdDuration: { [key: string]: number } = {};
     const line_items: ILineItem[] = [];
-    let duration = 0;
 
-    subscriptions.forEach((subscription: any) => {
+    for (const subscription of subscriptions) {
+      const enrollSubscription: any = await EnrollSubscription.create({
+        retailerId: req.user._id,
+        planSnapshot: subscription,
+        paymentStatus: "pending",
+      });
+
+      enrollIdDuration[enrollSubscription._id] = subscription.duration;
+
       line_items.push({
         price_data: {
           currency: "cad",
@@ -93,19 +95,12 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         },
         quantity: 1,
       });
-
-      if (subscription.type === "subscription") {
-        duration = subscription.duration;
-      }
-    });
+    }
 
     const session = await stripe.checkout.sessions.create({
       line_items,
       mode: "payment",
-      metadata: {
-        enrollSubscriptionId: String(enrollSubscription._id),
-        duration,
-      },
+      metadata: enrollIdDuration,
       success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}`,
       cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
     });
@@ -125,37 +120,38 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
  */
 export const successEnrollSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
   if (req.query.stripe_success_token === process.env.STRIPE_SUCCESS_TOKEN && req?.query?.session_id) {
-    const payment: any = await stripe.checkout.sessions.retrieve(String(req.query.session_id), {
+    const payment: IEnrollPayment = await stripe.checkout.sessions.retrieve(String(req.query.session_id), {
       expand: ["payment_intent.payment_method"],
     });
 
-    console.log("payment.id: ", payment.id);
-    console.log("payment.payment_intent.id: ", payment.payment_intent.id);
-    console.log("payment.payment_intent.status: ", payment.payment_intent.status);
-    console.log("payment.metadata.enrollSubscriptionId: ", payment.metadata.enrollSubscriptionId);
-    console.log("payment.metadata.duration: ", payment.metadata.duration);
-    console.log("payment.amount_total: ", payment.amount_total);
+    let subscriptionIds = [];
+    let updateSubscriptions = [];
 
     if (payment.payment_intent.status === "succeeded") {
-      const today = new Date();
-      const futureDate = new Date(today);
-      futureDate.setDate(today.getDate() + payment.metadata.duration);
+      for (let key in payment.metadata) {
+        const today = new Date();
+        const expireDate = new Date(today);
+        expireDate.setDate(today.getDate() + payment.metadata[key]);
+        subscriptionIds.push(key);
 
-      await EnrollSubscription.findByIdAndUpdate(payment.metadata.enrollSubscriptionId, {
-        paymentStatus: "completed",
-        validityFrom: Date.now(),
-        validityTo: futureDate,
-      });
+        updateSubscriptions.push(
+          EnrollSubscription.findByIdAndUpdate(key, {
+            paymentStatus: "completed",
+            validityFrom: Date.now(),
+            validityTo: expireDate,
+          })
+        );
+      }
 
-      await EnrollPayment.create({
-        enrollSubscriptionId: payment.metadata.enrollSubscriptionId,
+      Promise.all(updateSubscriptions);
+
+      EnrollPayment.create({
+        enrollSubscriptionId: subscriptionIds,
         paymentId: payment.id,
         paymentIntentId: payment.payment_intent.id,
         paymentStatus: payment.payment_intent.status,
         amountTotal: payment.amount_total,
       });
-
-      // console.log("Payment: ", payment);
 
       return res.redirect(`${process.env.FRONTEND_URL}/payment/complete`);
     }
