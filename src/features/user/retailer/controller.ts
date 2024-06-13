@@ -160,17 +160,18 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   const isPasswordValid = await bcrypt.compare(result.password, retailer.password);
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
-  // Check Subscription Enrollment
-  const enroll = await EnrollSubscription.find({
+  // Check Subscription & Addon Enrollment
+  let plan: null | string = null;
+  const subscription = await EnrollSubscription.findOne({
     retailerId: retailer._id,
     "planSnapshot.type": "subscription",
     paymentStatus: "completed",
     validityTo: { $gt: Date.now() },
-  })
-    .limit(1)
-    .sort({ createdAt: "desc" });
+  }).sort({ createdAt: "desc" });
 
-  console.log("enroll: ", enroll);
+  if (subscription) {
+    plan = subscription.planSnapshot.title;
+  }
 
   const accessToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "1d");
   const refreshToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "7d");
@@ -192,7 +193,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   // Remove Sensitive Data
   const data = exclude(retailer._doc, ["password", "otp", "otpExpiry"]);
 
-  return apiResponse(res, 200, true, "Retailer Login Successfully!", { ...data, role: ROLE.RETAILER });
+  return apiResponse(res, 200, true, "Retailer Login Successfully!", { ...data, role: ROLE.RETAILER, plan });
 });
 
 /**
