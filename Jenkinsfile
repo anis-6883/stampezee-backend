@@ -8,7 +8,7 @@ pipeline {
         GITHUB_URL = 'https://github.com/anis-6883/stampezee-backend.git'
         DEPLOY_SERVER = '3.97.37.14'
         DEPLOY_USER = 'ubuntu'
-        DEPLOY_PATH = '/var/www/html'
+        DEPLOY_PATH = '/var/www/html/'
         PRODUCTION_BRANCH = 'dev-tr'
         SERVER_FILE = "dist/index.js"
     }
@@ -62,11 +62,15 @@ pipeline {
         stage('Prepare Project') {
             steps {
                 script {
+                    sh """
+                    cd ${DEPLOY_PATH}
+                    """
                     def projectCloned = sh(script: "[ -d ${DEPLOY_PATH}/.git ] && echo 'true'", returnStdout: true).trim()
                     if (projectCloned != 'true') {
                         sh """
                         echo "Cloning the project..."
-                        git clone ${GITHUB_URL} ${DEPLOY_PATH}
+                        git clone ${GITHUB_URL}
+                        git checkout ${PRODUCTION_BRANCH}
                         """
                     } else {
                         sh """
