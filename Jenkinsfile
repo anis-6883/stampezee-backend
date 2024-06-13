@@ -63,20 +63,21 @@ pipeline {
         stage('Prepare Project') {
             steps {
                 script {
-                    sh """
-                    cd ${DEPLOY_PATH}
-                    """
-                    def projectCloned = sh(script: "[ -d ${GITHUB_REPO}/.git ] && echo 'true'", returnStdout: true).trim()
+                    def repoPath = "${DEPLOY_PATH}/${GITHUB_REPO}"
+                    def projectCloned = sh(script: "[ -d ${repoPath}/.git ] && echo 'true'", returnStdout: true).trim()
+                    
                     if (projectCloned != 'true') {
                         sh """
                         echo "Cloning the project..."
+                        cd ${DEPLOY_PATH}
                         git clone ${GITHUB_URL}
+                        cd ${repoPath}
                         git checkout ${PRODUCTION_BRANCH}
                         """
                     } else {
                         sh """
                         echo "Project already cloned. Pulling latest changes..."
-                        cd ${DEPLOY_PATH}
+                        cd ${repoPath}
                         git pull origin ${PRODUCTION_BRANCH}
                         """
                     }
