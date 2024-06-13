@@ -5,6 +5,7 @@ pipeline {
         NODE_VERSION = '20.x'
         APP_NAME = 'stampezze'
         APP_PORT = '3000'
+        GITHUB_REPO = 'stampezee-backend'
         GITHUB_URL = 'https://github.com/anis-6883/stampezee-backend.git'
         DEPLOY_SERVER = '3.97.37.14'
         DEPLOY_USER = 'ubuntu'
@@ -65,7 +66,7 @@ pipeline {
                     sh """
                     cd ${DEPLOY_PATH}
                     """
-                    def projectCloned = sh(script: "[ -d ${DEPLOY_PATH}/.git ] && echo 'true'", returnStdout: true).trim()
+                    def projectCloned = sh(script: "[ -d ${GITHUB_REPO}/.git ] && echo 'true'", returnStdout: true).trim()
                     if (projectCloned != 'true') {
                         sh """
                         echo "Cloning the project..."
