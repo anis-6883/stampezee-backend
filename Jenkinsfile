@@ -69,7 +69,7 @@ pipeline {
                     if (projectCloned != 'true') {
                         sh """
                         echo "Cloning the project..."
-                        cd ${DEPLOY_PATH}
+                        cd ${DEPLOY_PATH}7
                         git clone ${GITHUB_URL}
                         cd ${repoPath}
                         git checkout ${PRODUCTION_BRANCH}
@@ -78,6 +78,7 @@ pipeline {
                         sh """
                         echo "Project already cloned. Pulling latest changes..."
                         cd ${repoPath}
+                        git config --global --add safe.directory ${repoPath}
                         git pull origin ${PRODUCTION_BRANCH}
                         """
                     }
