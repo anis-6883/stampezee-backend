@@ -165,7 +165,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   const subscription = await EnrollSubscription.findOne({
     retailerId: retailer._id,
     "planSnapshot.type": "subscription",
-    paymentStatus: "completed",
+    paymentStatus: { $in: ["completed", "trial"] },
     validityTo: { $gt: Date.now() },
   }).sort({ createdAt: "desc" });
 
