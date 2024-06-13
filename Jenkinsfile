@@ -9,7 +9,7 @@ pipeline {
         DEPLOY_SERVER = '3.97.37.14'
         DEPLOY_USER = 'ubuntu'
         DEPLOY_PATH = '/var/www/html'
-        PRODUCTION_BRANCH = 'main'
+        PRODUCTION_BRANCH = 'dev-tr'
         SERVER_FILE = "dist/index.js"
     }
 
