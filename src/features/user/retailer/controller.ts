@@ -1,9 +1,10 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
-import _ from "lodash";
-import { COOKIE_KEY, REFRESH_TOKEN_KEY } from "../../../configs/constants";
-import { apiResponse, asyncHandler, generateSignature, getRandomInteger, validateBody } from "../../../helpers";
+import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
+import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../../configs/s3Bucket";
+import { apiResponse, asyncHandler, exclude, generateSignature, getRandomInteger } from "../../../helpers";
 import { IApiRequest } from "../../../types";
+import { retailerSchemaUpdate } from "../../retailer/validation";
 import { sendVerificationEmail } from "../service";
 import { loginSchema, retailerRegisterSchema, verifyOtpSchema } from "../validation";
 import Retailer from "./model";
@@ -15,10 +16,9 @@ import Retailer from "./model";
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const retailerRegistration = asyncHandler(async (req: Request, res: Response) => {
-  const result = validateBody(retailerRegisterSchema, req.body);
-  if (!_.isEmpty(result)) return apiResponse(res, 400, false, "Invalid Request!", result);
+  const result = await retailerRegisterSchema.validateAsync(req.body);
 
-  const { otp, otpExpiry, isVerified, verifiedAt, image, ref, ...retailerBody } = req.body;
+  const { otp, otpExpiry, isVerified, verifiedAt, image, ref, ...retailerBody } = result;
 
   retailerBody.password = await bcrypt.hash(retailerBody.password, 10);
   retailerBody.otp = getRandomInteger(100000, 999999);
@@ -27,19 +27,22 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
   const existingRetailer = await Retailer.findOne({ email: retailerBody.email });
 
   if (existingRetailer && existingRetailer.isVerified) {
-    return apiResponse(res, 400, false, "This retailer already exists!");
+    return apiResponse(res, 400, false, "Your email already exists!");
   }
 
   if (existingRetailer) {
     await Retailer.updateOne(
       { email: retailerBody.email },
-      { $set: { otp: retailerBody.otp, otpExpiry: retailerBody.otpExpiry } }
+      { otp: retailerBody.otp, otpExpiry: retailerBody.otpExpiry }
     );
   } else {
-    await Retailer.create(retailerBody);
+    await Retailer.create({
+      ...retailerBody,
+      fullName: retailerBody?.lastName ? `${retailerBody.firstName} ${retailerBody.lastName}` : retailerBody.firstName,
+    });
   }
 
-  const tempToken = generateSignature({ email: retailerBody.email, role: "retailer" }, "15m"); // 15 min
+  const tempToken = generateSignature({ email: retailerBody.email, role: ROLE.RETAILER }, "15m"); // 15 min
 
   res.cookie("temp", tempToken, {
     httpOnly: true,
@@ -60,19 +63,18 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = validateBody(verifyOtpSchema, req.body);
-  if (!_.isEmpty(result)) return apiResponse(res, 400, false, "Invalid Request!", result);
+  const result = await verifyOtpSchema.validateAsync(req.body);
 
-  const isVerified = req.user.otp === Number(req.body.otp) && req.user.otpExpiry > new Date();
+  const isVerified = req.user.otp === Number(result.otp) && req.user.otpExpiry > new Date();
   if (!isVerified) return apiResponse(res, 400, false, "Invalid Otp!");
 
   await Retailer.updateOne(
     { email: req.user.email },
-    { $set: { isVerified: true, verifiedAt: new Date(), otp: null, otpExpiry: null } }
+    { isVerified: true, verifiedAt: new Date(), otp: null, otpExpiry: null }
   );
 
-  const accessToken = generateSignature({ email: req.user.email, role: "retailer" }, "1d");
-  const refreshToken = generateSignature({ email: req.user.email, role: "retailer" }, "7d");
+  const accessToken = generateSignature({ email: req.user.email, role: ROLE.RETAILER }, "1d");
+  const refreshToken = generateSignature({ email: req.user.email, role: ROLE.RETAILER }, "7d");
 
   res.cookie(COOKIE_KEY, accessToken, {
     httpOnly: true,
@@ -96,16 +98,18 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     expires: new Date(Date.now()),
   });
 
-  // Remove Field
-  delete req.user.password;
-  delete req.user.otp;
-  delete req.user.otpExpiry;
-  delete req.user.isVerified;
-  delete req.user.verifiedAt;
-  delete req.user.createdAt;
-  delete req.user.updatedAt;
+  // Remove Sensitive Data
+  const data = exclude(req.user, [
+    "password",
+    "otp",
+    "otpExpiry",
+    "isVerified",
+    "verifiedAt",
+    "createdAt",
+    "updatedAt",
+  ]);
 
-  return apiResponse(res, 200, true, "Otp verified successfully!", { ...req.user, role: "retailer" });
+  return apiResponse(res, 200, true, "Otp verified successfully!", { ...data, role: ROLE.RETAILER });
 });
 
 /**
@@ -123,10 +127,10 @@ export const retailerResendOtp = asyncHandler(async (req: IApiRequest, res: Resp
   }
 
   if (req.user.otpExpiry > new Date()) {
-    return apiResponse(res, 400, false, "Please, wait for 2 minutes before resend otp!");
+    return apiResponse(res, 400, false, "Wait 2 minutes to resend OTP!");
   }
 
-  await Retailer.updateOne({ email: req.user.email }, { $set: { otp, otpExpiry } });
+  await Retailer.updateOne({ email: req.user.email }, { otp, otpExpiry });
 
   sendVerificationEmail(req.user.email, otp);
 
@@ -140,22 +144,23 @@ export const retailerResendOtp = asyncHandler(async (req: IApiRequest, res: Resp
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const retailerLogin = asyncHandler(async (req: Request, res: Response) => {
-  const result = validateBody(loginSchema, req.body);
-  if (!_.isEmpty(result)) return apiResponse(res, 400, false, "Invalid Request!", result);
+  const result = await loginSchema.validateAsync(req.body);
 
-  const retailer: any = await Retailer.findOne({ email: req.body.email });
+  const retailer: any = await Retailer.findOne({ email: result.email });
   if (!retailer) return apiResponse(res, 401, false, "Please, complete your registration first!");
 
-  if (!retailer.isVerified) {
-    await Retailer.deleteOne({ email: req.body.email });
+  if (!retailer.status) return apiResponse(res, 401, false, "Your account has been blocked by admin!");
+
+  if (!retailer.isVerified && retailer.ref === "self") {
+    await Retailer.deleteOne({ email: result.email });
     return apiResponse(res, 401, false, "Please, complete your registration first!");
   }
 
-  const isPasswordValid = await bcrypt.compare(req.body.password, retailer.password);
+  const isPasswordValid = await bcrypt.compare(result.password, retailer.password);
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
-  const accessToken = generateSignature({ email: retailer.email, role: "retailer" }, "1d");
-  const refreshToken = generateSignature({ email: retailer.email, role: "retailer" }, "7d");
+  const accessToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "1d");
+  const refreshToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "7d");
 
   res.cookie(COOKIE_KEY, accessToken, {
     httpOnly: true,
@@ -171,16 +176,10 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   });
 
-  // Remove Field
-  delete retailer._doc.password;
-  delete retailer._doc.otp;
-  delete retailer._doc.otpExpiry;
-  delete retailer._doc.isVerified;
-  delete retailer._doc.verifiedAt;
-  delete retailer._doc.createdAt;
-  delete retailer._doc.updatedAt;
+  // Remove Sensitive Data
+  const data = exclude(retailer._doc, ["password", "otp", "otpExpiry"]);
 
-  return apiResponse(res, 200, true, "Retailer Login Successfully!", { ...retailer._doc, role: "retailer" });
+  return apiResponse(res, 200, true, "Retailer Login Successfully!", { ...data, role: ROLE.RETAILER });
 });
 
 /**
@@ -214,20 +213,61 @@ export const retailerLogout = asyncHandler(async (_req: Request, res: Response) 
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
-  if ("user" in req) {
-    if (!req.user) return apiResponse(res, 401, false, "Unauthorized Request!");
+  // Remove Sensitive Data
+  const data = exclude(req.user, ["password", "otp", "otpExpiry"]);
 
-    // Remove Field
-    delete req.user.password;
-    delete req.user.otp;
-    delete req.user.otpExpiry;
-    delete req.user.isVerified;
-    delete req.user.verifiedAt;
-    delete req.user.createdAt;
-    delete req.user.updatedAt;
+  return apiResponse(res, 200, true, "Retailer Profile", { ...data, role: ROLE.RETAILER });
+});
 
-    return apiResponse(res, 200, true, "Retailer Profile", { ...req.user, role: "retailer" });
-  } else {
-    return apiResponse(res, 401, false, "Unauthorized!");
+/**
+ * Update Retailer Profile
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const updateRetailerProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await retailerSchemaUpdate.validateAsync(req.body, { abortEarly: false });
+  const { softDeleted, password, ...updatedBody } = result;
+
+  const existingRetailer = await Retailer.findOne({ email: updatedBody.email, _id: { $ne: req.user._id } });
+  if (existingRetailer) return apiResponse(res, 400, false, "This retailer already exists!");
+
+  // Upload File to S3 Bucket
+  if (req.file) {
+    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "users");
+    if (status) {
+      updatedBody.image = key;
+    }
+    // Delete Existing Image if have
+    const prevImage = await Retailer.findById(req.user._id, { image: 1 });
+    deleteFileFromS3Bucket(prevImage?.image);
   }
+
+  const retailer: any = await Retailer.findOneAndUpdate({ _id: req.user._id }, updatedBody, {
+    new: true,
+    projection: { password: 0, createdAt: 0, updatedAt: 0 },
+  });
+
+  if (!retailer) {
+    return apiResponse(res, 404, false, "Retailer not found!");
+  }
+
+  const accessToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "1d");
+  const refreshToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "7d");
+
+  res.cookie(COOKIE_KEY, accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "development" ? false : true,
+    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+    expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  });
+
+  res.cookie(REFRESH_TOKEN_KEY, refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "development" ? false : true,
+    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  });
+
+  return apiResponse(res, 200, true, "Retailer profile updated successfully!", retailer);
 });

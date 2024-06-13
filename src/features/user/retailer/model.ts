@@ -12,6 +12,11 @@ const schema = new mongoose.Schema(
       trim: true,
       default: null,
     },
+    fullName: {
+      type: String, // FullName helps to Search
+      required: true,
+      trim: true,
+    },
     email: {
       type: String,
       required: true,
@@ -50,7 +55,7 @@ const schema = new mongoose.Schema(
     },
     ref: {
       type: "String",
-      enum: ["self", "admin"],
+      enum: ["self", "super_admin"],
       default: "self",
     },
     storeName: {
@@ -102,6 +107,14 @@ const schema = new mongoose.Schema(
       type: String,
       trim: true,
       default: null,
+    },
+    takeFreeTrial: {
+      type: Boolean,
+      default: false,
+    },
+    softDeleted: {
+      type: Boolean,
+      default: false,
     },
   },
   {

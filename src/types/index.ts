@@ -1,6 +1,13 @@
 import { Request } from "express";
 import mongoose from "mongoose";
 
+export interface IEnrollPayment {
+  id: string;
+  metadata: any;
+  payment_intent: any;
+  amount_total: number;
+}
+
 export interface IConfig {
   [key: string]: {
     corsOptions: {
@@ -29,10 +36,17 @@ export interface IUser {
   otpExpiry: Date;
   isVerified: boolean;
   verifiedAt: Date;
+  takeFreeTrial: boolean;
 }
 
 export interface IApiRequest extends Request {
   user?: IUser;
   otp?: string;
   token?: string;
+  role: string;
+}
+
+export interface ILineItem {
+  price_data: { unit_amount: number; currency: string; product_data: { name: string } };
+  quantity: number;
 }

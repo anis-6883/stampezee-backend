@@ -1,0 +1,52 @@
+import { Request, Response } from "express";
+import { apiResponse, asyncHandler, flattenObject } from "../../helpers";
+import Settings from "./model";
+import { settingsSchema } from "./validation";
+
+/**
+ * Get Settings Data
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const getSettings = asyncHandler(async (req: Request, res: Response) => {
+  const settings = await Settings.findOne({});
+
+  if (!settings) {
+    return apiResponse(res, 404, false, "Settings not found!");
+  }
+
+  return apiResponse(res, 200, true, "Settings fetched Successfully!", settings);
+});
+
+/**
+ * Update Settings Data
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const updateSettings = asyncHandler(async (req: Request, res: Response) => {
+  const result = await settingsSchema.validateAsync(req.body);
+
+  const { general, notification, pages, s3Bucket } = result;
+
+  const settings = await Settings.findOne({});
+  let data = null;
+
+  if (!settings) {
+    data = await Settings.create({
+      pages,
+      general,
+      s3Bucket,
+      notification,
+    });
+  } else {
+    const pattern = flattenObject(req.body);
+
+    data = await Settings.findOneAndUpdate({ _id: settings._id }, pattern, {
+      new: true,
+    });
+  }
+
+  return apiResponse(res, 200, true, "Settings updated successfully!", data);
+});

@@ -35,6 +35,28 @@ const schema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    address: {
+      loc: {
+        type: {
+          type: String,
+          default: "Point",
+          enum: ["Point"],
+        },
+        coordinates: {
+          type: [Number],
+        },
+      },
+      name: {
+        type: String,
+        trim: true,
+        default: null,
+      },
+    },
+    deviceToken: {
+      type: String,
+      trim: true,
+      default: null,
+    },
     image: {
       type: String,
       default: null,
