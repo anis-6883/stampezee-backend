@@ -1,4 +1,5 @@
 import { Response } from "express";
+import moment from "moment";
 import Stripe from "stripe";
 import { PACKAGES } from "../../configs/constants";
 import { apiResponse, asyncHandler, checkCombination, checkDuplicates } from "../../helpers";
@@ -129,15 +130,14 @@ export const successEnrollSubscription = asyncHandler(async (req: IApiRequest, r
 
     if (payment.payment_intent.status === "succeeded") {
       for (let key in payment.metadata) {
-        const today = new Date();
-        const expireDate = new Date(today);
-        expireDate.setDate(today.getDate() + payment.metadata[key]);
+        const now = moment();
+        const expireDate = moment().add(payment.metadata[key], "days");
         subscriptionIds.push(key);
 
         updateSubscriptions.push(
           EnrollSubscription.findByIdAndUpdate(key, {
             paymentStatus: "completed",
-            validityFrom: Date.now(),
+            validityFrom: now,
             validityTo: expireDate,
           })
         );

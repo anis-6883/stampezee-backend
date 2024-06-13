@@ -16,7 +16,11 @@ export const subscriptionSchema = Joi.object({
       "any.required": "descriptions is required!",
       "array.includesRequiredUnknowns": "At least one description is required!",
     }),
-  price: requiredStringField("price"),
+  price: Joi.number().required().messages({
+    "any.required": "price is required!",
+    "number.base": "price must be number!",
+    "string.empty": "price must not be empty!",
+  }),
   type: Joi.string().trim().required().lowercase().valid("addon", "subscription").messages({
     "any.required": "type is required!",
     "string.base": "type must be string!",
@@ -73,7 +77,10 @@ export const updateSubscriptionSchema = Joi.object({
       "array.base": "descriptions must be array!",
       "array.includesRequiredUnknowns": "At least one description is required!",
     }),
-  price: stringField("price"),
+  price: Joi.number().messages({
+    "number.base": "price must be number!",
+    "string.empty": "price must not be empty!",
+  }),
   allowTotalBranch: Joi.number().messages({
     "number.base": "allowTotalBranch must be number!",
     "number.empty": "allowTotalBranch must not be empty!",

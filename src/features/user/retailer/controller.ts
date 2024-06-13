@@ -4,6 +4,7 @@ import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants"
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, generateSignature, getRandomInteger } from "../../../helpers";
 import { IApiRequest } from "../../../types";
+import { EnrollSubscription } from "../../enroll-subscription/model";
 import { retailerSchemaUpdate } from "../../retailer/validation";
 import { sendVerificationEmail } from "../service";
 import { loginSchema, retailerRegisterSchema, verifyOtpSchema } from "../validation";
@@ -158,6 +159,18 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
 
   const isPasswordValid = await bcrypt.compare(result.password, retailer.password);
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
+
+  // Check Subscription Enrollment
+  const enroll = await EnrollSubscription.find({
+    retailerId: retailer._id,
+    "planSnapshot.type": "subscription",
+    paymentStatus: "completed",
+    validityTo: { $gt: Date.now() },
+  })
+    .limit(1)
+    .sort({ createdAt: "desc" });
+
+  console.log("enroll: ", enroll);
 
   const accessToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "1d");
   const refreshToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "7d");
