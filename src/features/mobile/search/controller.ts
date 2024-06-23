@@ -43,64 +43,72 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
     query.name = regex;
   }
 
-  const branches = await Branch.aggregate([
-    {
-      $match: query,
-    },
-    {
-      $geoNear: {
-        near: { type: "Point", coordinates: [Number(long), Number(lat)] },
-        distanceField: "distance",
-        spherical: true,
+  const [docs, total] = await Promise.all([
+    Branch.aggregate([
+      {
+        $match: query,
       },
-    },
-    {
-      $lookup: {
-        from: "stamps",
-        localField: "_id",
-        foreignField: "branchId",
-        as: "stamps",
-        // pipeline: [
-        //   {
-        //     $match: {
-        //       title: 1,
-        //       image: 1,
-        //     },
-        //   },
-        // ]
-      },
-    },
-    {
-      $unwind: "$stamps",
-    },
-    {
-      $project: {
-        branch: {
-          _id: "$_id",
-          name: "$name",
-          distance: "$distance",
-        },
-        stamp: {
-          title: "$stamps.title",
+      {
+        $geoNear: {
+          near: { type: "Point", coordinates: [Number(long), Number(lat)] },
+          distanceField: "distance",
+          spherical: true,
         },
       },
-    },
-    {
-      $sort: {
-        distance: 1,
+      {
+        $lookup: {
+          from: "stamps",
+          localField: "_id",
+          foreignField: "branchId",
+          as: "stamps",
+          pipeline: [
+            {
+              $match: {
+                startedAt: { $lte: new Date() },
+                expiredAt: { $gt: new Date() },
+                status: true,
+                softDeleted: false,
+              },
+            },
+          ],
+        },
       },
-    },
-    {
-      $skip: skip,
-    },
-    {
-      $limit: Number(limit),
-    },
+      {
+        $unwind: "$stamps",
+      },
+      {
+        $project: {
+          branch: {
+            _id: "$_id",
+            name: "$name",
+            distance: "$distance",
+          },
+          stamp: {
+            title: "$stamps.title",
+          },
+        },
+      },
+      {
+        $sort: {
+          distance: 1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+    ]),
+    Stamp.find({
+      startedAt: { $lte: new Date() },
+      expiredAt: { $gt: new Date() },
+      status: true,
+      softDeleted: false,
+    }).countDocuments(),
   ]);
 
-  const total = await Stamp.find({ startedAt: { $gte: Date.now() }, expiredAt: { $lte: Date.now() } }).countDocuments();
+  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  const data = makePaginate(branches, Number(page), Number(limit), skip, total);
-
-  return apiResponse(res, 200, true, "Location by stamp fetched successfully!", branches);
+  return apiResponse(res, 200, true, "Location by stamp fetched successfully!", data);
 });
