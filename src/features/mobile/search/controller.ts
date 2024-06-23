@@ -1,9 +1,10 @@
 import { Response } from "express";
 import { IApiRequest } from "types";
-import { apiResponse, asyncHandler } from "../../../helpers";
+import { apiResponse, asyncHandler, makePaginate } from "../../../helpers";
 import Branch from "../../branch/model";
 import Category from "../../category/model";
 import Sorting from "../../sorting/model";
+import Stamp from "../../stamp/model";
 
 /**
  * Get All Stamp Categories
@@ -30,10 +31,22 @@ export const getAllCategories = asyncHandler(async (req: IApiRequest, res: Respo
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { page = 1, limit = 10, search } = req.query;
+  const skip: number = (Number(page) - 1) * Number(limit);
+  const query: any = {};
+
   const long = req.user.address.loc.coordinates[0];
   const lat = req.user.address.loc.coordinates[1];
 
+  if (search) {
+    const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
+    query.name = regex;
+  }
+
   const branches = await Branch.aggregate([
+    {
+      $match: query,
+    },
     {
       $geoNear: {
         near: { type: "Point", coordinates: [Number(long), Number(lat)] },
@@ -47,6 +60,14 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
         localField: "_id",
         foreignField: "branchId",
         as: "stamps",
+        // pipeline: [
+        //   {
+        //     $match: {
+        //       title: 1,
+        //       image: 1,
+        //     },
+        //   },
+        // ]
       },
     },
     {
@@ -70,12 +91,16 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
       },
     },
     {
-      $skip: 0,
+      $skip: skip,
     },
     {
-      $limit: 10,
+      $limit: Number(limit),
     },
   ]);
+
+  const total = await Stamp.find({ startedAt: { $gte: Date.now() }, expiredAt: { $lte: Date.now() } }).countDocuments();
+
+  const data = makePaginate(branches, Number(page), Number(limit), skip, total);
 
   return apiResponse(res, 200, true, "Location by stamp fetched successfully!", branches);
 });

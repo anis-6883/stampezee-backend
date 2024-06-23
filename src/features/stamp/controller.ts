@@ -171,17 +171,17 @@ export const getSingleStamp = asyncHandler(async (req: IApiRequest, res: Respons
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getBranchCategoryImageList = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const [categories, branches, stampImages] = await Promise.all([
+  const [categories, branches, defaultImages, customImages] = await Promise.all([
     Category.find({ softDeleted: false, status: true }, { name: 1, image: 1 }).sort({
       createdAt: "desc",
     }),
     Branch.find({ retailerId: req.user._id, softDeleted: false, status: true }, { name: 1 }).sort({
       createdAt: "desc",
     }),
-    StampImage.find(
-      { softDeleted: false, status: true, $or: [{ userId: req.user._id }, { ref: ROLE.SUPER_ADMIN }] },
-      { image: 1, title: 1, ref: 1 }
-    ).sort({
+    StampImage.find({ softDeleted: false, status: true, ref: ROLE.SUPER_ADMIN }, { image: 1, title: 1, ref: 1 }).sort({
+      createdAt: "desc",
+    }),
+    StampImage.find({ softDeleted: false, status: true, userId: req.user._id }, { image: 1, title: 1, ref: 1 }).sort({
       createdAt: "desc",
     }),
   ]);
@@ -189,13 +189,14 @@ export const getBranchCategoryImageList = asyncHandler(async (req: IApiRequest, 
   const sorting = await Sorting.findOne({ title: "default_stamp_image" });
   const sortedIds = sorting ? sorting.sortedData : [];
 
-  const stampImageMap = new Map(stampImages.map((stampImage) => [stampImage._id.toString(), stampImage]));
+  const stampImageMap = new Map(defaultImages.map((stampImage) => [stampImage._id.toString(), stampImage]));
   const sortedStampImages = sortedIds.map((id: string) => stampImageMap.get(id)).filter(Boolean);
 
   const data = {
     categories,
     branches,
-    sortedStampImages,
+    defaultImages: sortedStampImages,
+    customImages,
   };
 
   return apiResponse(res, 200, true, "Branches, Categories, Stamp Images fetched successfully!", data);
