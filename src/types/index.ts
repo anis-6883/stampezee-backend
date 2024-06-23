@@ -37,6 +37,13 @@ export interface IUser {
   isVerified: boolean;
   verifiedAt: Date;
   takeFreeTrial: boolean;
+  address?: {
+    loc: {
+      type: string;
+      coordinates: number[];
+    };
+    name: string;
+  };
 }
 
 export interface IApiRequest extends Request {

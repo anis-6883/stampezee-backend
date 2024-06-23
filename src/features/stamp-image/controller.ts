@@ -69,7 +69,7 @@ export const getAllStampImages = asyncHandler(async (req: IApiRequest, res: Resp
   let docs: any[] = [];
   let total: number = 0;
 
-  const commonQuery: any = { softDeleted: { $eq: false } };
+  const commonQuery: any = { softDeleted: false };
   let roleSpecificQuery = {};
 
   if (search) {

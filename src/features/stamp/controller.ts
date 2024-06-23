@@ -4,6 +4,7 @@ import { ROLE } from "../../configs/constants";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import Branch from "../branch/model";
 import Category from "../category/model";
+import Sorting from "../sorting/model";
 import StampImage from "../stamp-image/model";
 import Stamp from "./model";
 import { stampSchema, updateStampSchema } from "./validation";
@@ -171,24 +172,30 @@ export const getSingleStamp = asyncHandler(async (req: IApiRequest, res: Respons
  */
 export const getBranchCategoryImageList = asyncHandler(async (req: IApiRequest, res: Response) => {
   const [categories, branches, stampImages] = await Promise.all([
-    Category.find({ softDeleted: { $eq: false } }, { name: 1, image: 1 }).sort({
+    Category.find({ softDeleted: false, status: true }, { name: 1, image: 1 }).sort({
       createdAt: "desc",
     }),
-    Branch.find({ retailerId: req.user._id, softDeleted: { $eq: false } }, { name: 1 }).sort({
+    Branch.find({ retailerId: req.user._id, softDeleted: false, status: true }, { name: 1 }).sort({
       createdAt: "desc",
     }),
     StampImage.find(
-      { softDeleted: { $eq: false }, $or: [{ userId: req.user._id }, { ref: ROLE.SUPER_ADMIN }] },
+      { softDeleted: false, status: true, $or: [{ userId: req.user._id }, { ref: ROLE.SUPER_ADMIN }] },
       { image: 1, title: 1, ref: 1 }
     ).sort({
       createdAt: "desc",
     }),
   ]);
 
+  const sorting = await Sorting.findOne({ title: "default_stamp_image" });
+  const sortedIds = sorting ? sorting.sortedData : [];
+
+  const stampImageMap = new Map(stampImages.map((stampImage) => [stampImage._id.toString(), stampImage]));
+  const sortedStampImages = sortedIds.map((id: string) => stampImageMap.get(id)).filter(Boolean);
+
   const data = {
     categories,
     branches,
-    stampImages,
+    sortedStampImages,
   };
 
   return apiResponse(res, 200, true, "Branches, Categories, Stamp Images fetched successfully!", data);
