@@ -217,23 +217,27 @@ export const updateStamp = asyncHandler(async (req: IApiRequest, res: Response) 
   const { id } = req.params;
   const { branchId, categoryId, stampImageId, softDeleted, ...updatedBody } = result;
 
+  const stamp = await Stamp.findOne({ _id: id });
+  if (!stamp) throw "Stamp not found!";
+
   if (branchId) {
     const branch = await Branch.findOne({ _id: branchId, retailerId: req.user._id });
-    if (!branch) return apiResponse(res, 404, false, "Branch not found!");
+    if (!branch) throw "Branch not found!";
   }
 
   if (categoryId) {
     const category = await Category.findOne({ _id: categoryId });
-    if (!category) return apiResponse(res, 404, false, "Category not found!");
+    if (!category) throw "Category not found!";
   }
 
   if (stampImageId) {
     const stampImage = await StampImage.findOne({ _id: stampImageId });
-    if (!stampImage) return apiResponse(res, 404, false, "Stamp image not found!");
+    if (!stampImage) throw "Stamp image not found!";
   }
 
-  const stamp = await Stamp.findOne({ _id: id });
-  if (!stamp) return apiResponse(res, 404, false, "Stamp not found!");
+  updatedBody.branchId = branchId;
+  updatedBody.stampImageId = stampImageId;
+  updatedBody.categoryId = categoryId;
 
   const updatedData: any = await Stamp.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
 
@@ -256,7 +260,7 @@ export const softDeleteStamp = asyncHandler(async (req: IApiRequest, res: Respon
     }
   );
 
-  if (!stamp) return apiResponse(res, 404, false, "Stamp not found!");
+  if (!stamp) throw "Stamp not found!";
 
   return apiResponse(res, 200, true, "Stamp deleted successfully!");
 });
@@ -294,7 +298,7 @@ export const confirmDeleteStamp = asyncHandler(async (req: IApiRequest, res: Res
   const { id } = req.params;
 
   const stamp = await Stamp.findOneAndDelete({ _id: id });
-  if (!stamp) return apiResponse(res, 404, false, "Stamp not found!");
+  if (!stamp) throw "Stamp not found!";
 
   return apiResponse(res, 200, true, "Stamp deleted successfully!");
 });

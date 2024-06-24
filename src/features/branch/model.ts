@@ -45,7 +45,7 @@ const schema = new mongoose.Schema(
   }
 );
 
-// Create a 2dsphere index on the address.loc field
+schema.index({ name: 1 });
 schema.index({ "address.loc": "2dsphere" });
 
 const Branch = mongoose.model("Branch", schema);

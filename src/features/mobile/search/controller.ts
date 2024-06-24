@@ -5,6 +5,8 @@ import Branch from "../../branch/model";
 import Category from "../../category/model";
 import Sorting from "../../sorting/model";
 import Stamp from "../../stamp/model";
+import Customer from "../../user/customer/model";
+import { collectStampSchema } from "./validation";
 
 /**
  * Get All Stamp Categories
@@ -33,7 +35,7 @@ export const getAllCategories = asyncHandler(async (req: IApiRequest, res: Respo
 export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
-  const query: any = {};
+  const query: any = { status: true, softDeleted: false };
 
   const long = req.user.address.loc.coordinates[0];
   const lat = req.user.address.loc.coordinates[1];
@@ -46,14 +48,14 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
   const [docs, total] = await Promise.all([
     Branch.aggregate([
       {
-        $match: query,
-      },
-      {
         $geoNear: {
           near: { type: "Point", coordinates: [Number(long), Number(lat)] },
           distanceField: "distance",
           spherical: true,
         },
+      },
+      {
+        $match: query,
       },
       {
         $lookup: {
@@ -111,4 +113,28 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
   return apiResponse(res, 200, true, "Location by stamp fetched successfully!", data);
+});
+
+/**
+ * Collect stamp by customer
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const collectStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await collectStampSchema.validateAsync(req.body, {
+    abortEarly: false,
+  });
+
+  const [branch, stamp, customer] = await Promise.all([
+    Branch.findById(result.branchId),
+    Stamp.findById(result.stampId),
+    Customer.findById(result.customerId),
+  ]);
+
+  if (!branch || !stamp || !customer) {
+    throw "Branch, stamp or customer not found!";
+  }
+
+  return apiResponse(res, 200, true, "Stamp collected successfully!");
 });
