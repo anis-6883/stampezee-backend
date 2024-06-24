@@ -6,6 +6,7 @@ import Category from "../../category/model";
 import Sorting from "../../sorting/model";
 import Stamp from "../../stamp/model";
 import Customer from "../../user/customer/model";
+import CollectStamp from "./model";
 import { collectStampSchema } from "./validation";
 
 /**
@@ -45,6 +46,10 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
     query.name = regex;
   }
 
+  const stampIds = (await CollectStamp.find({ customerId: req.user._id }, { stampId: 1, _id: 0 })).map(
+    ({ stampId }) => stampId
+  );
+
   const [docs, total] = await Promise.all([
     Branch.aggregate([
       {
@@ -70,6 +75,7 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
                 expiredAt: { $gt: new Date() },
                 status: true,
                 softDeleted: false,
+                _id: { $nin: stampIds },
               },
             },
           ],
@@ -80,12 +86,14 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
       },
       {
         $project: {
+          _id: 0,
           branch: {
             _id: "$_id",
             name: "$name",
             distance: "$distance",
           },
           stamp: {
+            _id: "$stamps._id",
             title: "$stamps.title",
           },
         },
@@ -135,6 +143,8 @@ export const collectStamp = asyncHandler(async (req: IApiRequest, res: Response)
   if (!branch || !stamp || !customer) {
     throw "Branch, stamp or customer not found!";
   }
+
+  await CollectStamp.create(result);
 
   return apiResponse(res, 200, true, "Stamp collected successfully!");
 });

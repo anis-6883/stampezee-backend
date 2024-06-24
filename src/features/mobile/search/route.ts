@@ -3,8 +3,8 @@ import { collectStamp, getAllCategories, getAllStampsByLocation } from "./contro
 
 const router = express.Router();
 
-router.get("/categories", getAllCategories);
+router.get("/stamp-categories", getAllCategories);
 router.get("/branch-list-by-location", getAllStampsByLocation);
-router.post("/collect", collectStamp);
+router.post("/stamp-collect", collectStamp);
 
 export default router;

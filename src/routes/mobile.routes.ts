@@ -7,8 +7,8 @@ import { authAndPermissionCheck } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
-router.use("/customer", customerAuthRoutes);
-router.use("/stamp", authAndPermissionCheck(ROLE.CUSTOMER), searchPageRoutes);
 router.use("/sub-admin", subAdminAuthRoutes);
+router.use("/customer", customerAuthRoutes);
+router.use("/search-screen", authAndPermissionCheck(ROLE.CUSTOMER), searchPageRoutes);
 
 export default router;

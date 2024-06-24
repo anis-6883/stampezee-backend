@@ -16,6 +16,11 @@ export const asyncHandler = (func: any) => async (req: Request, res: Response) =
       });
       return apiResponse(res, 400, false, "Invalid Request!", format);
     }
+
+    if (err.code == 11000) {
+      return apiResponse(res, 400, false, "Duplicate value found!");
+    }
+
     return apiResponse(res, 400, false, err || "Something went wrong!");
   }
 };
