@@ -12,7 +12,6 @@ import { IApiRequest } from "../types";
 export const authAndPermissionCheck =
   (role: string, checkPermission: boolean = true, findUser: boolean = true) =>
   async (req: IApiRequest, res: Response, next: NextFunction): Promise<any> => {
-    console.log("middlewares hit");
     try {
       const token =
         req?.cookies?.temp || req.headers?.authorization?.replace("Bearer ", "") || req?.cookies?.[COOKIE_KEY];

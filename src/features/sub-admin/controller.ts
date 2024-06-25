@@ -226,14 +226,13 @@ export const updateSubAdminStatus = asyncHandler(async (req: IApiRequest, res: R
 export const softDeleteSubAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
-  const subAdmin = await SubAdmin.findOneAndUpdate(
-    { _id: id },
-    {
-      softDeleted: true,
-    }
-  );
-
+  const subAdmin = await SubAdmin.findById(id);
   if (!subAdmin) return apiResponse(res, 404, false, "Sub Admin not found!");
+
+  SubAdmin.findByIdAndUpdate(id, {
+    email: `deleted-${Date.now()}-${subAdmin.email}`,
+    softDeleted: true,
+  });
 
   return apiResponse(res, 200, true, "Sub Admin deleted successfully!");
 });
