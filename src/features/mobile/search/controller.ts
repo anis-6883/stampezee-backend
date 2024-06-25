@@ -1,4 +1,5 @@
 import { Response } from "express";
+import mongoose from "mongoose";
 import { IApiRequest } from "types";
 import { apiResponse, asyncHandler, makePaginate } from "../../../helpers";
 import Branch from "../../branch/model";
@@ -34,13 +35,12 @@ export const getAllCategories = asyncHandler(async (req: IApiRequest, res: Respo
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10, search } = req.query;
+  const { page = 1, limit = 10, search, categoryId }: any = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
-  const query: any = { status: true, softDeleted: false };
-
   const long = req.user.address.loc.coordinates[0];
   const lat = req.user.address.loc.coordinates[1];
 
+  const query: any = { status: true, softDeleted: false };
   if (search) {
     const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
     query.name = regex;
@@ -49,6 +49,18 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
   const stampIds = (await CollectStamp.find({ customerId: req.user._id }, { stampId: 1, _id: 0 })).map(
     ({ stampId }) => stampId
   );
+
+  const query2: any = {
+    startedAt: { $lte: new Date() },
+    expiredAt: { $gt: new Date() },
+    status: true,
+    softDeleted: false,
+    _id: { $nin: stampIds },
+  };
+
+  if (categoryId) {
+    query2.categoryId = mongoose.Types.ObjectId.createFromHexString(categoryId);
+  }
 
   const [docs, total] = await Promise.all([
     Branch.aggregate([
@@ -70,19 +82,24 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
           as: "stamps",
           pipeline: [
             {
-              $match: {
-                startedAt: { $lte: new Date() },
-                expiredAt: { $gt: new Date() },
-                status: true,
-                softDeleted: false,
-                _id: { $nin: stampIds },
-              },
+              $match: query2,
             },
           ],
         },
       },
       {
+        $lookup: {
+          from: "retailers",
+          localField: "retailerId",
+          foreignField: "_id",
+          as: "retailers",
+        },
+      },
+      {
         $unwind: "$stamps",
+      },
+      {
+        $unwind: "$retailers",
       },
       {
         $project: {
@@ -91,10 +108,17 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
             _id: "$_id",
             name: "$name",
             distance: "$distance",
+            address: "$address.name",
           },
           stamp: {
             _id: "$stamps._id",
             title: "$stamps.title",
+            categoryId: "$stamps.categoryId",
+          },
+          retailer: {
+            _id: "$retailers._id",
+            storeName: "$retailers.storeName",
+            image: "$retailers.image",
           },
         },
       },
@@ -110,12 +134,7 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
         $limit: Number(limit),
       },
     ]),
-    Stamp.find({
-      startedAt: { $lte: new Date() },
-      expiredAt: { $gt: new Date() },
-      status: true,
-      softDeleted: false,
-    }).countDocuments(),
+    Stamp.find(query2).countDocuments(),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);

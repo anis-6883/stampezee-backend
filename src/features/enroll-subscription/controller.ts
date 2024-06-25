@@ -106,9 +106,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
     });
 
-    // res.redirect(session?.url);
+    // return res.redirect(session?.url);
 
-    return apiResponse(res, 200, true, "Send to Payment Page!", session);
+    return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
   }
   throw "Only one subscription and no duplicate addons are allowed!";
 });
