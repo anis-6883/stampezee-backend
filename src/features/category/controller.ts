@@ -70,7 +70,7 @@ export const getAllCategories = asyncHandler(async (req: IApiRequest, res: Respo
   }
 
   const [docs, total] = await Promise.all([
-    Category.find(query).limit(Number(limit)).skip(skip).sort({ createdAt: "desc" }),
+    Category.find(query).limit(Number(limit)).skip(skip),
     Category.find(query).countDocuments(),
   ]);
 
@@ -203,15 +203,19 @@ export const softDeleteCategory = asyncHandler(async (req: IApiRequest, res: Res
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getAllDeletedCategories = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10 } = req.query;
+  const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
+  const query: any = { softDeleted: true };
+
+  if (search) {
+    const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
+    query.name = regex;
+  }
+
   const [docs, total] = await Promise.all([
-    Category.find({ softDeleted: { $eq: true } })
-      .limit(Number(limit))
-      .skip(skip)
-      .sort({ createdAt: "desc" }),
-    Category.find({ softDeleted: { $eq: true } }).countDocuments(),
+    Category.find(query).limit(Number(limit)).skip(skip).sort({ createdAt: "desc" }),
+    Category.find(query).countDocuments(),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);

@@ -1,6 +1,7 @@
 import express from "express";
 import { ROLE } from "../configs/constants";
 import categoryRoutes from "../features/category/route";
+import faqRoutes from "../features/faq/route";
 import manageRetailerRoutes from "../features/retailer/route";
 import settingsRoutes from "../features/settings/route";
 import sortingRoutes from "../features/sorting/route";
@@ -12,11 +13,14 @@ import { authAndPermissionCheck } from "../middlewares/authMiddleware";
 const router = express.Router();
 
 router.use("/super-admin", superAdminAuthRoutes);
-router.use("/super-admin/settings", authAndPermissionCheck(ROLE.SUPER_ADMIN), settingsRoutes);
-router.use("/super-admin/sort", authAndPermissionCheck(ROLE.SUPER_ADMIN), sortingRoutes);
-router.use("/super-admin/category", authAndPermissionCheck(ROLE.SUPER_ADMIN), categoryRoutes);
-router.use("/super-admin/stamp-image", authAndPermissionCheck(ROLE.SUPER_ADMIN), stampImageRoutes);
-router.use("/super-admin/manage-retailer", authAndPermissionCheck(ROLE.SUPER_ADMIN), manageRetailerRoutes);
-router.use("/super-admin/subscription", authAndPermissionCheck(ROLE.SUPER_ADMIN), subscriptionRoutes);
+
+router.use(authAndPermissionCheck(ROLE.SUPER_ADMIN));
+router.use("/super-admin/sort", sortingRoutes);
+router.use("/super-admin/settings", settingsRoutes);
+router.use("/super-admin/category", categoryRoutes);
+router.use("/super-admin/stamp-image", stampImageRoutes);
+router.use("/super-admin/manage-retailer", manageRetailerRoutes);
+router.use("/super-admin/subscription", subscriptionRoutes);
+router.use("/super-admin/faq", faqRoutes);
 
 export default router;

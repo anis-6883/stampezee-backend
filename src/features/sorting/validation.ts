@@ -1,9 +1,9 @@
 import Joi from "joi";
 
-const title = Joi.string().trim().required().lowercase().valid("category", "default_stamp_image").messages({
+const title = Joi.string().trim().required().lowercase().valid("category", "default_stamp_image", "faq").messages({
   "any.required": "title is required!",
   "string.base": "title must be string!",
-  "any.only": "title must be [category, default_stamp_image]",
+  "any.only": "title must be [category, default_stamp_image, faq]",
 });
 
 const sortedData = Joi.array().required().messages({

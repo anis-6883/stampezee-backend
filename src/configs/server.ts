@@ -38,8 +38,8 @@ app.get("/payment/complete", successEnrollSubscription);
 
 // Main Routes
 app.use(verifyApiKeyHeader);
-app.use("/api", webRoutes); // web
 app.use("/api/v1", mobileRoutes); // mobile
+app.use("/api/web", webRoutes); // web
 app.use("/api/secret-root/admin", adminRoutes); // admin
 
 // 404 Route
