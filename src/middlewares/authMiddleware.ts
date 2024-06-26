@@ -1,7 +1,7 @@
 import { NextFunction, Response } from "express";
 import jwt from "jsonwebtoken";
 import { Model } from "mongoose";
-import { COOKIE_KEY, ROLE } from "../configs/constants";
+import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../configs/constants";
 import Customer from "../features/user/customer/model";
 import Retailer from "../features/user/retailer/model";
 import SubAdmin from "../features/user/sub-admin/model";
@@ -52,6 +52,19 @@ export const authAndPermissionCheck =
       return next();
     } catch (err) {
       console.error(err);
+      res.clearCookie(COOKIE_KEY, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "development" ? false : true,
+        sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+        expires: new Date(Date.now()),
+      });
+
+      res.clearCookie(REFRESH_TOKEN_KEY, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "development" ? false : true,
+        sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+        expires: new Date(Date.now()),
+      });
       return apiResponse(res, 401, false, "Unauthorized Request!");
     }
   };
