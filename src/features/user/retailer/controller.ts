@@ -7,7 +7,14 @@ import { IApiRequest } from "../../../types";
 import { EnrollSubscription } from "../../enroll-subscription/model";
 import { retailerSchemaUpdate } from "../../retailer/validation";
 import { sendVerificationEmail } from "../service";
-import { loginSchema, retailerRegisterSchema, verifyOtpSchema } from "../validation";
+import {
+  loginSchema,
+  retailerChangeForgetPasswordSchema,
+  retailerChangePasswordSchema,
+  retailerForgetPasswordSchema,
+  retailerRegisterSchema,
+  verifyOtpSchema,
+} from "../validation";
 import Retailer from "./model";
 
 /**
@@ -284,4 +291,104 @@ export const updateRetailerProfile = asyncHandler(async (req: IApiRequest, res: 
   });
 
   return apiResponse(res, 200, true, "Retailer profile updated successfully!", retailer);
+});
+
+/**
+ * Retailer Forget Password
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const retailerForgetPassword = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await retailerForgetPasswordSchema.validateAsync(req.body, { abortEarly: false });
+
+  const retailer = await Retailer.findOne({ email: result.email, status: true, softDeleted: false, isVerified: true });
+
+  if (!retailer) {
+    return apiResponse(res, 404, false, "Retailer not found!");
+  }
+
+  const otp = getRandomInteger(100000, 999999);
+  const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
+
+  await Retailer.findByIdAndUpdate(retailer._id, { otp, otpExpiry });
+
+  const tempToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "15m"); // 15 min
+
+  res.cookie("temp", tempToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "development" ? false : true,
+    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+    expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  });
+
+  // Send Otp to Email
+  sendVerificationEmail(retailer.email, otp);
+
+  return apiResponse(res, 200, true, "Otp sent successfully!");
+});
+
+/**
+ * Retailer Forget Password Otp Verify
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const retailerForgetPasswordOtpVerify = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await verifyOtpSchema.validateAsync(req.body);
+
+  const isVerified = req.user.otp === Number(result.otp) && req.user.otpExpiry > new Date();
+  if (!isVerified) return apiResponse(res, 400, false, "Invalid Otp!");
+
+  await Retailer.updateOne({ email: req.user.email }, { otp: null, otpExpiry: null });
+
+  return apiResponse(res, 200, true, "Otp verified successfully!");
+});
+
+/**
+ * Retailer Changed Forget Password
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const retailerChangeForgetPassword = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await retailerChangeForgetPasswordSchema.validateAsync(req.body);
+
+  const hashedPassword = await bcrypt.hash(result.password, 10);
+
+  await Retailer.updateOne({ email: req.user.email }, { password: hashedPassword });
+
+  // Clear Temporary Token
+  res.clearCookie("temp", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "development" ? false : true,
+    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+    expires: new Date(Date.now()),
+  });
+
+  return apiResponse(res, 200, true, "Password changed successfully!");
+});
+
+/**
+ * Retailer Changed Password
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const retailerChangePassword = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await retailerChangePasswordSchema.validateAsync(req.body);
+
+  const retailer = await Retailer.findById(req.user._id);
+
+  const isPasswordValid = await bcrypt.compare(result.oldPassword, retailer.password);
+  if (!isPasswordValid) throw "Old password is incorrect!";
+
+  const isSame = await bcrypt.compare(result.newPassword, retailer.password);
+  if (isSame) throw "New password cannot be same as old password!";
+
+  const hashedPassword = await bcrypt.hash(result.newPassword, 10);
+
+  await Retailer.updateOne({ email: req.user.email }, { password: hashedPassword });
+
+  return apiResponse(res, 200, true, "Password changed successfully!");
 });

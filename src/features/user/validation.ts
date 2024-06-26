@@ -81,3 +81,28 @@ export const locationTokenSchema = Joi.object({
   longitude: updateLongitude,
   latitude: updateLatitude,
 });
+
+export const retailerForgetPasswordSchema = Joi.object({
+  email: requiredEmailField,
+});
+
+export const retailerChangeForgetPasswordSchema = Joi.object({
+  password: weakPasswordField(8),
+  confirmPassword: Joi.any().equal(Joi.ref("password")).required().messages({
+    "any.only": "passwords do not match!",
+    "any.required": "confirmPassword is required!",
+  }),
+});
+
+export const retailerChangePasswordSchema = Joi.object({
+  oldPassword: requiredStringField("oldPassword"),
+  newPassword: Joi.string().required().min(8).messages({
+    "any.required": "newPassword is required!",
+    "string.base": "newPassword must be string!",
+    "string.min": "newPassword must be 8 characters long!",
+  }),
+  confirmPassword: Joi.any().equal(Joi.ref("newPassword")).required().messages({
+    "any.only": "passwords do not match!",
+    "any.required": "confirmPassword is required!",
+  }),
+});
