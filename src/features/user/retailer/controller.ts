@@ -187,6 +187,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
     secure: process.env.NODE_ENV === "development" ? false : true,
     sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
     expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    domain: process.env.DOMAIN,
   });
 
   res.cookie(REFRESH_TOKEN_KEY, refreshToken, {
@@ -194,6 +195,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
     secure: process.env.NODE_ENV === "development" ? false : true,
     sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    domain: process.env.DOMAIN,
   });
 
   // Remove Sensitive Data
