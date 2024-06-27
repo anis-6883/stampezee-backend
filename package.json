@@ -6,9 +6,8 @@
   "scripts": {
     "start": "node ./dist/index.js",
     "dev": "nodemon",
-    "build": "npm run clean && tsc",
-    "format": "prettier --write .",
-    "clean": "rimraf dist/"
+    "build": "tsc",
+    "format": "prettier --write ."
   },
   "author": "Muhammad Anisuzzaman",
   "license": "ISC",
