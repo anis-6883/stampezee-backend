@@ -8,7 +8,6 @@
     "dev": "nodemon",
     "build": "npm run clean && tsc",
     "format": "prettier --write .",
-    "prepare": "husky",
     "clean": "rimraf dist/"
   },
   "author": "Muhammad Anisuzzaman",
