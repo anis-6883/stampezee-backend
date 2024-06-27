@@ -1,7 +1,7 @@
 import { Response } from "express";
-import { IApiRequest } from "types";
 import { ROLE } from "../../configs/constants";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import { IApiRequest } from "../../types";
 import Branch from "../branch/model";
 import Category from "../category/model";
 import Sorting from "../sorting/model";

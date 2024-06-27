@@ -1,13 +1,16 @@
 {
   "compilerOptions": {
-    "target": "ES2015",
+    "target": "es2020",
     "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "baseUrl": "src",
-    "outDir": "dist",
+    "allowJs": false,
+    "declaration": false,
     "sourceMap": true,
-    "noImplicitAny": true,
-    "rootDir": "src"
+    "rootDirs": ["src", "tests"],
+    "outDir": "dist",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "pretty": true,
+    "lib": ["ES2020"]
   },
-  "include": ["src/**/*"]
+  "include": ["./src/**/*"]
 }

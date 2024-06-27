@@ -1,6 +1,6 @@
 import { Response } from "express";
-import { IApiRequest } from "types";
 import { apiResponse, asyncHandler } from "../../../helpers";
+import { IApiRequest } from "../../../types";
 
 /**
  * Get All Collected Stamps

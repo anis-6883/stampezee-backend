@@ -1,9 +1,9 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
-import { IApiRequest } from "types";
 import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, generateSignature } from "../../../helpers";
+import { IApiRequest } from "../../../types";
 import { loginSchema, superAdminRegisterSchema, superAdminRegisterSchema2 } from "../validation";
 import SuperAdmin from "./model";
 

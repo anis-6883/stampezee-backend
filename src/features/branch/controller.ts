@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { IApiRequest } from "types";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import { IApiRequest } from "../../types";
 import Branch from "./model";
 import { branchSchema, branchStatusSchema, updateBranchSchema } from "./validation";
 

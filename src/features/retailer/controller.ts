@@ -1,8 +1,8 @@
 import bcrypt from "bcrypt";
 import { Response } from "express";
-import { IApiRequest } from "types";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, makePaginate } from "../../helpers";
+import { IApiRequest } from "../../types";
 import Retailer from "../user/retailer/model";
 import { retailerSchema, retailerSchemaUpdate, retailerStatusSchema } from "./validation";
 
