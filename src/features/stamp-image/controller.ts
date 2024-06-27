@@ -2,7 +2,6 @@ import { Response } from "express";
 import { ROLE } from "../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
-import { IApiRequest } from "../../types";
 import Sorting from "../sorting/model";
 import StampImage from "./model";
 import { stampImageSchema, stampImageStatusSchema, stampImageUpdateSchema } from "./validation";
@@ -13,7 +12,7 @@ import { stampImageSchema, stampImageStatusSchema, stampImageUpdateSchema } from
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const createStampImage = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const createStampImage = asyncHandler(async (req: any, res: Response) => {
   const result = await stampImageSchema.validateAsync(req.body, {
     abortEarly: false,
   });
@@ -62,7 +61,7 @@ export const createStampImage = asyncHandler(async (req: IApiRequest, res: Respo
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllStampImages = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getAllStampImages = asyncHandler(async (req: any, res: Response) => {
   const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
@@ -111,7 +110,7 @@ export const getAllStampImages = asyncHandler(async (req: IApiRequest, res: Resp
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getSingleStampImage = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getSingleStampImage = asyncHandler(async (req: any, res: Response) => {
   const { id } = req.params;
 
   const stampImage = await StampImage.findOne({ _id: id });
@@ -126,7 +125,7 @@ export const getSingleStampImage = asyncHandler(async (req: IApiRequest, res: Re
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const updateStampImage = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const updateStampImage = asyncHandler(async (req: any, res: Response) => {
   const result = await stampImageUpdateSchema.validateAsync(req.body, {
     abortEarly: false,
   });
@@ -168,7 +167,7 @@ export const updateStampImage = asyncHandler(async (req: IApiRequest, res: Respo
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const updateStampImageStatus = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const updateStampImageStatus = asyncHandler(async (req: any, res: Response) => {
   const result = await stampImageStatusSchema.validateAsync(req.body, {
     abortEarly: false,
   });
@@ -196,7 +195,7 @@ export const updateStampImageStatus = asyncHandler(async (req: IApiRequest, res:
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const softDeleteStampImage = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const softDeleteStampImage = asyncHandler(async (req: any, res: Response) => {
   const { id } = req.params;
   let stampImage = null;
 
@@ -233,7 +232,7 @@ export const softDeleteStampImage = asyncHandler(async (req: IApiRequest, res: R
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllDeletedStampImages = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getAllDeletedStampImages = asyncHandler(async (req: any, res: Response) => {
   const { page = 1, limit = 10 } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
@@ -269,7 +268,7 @@ export const getAllDeletedStampImages = asyncHandler(async (req: IApiRequest, re
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const confirmDeleteStampImage = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const confirmDeleteStampImage = asyncHandler(async (req: any, res: Response) => {
   const { id } = req.params;
 
   // Delete Existing Image if have

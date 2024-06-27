@@ -1,7 +1,6 @@
 import { Response } from "express";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
-import { IApiRequest } from "../../types";
 import Sorting from "../sorting/model";
 import Category from "./model";
 import { categorySchema, categoryStatusSchema, updateCategorySchema } from "./validation";
@@ -12,7 +11,7 @@ import { categorySchema, categoryStatusSchema, updateCategorySchema } from "./va
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const createCategory = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const createCategory = asyncHandler(async (req: any, res: Response) => {
   const result = await categorySchema.validateAsync(req.body, {
     abortEarly: false,
   });
@@ -58,7 +57,7 @@ export const createCategory = asyncHandler(async (req: IApiRequest, res: Respons
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllCategories = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getAllCategories = asyncHandler(async (req: any, res: Response) => {
   const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
@@ -91,7 +90,7 @@ export const getAllCategories = asyncHandler(async (req: IApiRequest, res: Respo
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getSingleCategory = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getSingleCategory = asyncHandler(async (req: any, res: Response) => {
   const { id } = req.params;
 
   const category = await Category.findOne({ _id: id });
@@ -106,7 +105,7 @@ export const getSingleCategory = asyncHandler(async (req: IApiRequest, res: Resp
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const updateCategory = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const updateCategory = asyncHandler(async (req: any, res: Response) => {
   const result = await updateCategorySchema.validateAsync(req.body, {
     abortEarly: false,
   });
@@ -150,7 +149,7 @@ export const updateCategory = asyncHandler(async (req: IApiRequest, res: Respons
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const updateCategoryStatus = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const updateCategoryStatus = asyncHandler(async (req: any, res: Response) => {
   const result = await categoryStatusSchema.validateAsync(req.body, {
     abortEarly: false,
   });
@@ -179,7 +178,7 @@ export const updateCategoryStatus = asyncHandler(async (req: IApiRequest, res: R
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const softDeleteCategory = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const softDeleteCategory = asyncHandler(async (req: any, res: Response) => {
   const { id } = req.params;
 
   const category = await Category.findOneAndUpdate(
@@ -202,7 +201,7 @@ export const softDeleteCategory = asyncHandler(async (req: IApiRequest, res: Res
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllDeletedCategories = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getAllDeletedCategories = asyncHandler(async (req: any, res: Response) => {
   const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
@@ -229,7 +228,7 @@ export const getAllDeletedCategories = asyncHandler(async (req: IApiRequest, res
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const confirmDeleteCategory = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const confirmDeleteCategory = asyncHandler(async (req: any, res: Response) => {
   const { id } = req.params;
 
   // Delete Existing Image if have

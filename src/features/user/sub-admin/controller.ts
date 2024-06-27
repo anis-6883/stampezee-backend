@@ -2,7 +2,6 @@ import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
 import { apiResponse, asyncHandler, exclude, generateSignature } from "../../../helpers";
-import { IApiRequest } from "../../../types";
 import { loginSchema } from "../validation";
 import SubAdmin from "./model";
 
@@ -50,7 +49,7 @@ export const subAdminLogin = asyncHandler(async (req: Request, res: Response) =>
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const subAdminProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const subAdminProfile = asyncHandler(async (req: any, res: Response) => {
   if ("user" in req) {
     if (!req.user) return apiResponse(res, 401, false, "Unauthorized Request!");
 

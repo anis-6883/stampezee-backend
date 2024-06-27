@@ -3,7 +3,6 @@ import { Request, Response } from "express";
 import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, generateSignature, getRandomInteger } from "../../../helpers";
-import { IApiRequest } from "../../../types";
 import { EnrollSubscription } from "../../enroll-subscription/model";
 import { retailerSchemaUpdate } from "../../retailer/validation";
 import { sendVerificationEmail } from "../service";
@@ -70,7 +69,7 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const retailerOtpVerify = asyncHandler(async (req: any, res: Response) => {
   const result = await verifyOtpSchema.validateAsync(req.body);
 
   const isVerified = req.user.otp === Number(result.otp) && req.user.otpExpiry > new Date();
@@ -126,7 +125,7 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const retailerResendOtp = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const retailerResendOtp = asyncHandler(async (req: any, res: Response) => {
   const otp = getRandomInteger(100000, 999999);
   const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
 
@@ -233,7 +232,7 @@ export const retailerLogout = asyncHandler(async (_req: Request, res: Response) 
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const retailerProfile = asyncHandler(async (req: any, res: Response) => {
   // Remove Sensitive Data
   const data = exclude(req.user, ["password", "otp", "otpExpiry"]);
 
@@ -246,7 +245,7 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const updateRetailerProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const updateRetailerProfile = asyncHandler(async (req: any, res: Response) => {
   const result = await retailerSchemaUpdate.validateAsync(req.body, { abortEarly: false });
   const { softDeleted, password, ...updatedBody } = result;
 
@@ -299,7 +298,7 @@ export const updateRetailerProfile = asyncHandler(async (req: IApiRequest, res: 
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const retailerForgetPassword = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const retailerForgetPassword = asyncHandler(async (req: any, res: Response) => {
   const result = await retailerForgetPasswordSchema.validateAsync(req.body, { abortEarly: false });
 
   const retailer = await Retailer.findOne({ email: result.email, status: true, softDeleted: false, isVerified: true });
@@ -334,7 +333,7 @@ export const retailerForgetPassword = asyncHandler(async (req: IApiRequest, res:
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const retailerForgetPasswordOtpVerify = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const retailerForgetPasswordOtpVerify = asyncHandler(async (req: any, res: Response) => {
   const result = await verifyOtpSchema.validateAsync(req.body);
 
   const isVerified = req.user.otp === Number(result.otp) && req.user.otpExpiry > new Date();
@@ -351,7 +350,7 @@ export const retailerForgetPasswordOtpVerify = asyncHandler(async (req: IApiRequ
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const retailerChangeForgetPassword = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const retailerChangeForgetPassword = asyncHandler(async (req: any, res: Response) => {
   const result = await retailerChangeForgetPasswordSchema.validateAsync(req.body);
 
   const hashedPassword = await bcrypt.hash(result.password, 10);
@@ -375,7 +374,7 @@ export const retailerChangeForgetPassword = asyncHandler(async (req: IApiRequest
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const retailerChangePassword = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const retailerChangePassword = asyncHandler(async (req: any, res: Response) => {
   const result = await retailerChangePasswordSchema.validateAsync(req.body);
 
   const retailer = await Retailer.findById(req.user._id);

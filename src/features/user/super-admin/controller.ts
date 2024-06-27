@@ -3,7 +3,6 @@ import { Request, Response } from "express";
 import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, generateSignature } from "../../../helpers";
-import { IApiRequest } from "../../../types";
 import { loginSchema, superAdminRegisterSchema, superAdminRegisterSchema2 } from "../validation";
 import SuperAdmin from "./model";
 
@@ -97,7 +96,7 @@ export const superAdminLogout = asyncHandler(async (_req: Request, res: Response
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const superAdminProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const superAdminProfile = asyncHandler(async (req: any, res: Response) => {
   if (!req.user) return apiResponse(res, 401, false, "Unauthorized Request!");
 
   // Remove Sensitive Data
@@ -112,7 +111,7 @@ export const superAdminProfile = asyncHandler(async (req: IApiRequest, res: Resp
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const updateSuperAdminProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const updateSuperAdminProfile = asyncHandler(async (req: any, res: Response) => {
   const result = await superAdminRegisterSchema2.validateAsync(req.body, { abortEarly: false });
   const { softDeleted, ...updatedBody } = result;
 

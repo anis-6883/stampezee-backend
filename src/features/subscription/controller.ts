@@ -1,7 +1,6 @@
 import { Response } from "express";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
-import { IApiRequest } from "../../types";
 import Subscription from "./model";
 import { subscriptionSchema, subscriptionStatusSchema, updateSubscriptionSchema } from "./validation";
 
@@ -11,7 +10,7 @@ import { subscriptionSchema, subscriptionStatusSchema, updateSubscriptionSchema 
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const createSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const createSubscription = asyncHandler(async (req: any, res: Response) => {
   const result = await subscriptionSchema.validateAsync(req.body, {
     abortEarly: false,
   });
@@ -53,7 +52,7 @@ export const createSubscription = asyncHandler(async (req: IApiRequest, res: Res
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllSubscriptions = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getAllSubscriptions = asyncHandler(async (req: any, res: Response) => {
   const { page = 1, limit = 10 } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
@@ -73,7 +72,7 @@ export const getAllSubscriptions = asyncHandler(async (req: IApiRequest, res: Re
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getSingleSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getSingleSubscription = asyncHandler(async (req: any, res: Response) => {
   const { id } = req.params;
 
   const subscription = await Subscription.findOne({ _id: id });
@@ -88,7 +87,7 @@ export const getSingleSubscription = asyncHandler(async (req: IApiRequest, res: 
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const updateSubscription = asyncHandler(async (req: any, res: Response) => {
   const result = await updateSubscriptionSchema.validateAsync(req.body, {
     abortEarly: false,
   });
@@ -129,7 +128,7 @@ export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Res
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const updateSubscriptionStatus = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const updateSubscriptionStatus = asyncHandler(async (req: any, res: Response) => {
   const result = await subscriptionStatusSchema.validateAsync(req.body, {
     abortEarly: false,
   });
@@ -157,7 +156,7 @@ export const updateSubscriptionStatus = asyncHandler(async (req: IApiRequest, re
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const softDeleteSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const softDeleteSubscription = asyncHandler(async (req: any, res: Response) => {
   const { id } = req.params;
 
   const subscription = await Subscription.findOneAndUpdate(
@@ -178,7 +177,7 @@ export const softDeleteSubscription = asyncHandler(async (req: IApiRequest, res:
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllDeletedSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getAllDeletedSubscription = asyncHandler(async (req: any, res: Response) => {
   const { page = 1, limit = 10 } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
@@ -198,7 +197,7 @@ export const getAllDeletedSubscription = asyncHandler(async (req: IApiRequest, r
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const confirmDeleteSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const confirmDeleteSubscription = asyncHandler(async (req: any, res: Response) => {
   const { id } = req.params;
 
   // Delete Existing Image if have

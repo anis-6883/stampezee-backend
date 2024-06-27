@@ -3,7 +3,7 @@ import moment from "moment";
 import Stripe from "stripe";
 import { PACKAGES } from "../../configs/constants";
 import { apiResponse, asyncHandler, checkCombination, checkDuplicates } from "../../helpers";
-import { IApiRequest, IEnrollPayment, ILineItem } from "../../types";
+import { IEnrollPayment, ILineItem } from "../../types";
 import Subscription from "../subscription/model";
 import Retailer from "../user/retailer/model";
 import { EnrollPayment, EnrollSubscription } from "./model";
@@ -17,7 +17,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllPlans = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getAllPlans = asyncHandler(async (req: any, res: Response) => {
   const subscriptions = await Subscription.find(
     { softDeleted: false },
     { softDeleted: 0, createdAt: 0, updatedAt: 0 }
@@ -32,7 +32,7 @@ export const getAllPlans = asyncHandler(async (req: IApiRequest, res: Response) 
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const enrollSubscription = asyncHandler(async (req: any, res: Response) => {
   const result = await enrollSubscriptionSchema.validateAsync(req.body, {
     abortEarly: false,
   });
@@ -119,7 +119,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const successEnrollSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const successEnrollSubscription = asyncHandler(async (req: any, res: Response) => {
   if (req.query.stripe_success_token === process.env.STRIPE_SUCCESS_TOKEN && req?.query?.session_id) {
     const payment: IEnrollPayment = await stripe.checkout.sessions.retrieve(String(req.query.session_id), {
       expand: ["payment_intent.payment_method"],

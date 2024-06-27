@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { COOKIE_KEY, REFRESH_TOKEN_KEY } from "../../configs/constants";
 import { apiResponse, asyncHandler, exclude, generateSignature } from "../../helpers";
-import { IApiRequest } from "../../types";
 
 /**
  * Verify Access Token
@@ -9,7 +8,7 @@ import { IApiRequest } from "../../types";
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const verifyToken = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const verifyToken = asyncHandler(async (req: any, res: Response) => {
   if (!req.role) {
     return apiResponse(res, 401, false, "Unauthorized Request!");
   }
@@ -22,7 +21,7 @@ export const verifyToken = asyncHandler(async (req: IApiRequest, res: Response) 
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const refreshAccessToken = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const refreshAccessToken = asyncHandler(async (req: any, res: Response) => {
   const accessToken = generateSignature({ email: req.user.email, role: req.role }, "1d");
 
   res.cookie(COOKIE_KEY, accessToken, {
@@ -41,7 +40,7 @@ export const refreshAccessToken = asyncHandler(async (req: IApiRequest, res: Res
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getUserProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getUserProfile = asyncHandler(async (req: any, res: Response) => {
   // Remove Sensitive Data
   const data = exclude(req.user, ["password", "createdAt", "updatedAt"]);
 

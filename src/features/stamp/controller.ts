@@ -1,7 +1,6 @@
 import { Response } from "express";
 import { ROLE } from "../../configs/constants";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
-import { IApiRequest } from "../../types";
 import Branch from "../branch/model";
 import Category from "../category/model";
 import Sorting from "../sorting/model";
@@ -15,7 +14,7 @@ import { stampSchema, updateStampSchema } from "./validation";
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const createStamp = asyncHandler(async (req: any, res: Response) => {
   const result = await stampSchema.validateAsync(req.body, {
     abortEarly: false,
   });
@@ -48,7 +47,7 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllStamps = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getAllStamps = asyncHandler(async (req: any, res: Response) => {
   const { page = 1, limit = 10 } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
@@ -155,7 +154,7 @@ export const getAllStamps = asyncHandler(async (req: IApiRequest, res: Response)
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getSingleStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getSingleStamp = asyncHandler(async (req: any, res: Response) => {
   const { id } = req.params;
 
   const stamp = await Stamp.findOne({ _id: id });
@@ -170,7 +169,7 @@ export const getSingleStamp = asyncHandler(async (req: IApiRequest, res: Respons
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getBranchCategoryImageList = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getBranchCategoryImageList = asyncHandler(async (req: any, res: Response) => {
   const [categories, branches, defaultImages, customImages] = await Promise.all([
     Category.find({ softDeleted: false, status: true }, { name: 1, image: 1 }).sort({
       createdAt: "desc",
@@ -208,7 +207,7 @@ export const getBranchCategoryImageList = asyncHandler(async (req: IApiRequest, 
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const updateStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const updateStamp = asyncHandler(async (req: any, res: Response) => {
   const result = await updateStampSchema.validateAsync(req.body, {
     abortEarly: false,
     allowUnknown: true,
@@ -250,7 +249,7 @@ export const updateStamp = asyncHandler(async (req: IApiRequest, res: Response) 
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const softDeleteStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const softDeleteStamp = asyncHandler(async (req: any, res: Response) => {
   const { id } = req.params;
 
   const stamp = await Stamp.findOneAndUpdate(
@@ -271,7 +270,7 @@ export const softDeleteStamp = asyncHandler(async (req: IApiRequest, res: Respon
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllDeletedStamps = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getAllDeletedStamps = asyncHandler(async (req: any, res: Response) => {
   const { page = 1, limit = 10 } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
@@ -294,7 +293,7 @@ export const getAllDeletedStamps = asyncHandler(async (req: IApiRequest, res: Re
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const confirmDeleteStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const confirmDeleteStamp = asyncHandler(async (req: any, res: Response) => {
   const { id } = req.params;
 
   const stamp = await Stamp.findOneAndDelete({ _id: id });

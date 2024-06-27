@@ -7,11 +7,10 @@ import Retailer from "../features/user/retailer/model";
 import SubAdmin from "../features/user/sub-admin/model";
 import SuperAdmin from "../features/user/super-admin/model";
 import { apiResponse } from "../helpers";
-import { IApiRequest } from "../types";
 
 export const authAndPermissionCheck =
   (role: string, checkPermission: boolean = true, findUser: boolean = true) =>
-  async (req: IApiRequest, res: Response, next: NextFunction): Promise<any> => {
+  async (req: any, res: Response, next: NextFunction): Promise<any> => {
     try {
       const token =
         req?.cookies?.temp || req.headers?.authorization?.replace("Bearer ", "") || req?.cookies?.[COOKIE_KEY];
