@@ -156,7 +156,7 @@ export const flattenObject = (obj: any, parentKey: string = "", result: any = {}
 };
 
 export const fileValidation = (
-  file: Express.Multer.File,
+  file: any,
   size: number = 1024 * 1024,
   types: string[] = ["image/jpeg", "image/png", "image/jpg"]
 ) => {
