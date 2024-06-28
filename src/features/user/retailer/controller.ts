@@ -184,14 +184,14 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
 
   res.cookie(COOKIE_KEY, accessToken, {
     httpOnly: true,
-    // secure: process.env.NODE_ENV === "development" ? false : true,
+    secure: true,
     sameSite: "none",
     expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
   });
 
   res.cookie(REFRESH_TOKEN_KEY, refreshToken, {
     httpOnly: true,
-    // secure: process.env.NODE_ENV === "development" ? false : true,
+    secure: true,
     sameSite: "none",
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   });
