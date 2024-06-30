@@ -9,7 +9,7 @@ import {
   generateSignature,
   getRandomInteger,
 } from "../../../helpers";
-import { IUser } from "../../../types";
+import { IApiRequest, IUser } from "../../../types";
 import { sendVerificationEmail } from "../service";
 import { customerRegisterSchema, locationTokenSchema, loginSchema, verifyOtpSchema } from "../validation";
 import Customer from "./model";
@@ -58,7 +58,7 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const customerOtpVerify = asyncHandler(async (req: any, res: Response) => {
+export const customerOtpVerify = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = verifyOtpSchema.validate(req.body);
   if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
 
@@ -85,7 +85,7 @@ export const customerOtpVerify = asyncHandler(async (req: any, res: Response) =>
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const customerResendOtp = asyncHandler(async (req: any, res: Response) => {
+export const customerResendOtp = asyncHandler(async (req: IApiRequest, res: Response) => {
   const otp = getRandomInteger(100000, 999999);
   const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
 
@@ -147,7 +147,7 @@ export const customerLogin = asyncHandler(async (req: Request, res: Response) =>
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const customerProfile = asyncHandler(async (req: any, res: Response) => {
+export const customerProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
   if (!req.user) return apiResponse(res, 401, false, "Unauthorized Request!");
 
   // Remove Sensitive Data
@@ -170,7 +170,7 @@ export const customerProfile = asyncHandler(async (req: any, res: Response) => {
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const updateLocationDeviceToken = asyncHandler(async (req: any, res: Response) => {
+export const updateLocationDeviceToken = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result: any = locationTokenSchema.validate(req.body);
   if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
 

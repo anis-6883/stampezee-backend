@@ -1,20 +1,13 @@
 {
   "compilerOptions": {
-    "target": "es2020",
-    "module": "commonjs",
-    "allowJs": true,
-    "declaration": false,
-    "sourceMap": true,
-    "rootDirs": ["src", "tests"],
+    "target": "ES2015",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "baseUrl": "src",
     "outDir": "dist",
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    // "strict": true,
-    // "noUnusedParameters": true,
-    "skipLibCheck": true,
-    "pretty": true,
-    "lib": ["ES2020"]
+    "sourceMap": true,
+    "noImplicitAny": true,
+    "rootDir": "src"
   },
-  "include": ["./src/**/*"]
+  "include": ["src/**/*"]
 }

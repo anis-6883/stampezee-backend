@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import { Response } from "express";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, makePaginate } from "../../helpers";
+import { IApiRequest } from "../../types";
 import Branch from "../branch/model";
 import SubAdmin from "../user/sub-admin/model";
 import { subAdminSchema, subAdminSchema2, subAdminStatusSchema } from "./validation";
@@ -12,7 +13,7 @@ import { subAdminSchema, subAdminSchema2, subAdminStatusSchema } from "./validat
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const createSubAdmin = asyncHandler(async (req: any, res: Response) => {
+export const createSubAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await subAdminSchema.validateAsync(req.body);
 
   const { softDeleted, retailerId, password, ...createBody } = result;
@@ -56,7 +57,7 @@ export const createSubAdmin = asyncHandler(async (req: any, res: Response) => {
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllSubAdmins = asyncHandler(async (req: any, res: Response) => {
+export const getAllSubAdmins = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
@@ -123,7 +124,7 @@ export const getAllSubAdmins = asyncHandler(async (req: any, res: Response) => {
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getBranches = asyncHandler(async (req: any, res: Response) => {
+export const getBranches = asyncHandler(async (req: IApiRequest, res: Response) => {
   const branches = await Branch.find({ retailerId: req.user._id, softDeleted: { $eq: false } }, { name: 1 }).sort({
     createdAt: "desc",
   });
@@ -136,7 +137,7 @@ export const getBranches = asyncHandler(async (req: any, res: Response) => {
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getSingleSubAdmin = asyncHandler(async (req: any, res: Response) => {
+export const getSingleSubAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
   const subAdmin = await SubAdmin.findOne({ _id: id }, { password: 0 });
@@ -151,7 +152,7 @@ export const getSingleSubAdmin = asyncHandler(async (req: any, res: Response) =>
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const updateSubAdmin = asyncHandler(async (req: any, res: Response) => {
+export const updateSubAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await subAdminSchema2.validateAsync(req.body, { abortEarly: false });
 
   const { id } = req.params;
@@ -194,7 +195,7 @@ export const updateSubAdmin = asyncHandler(async (req: any, res: Response) => {
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const updateSubAdminStatus = asyncHandler(async (req: any, res: Response) => {
+export const updateSubAdminStatus = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await subAdminStatusSchema.validateAsync(req.body, {
     abortEarly: false,
   });
@@ -222,7 +223,7 @@ export const updateSubAdminStatus = asyncHandler(async (req: any, res: Response)
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const softDeleteSubAdmin = asyncHandler(async (req: any, res: Response) => {
+export const softDeleteSubAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
   const subAdmin = await SubAdmin.findById(id);
@@ -242,7 +243,7 @@ export const softDeleteSubAdmin = asyncHandler(async (req: any, res: Response) =
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllDeletedSubAdmins = asyncHandler(async (req: any, res: Response) => {
+export const getAllDeletedSubAdmins = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { page = 1, limit = 10 } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
@@ -265,7 +266,7 @@ export const getAllDeletedSubAdmins = asyncHandler(async (req: any, res: Respons
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const confirmDeleteSubAdmin = asyncHandler(async (req: any, res: Response) => {
+export const confirmDeleteSubAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
   // Delete Existing Image if have

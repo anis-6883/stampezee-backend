@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import { IApiRequest } from "../../types";
 import Branch from "./model";
 import { branchSchema, branchStatusSchema, updateBranchSchema } from "./validation";
 
@@ -9,7 +10,7 @@ import { branchSchema, branchStatusSchema, updateBranchSchema } from "./validati
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const createBranch = asyncHandler(async (req: any, res: Response) => {
+export const createBranch = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await branchSchema.validateAsync(req.body);
 
   const { name, address, longitude, latitude } = result;
@@ -32,7 +33,7 @@ export const createBranch = asyncHandler(async (req: any, res: Response) => {
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllBranches = asyncHandler(async (req: any, res: Response) => {
+export const getAllBranches = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
@@ -58,7 +59,7 @@ export const getAllBranches = asyncHandler(async (req: any, res: Response) => {
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getSingleBranch = asyncHandler(async (req: any, res: Response) => {
+export const getSingleBranch = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
   const branch = await Branch.findOne({ _id: id });
@@ -73,7 +74,7 @@ export const getSingleBranch = asyncHandler(async (req: any, res: Response) => {
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const updateBranch = asyncHandler(async (req: any, res: Response) => {
+export const updateBranch = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await updateBranchSchema.validateAsync(req.body, {
     abortEarly: false,
   });
@@ -108,7 +109,7 @@ export const updateBranch = asyncHandler(async (req: any, res: Response) => {
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const updateBranchStatus = asyncHandler(async (req: any, res: Response) => {
+export const updateBranchStatus = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await branchStatusSchema.validateAsync(req.body, {
     abortEarly: false,
   });
@@ -136,7 +137,7 @@ export const updateBranchStatus = asyncHandler(async (req: any, res: Response) =
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const softDeleteBranch = asyncHandler(async (req: any, res: Response) => {
+export const softDeleteBranch = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
   const branch = await Branch.findOneAndUpdate({ _id: id }, { $set: { softDeleted: true } });
@@ -151,7 +152,7 @@ export const softDeleteBranch = asyncHandler(async (req: any, res: Response) => 
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllDeletedBranches = asyncHandler(async (req: any, res: Response) => {
+export const getAllDeletedBranches = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
@@ -177,7 +178,7 @@ export const getAllDeletedBranches = asyncHandler(async (req: any, res: Response
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const confirmDeleteBranch = asyncHandler(async (req: any, res: Response) => {
+export const confirmDeleteBranch = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
   const branch = await Branch.findOneAndDelete({ _id: id });

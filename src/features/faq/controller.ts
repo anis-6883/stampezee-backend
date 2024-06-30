@@ -1,5 +1,6 @@
 import { Response } from "express";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import { IApiRequest } from "../../types";
 import Sorting from "../sorting/model";
 import Faq from "./model";
 import { faqSchema, faqStatusSchema, updateFaqSchema } from "./validation";
@@ -10,7 +11,7 @@ import { faqSchema, faqStatusSchema, updateFaqSchema } from "./validation";
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const createFaq = asyncHandler(async (req: any, res: Response) => {
+export const createFaq = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await faqSchema.validateAsync(req.body, {
     abortEarly: false,
   });
@@ -34,7 +35,7 @@ export const createFaq = asyncHandler(async (req: any, res: Response) => {
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllFaqs = asyncHandler(async (req: any, res: Response) => {
+export const getAllFaqs = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
@@ -67,7 +68,7 @@ export const getAllFaqs = asyncHandler(async (req: any, res: Response) => {
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllFaqsForWeb = asyncHandler(async (req: any, res: Response) => {
+export const getAllFaqsForWeb = asyncHandler(async (req: IApiRequest, res: Response) => {
   const docs = await Faq.find({ softDeleted: false, status: true }, { title: 1, description: 1 });
 
   const sorting = await Sorting.findOne({ title: "faq" });
@@ -85,7 +86,7 @@ export const getAllFaqsForWeb = asyncHandler(async (req: any, res: Response) => 
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getSingleFaq = asyncHandler(async (req: any, res: Response) => {
+export const getSingleFaq = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
   const faq = await Faq.findOne({ _id: id });
@@ -100,7 +101,7 @@ export const getSingleFaq = asyncHandler(async (req: any, res: Response) => {
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const updateFaq = asyncHandler(async (req: any, res: Response) => {
+export const updateFaq = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await updateFaqSchema.validateAsync(req.body, {
     abortEarly: false,
   });
@@ -122,7 +123,7 @@ export const updateFaq = asyncHandler(async (req: any, res: Response) => {
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const updateFaqStatus = asyncHandler(async (req: any, res: Response) => {
+export const updateFaqStatus = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await faqStatusSchema.validateAsync(req.body, {
     abortEarly: false,
   });
@@ -151,7 +152,7 @@ export const updateFaqStatus = asyncHandler(async (req: any, res: Response) => {
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const softDeleteFaq = asyncHandler(async (req: any, res: Response) => {
+export const softDeleteFaq = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
   const faq = await Faq.findOneAndUpdate(
@@ -174,7 +175,7 @@ export const softDeleteFaq = asyncHandler(async (req: any, res: Response) => {
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllDeletedFaqs = asyncHandler(async (req: any, res: Response) => {
+export const getAllDeletedFaqs = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
@@ -201,7 +202,7 @@ export const getAllDeletedFaqs = asyncHandler(async (req: any, res: Response) =>
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const confirmDeleteFaq = asyncHandler(async (req: any, res: Response) => {
+export const confirmDeleteFaq = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
   const faq = await Faq.findOneAndDelete({ _id: id });

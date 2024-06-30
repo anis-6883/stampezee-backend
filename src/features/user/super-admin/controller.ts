@@ -3,8 +3,11 @@ import { Request, Response } from "express";
 import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, generateSignature } from "../../../helpers";
+import { IApiRequest } from "../../../types";
 import { loginSchema, superAdminRegisterSchema, superAdminRegisterSchema2 } from "../validation";
 import SuperAdmin from "./model";
+
+const ALARM_EXPIRE_TIME = 60 * 60 * 24 * 29 * 1000; // 29 Days
 
 /**
  * Super Admin Registration
@@ -43,27 +46,33 @@ export const superAdminLogin = asyncHandler(async (req: Request, res: Response) 
   const isPasswordValid = await bcrypt.compare(result.password, superAdmin.password);
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
-  const accessToken = generateSignature({ email: superAdmin.email, role: ROLE.SUPER_ADMIN }, "1d");
-  const refreshToken = generateSignature({ email: superAdmin.email, role: ROLE.SUPER_ADMIN }, "7d");
+  const accessToken = generateSignature({ email: superAdmin.email, role: ROLE.SUPER_ADMIN }, "30d");
+  const refreshToken = generateSignature({ email: superAdmin.email, role: ROLE.SUPER_ADMIN }, "60d");
 
-  res.cookie(COOKIE_KEY, accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
-    expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
-  });
+  // res.cookie(COOKIE_KEY, accessToken, {
+  //   httpOnly: true,
+  //   secure: process.env.NODE_ENV === "development" ? false : true,
+  //   sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+  //   expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  // });
 
-  res.cookie(REFRESH_TOKEN_KEY, refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
-    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-  });
+  // res.cookie(REFRESH_TOKEN_KEY, refreshToken, {
+  //   httpOnly: true,
+  //   secure: process.env.NODE_ENV === "development" ? false : true,
+  //   sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+  //   expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  // });
 
   // Remove Sensitive Data
   const data = exclude(superAdmin._doc, ["password", "createdAt", "updatedAt"]);
 
-  return apiResponse(res, 200, true, "Super Admin Login Successfully!", { ...data, role: ROLE.SUPER_ADMIN });
+  return apiResponse(res, 200, true, "Super Admin Login Successfully!", {
+    ...data,
+    accessToken,
+    refreshToken,
+    expiresIn: new Date().setTime(new Date().getTime() + ALARM_EXPIRE_TIME),
+    role: ROLE.SUPER_ADMIN,
+  });
 });
 
 /**
@@ -96,7 +105,7 @@ export const superAdminLogout = asyncHandler(async (_req: Request, res: Response
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const superAdminProfile = asyncHandler(async (req: any, res: Response) => {
+export const superAdminProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
   if (!req.user) return apiResponse(res, 401, false, "Unauthorized Request!");
 
   // Remove Sensitive Data
@@ -111,7 +120,7 @@ export const superAdminProfile = asyncHandler(async (req: any, res: Response) =>
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const updateSuperAdminProfile = asyncHandler(async (req: any, res: Response) => {
+export const updateSuperAdminProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await superAdminRegisterSchema2.validateAsync(req.body, { abortEarly: false });
   const { softDeleted, ...updatedBody } = result;
 

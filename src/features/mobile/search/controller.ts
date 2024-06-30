@@ -1,6 +1,7 @@
 import { Response } from "express";
 import mongoose from "mongoose";
 import { apiResponse, asyncHandler, makePaginate } from "../../../helpers";
+import { IApiRequest } from "../../../types";
 import Branch from "../../branch/model";
 import Category from "../../category/model";
 import Sorting from "../../sorting/model";
@@ -15,7 +16,7 @@ import { collectStampSchema } from "./validation";
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllCategories = asyncHandler(async (req: any, res: Response) => {
+export const getAllCategories = asyncHandler(async (req: IApiRequest, res: Response) => {
   const docs = await Category.find({ softDeleted: false, status: true }, { name: 1, image: 1 });
 
   const sorting = await Sorting.findOne({ title: "category" });
@@ -33,7 +34,7 @@ export const getAllCategories = asyncHandler(async (req: any, res: Response) => 
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllStampsByLocation = asyncHandler(async (req: any, res: Response) => {
+export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { page = 1, limit = 10, search, categoryId }: any = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
   const long = req.user.address.loc.coordinates[0];
@@ -147,7 +148,7 @@ export const getAllStampsByLocation = asyncHandler(async (req: any, res: Respons
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const collectStamp = asyncHandler(async (req: any, res: Response) => {
+export const collectStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await collectStampSchema.validateAsync(req.body, {
     abortEarly: false,
   });

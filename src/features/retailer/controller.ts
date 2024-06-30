@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import { Response } from "express";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, makePaginate } from "../../helpers";
+import { IApiRequest } from "../../types";
 import Retailer from "../user/retailer/model";
 import { retailerSchema, retailerSchemaUpdate, retailerStatusSchema } from "./validation";
 
@@ -11,7 +12,7 @@ import { retailerSchema, retailerSchemaUpdate, retailerStatusSchema } from "./va
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const createRetailer = asyncHandler(async (req: any, res: Response) => {
+export const createRetailer = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await retailerSchema.validateAsync(req.body, {
     abortEarly: false,
   });
@@ -54,7 +55,7 @@ export const createRetailer = asyncHandler(async (req: any, res: Response) => {
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllRetailers = asyncHandler(async (req: any, res: Response) => {
+export const getAllRetailers = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
@@ -82,7 +83,7 @@ export const getAllRetailers = asyncHandler(async (req: any, res: Response) => {
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getSingleRetailer = asyncHandler(async (req: any, res: Response) => {
+export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
   const retailer = await Retailer.findOne({ _id: id }, { password: 0 });
@@ -97,7 +98,7 @@ export const getSingleRetailer = asyncHandler(async (req: any, res: Response) =>
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const updateRetailer = asyncHandler(async (req: any, res: Response) => {
+export const updateRetailer = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await retailerSchemaUpdate.validateAsync(req.body, { abortEarly: false });
 
   const { id } = req.params;
@@ -135,7 +136,7 @@ export const updateRetailer = asyncHandler(async (req: any, res: Response) => {
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const updateRetailerStatus = asyncHandler(async (req: any, res: Response) => {
+export const updateRetailerStatus = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await retailerStatusSchema.validateAsync(req.body, {
     abortEarly: false,
   });
@@ -163,7 +164,7 @@ export const updateRetailerStatus = asyncHandler(async (req: any, res: Response)
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const softDeleteRetailer = asyncHandler(async (req: any, res: Response) => {
+export const softDeleteRetailer = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
   const retailer = await Retailer.findOneAndUpdate(
@@ -184,7 +185,7 @@ export const softDeleteRetailer = asyncHandler(async (req: any, res: Response) =
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllDeletedRetailers = asyncHandler(async (req: any, res: Response) => {
+export const getAllDeletedRetailers = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
@@ -212,7 +213,7 @@ export const getAllDeletedRetailers = asyncHandler(async (req: any, res: Respons
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const confirmDeleteRetailer = asyncHandler(async (req: any, res: Response) => {
+export const confirmDeleteRetailer = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
   // Delete Existing Image if have

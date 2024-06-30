@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, generateSignature, getRandomInteger } from "../../../helpers";
+import { IApiRequest } from "../../../types";
 import { EnrollSubscription } from "../../enroll-subscription/model";
 import { retailerSchemaUpdate } from "../../retailer/validation";
 import { sendVerificationEmail } from "../service";
@@ -15,6 +16,8 @@ import {
   verifyOtpSchema,
 } from "../validation";
 import Retailer from "./model";
+
+const ALARM_EXPIRE_TIME = 60 * 60 * 24 * 29 * 1000; // 29 Days
 
 /**
  * Retailer Registration & Send Otp
@@ -51,16 +54,11 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
 
   const tempToken = generateSignature({ email: retailerBody.email, role: ROLE.RETAILER }, "15m"); // 15 min
 
-  res.cookie("temp", tempToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
-    expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
-  });
-
   sendVerificationEmail(retailerBody.email, retailerBody.otp);
 
-  return apiResponse(res, 201, true, "Otp send successfully!");
+  return apiResponse(res, 201, true, "Otp send successfully!", {
+    temp: tempToken,
+  });
 });
 
 /**
@@ -69,7 +67,7 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const retailerOtpVerify = asyncHandler(async (req: any, res: Response) => {
+export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await verifyOtpSchema.validateAsync(req.body);
 
   const isVerified = req.user.otp === Number(result.otp) && req.user.otpExpiry > new Date();
@@ -80,30 +78,8 @@ export const retailerOtpVerify = asyncHandler(async (req: any, res: Response) =>
     { isVerified: true, verifiedAt: new Date(), otp: null, otpExpiry: null }
   );
 
-  const accessToken = generateSignature({ email: req.user.email, role: ROLE.RETAILER }, "1d");
-  const refreshToken = generateSignature({ email: req.user.email, role: ROLE.RETAILER }, "7d");
-
-  res.cookie(COOKIE_KEY, accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
-    expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
-  });
-
-  res.cookie(REFRESH_TOKEN_KEY, refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
-    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-  });
-
-  // Clear Temporary Token
-  res.clearCookie("temp", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
-    expires: new Date(Date.now()),
-  });
+  const accessToken = generateSignature({ email: req.user.email, role: ROLE.RETAILER }, "30d");
+  const refreshToken = generateSignature({ email: req.user.email, role: ROLE.RETAILER }, "60d");
 
   // Remove Sensitive Data
   const data = exclude(req.user, [
@@ -116,7 +92,13 @@ export const retailerOtpVerify = asyncHandler(async (req: any, res: Response) =>
     "updatedAt",
   ]);
 
-  return apiResponse(res, 200, true, "Otp verified successfully!", { ...data, role: ROLE.RETAILER });
+  return apiResponse(res, 200, true, "Otp verified successfully!", {
+    ...data,
+    accessToken,
+    refreshToken,
+    expiresIn: new Date().setTime(new Date().getTime() + ALARM_EXPIRE_TIME),
+    role: ROLE.RETAILER,
+  });
 });
 
 /**
@@ -125,7 +107,7 @@ export const retailerOtpVerify = asyncHandler(async (req: any, res: Response) =>
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const retailerResendOtp = asyncHandler(async (req: any, res: Response) => {
+export const retailerResendOtp = asyncHandler(async (req: IApiRequest, res: Response) => {
   const otp = getRandomInteger(100000, 999999);
   const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
 
@@ -179,27 +161,20 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
     plan = subscription.planSnapshot.title;
   }
 
-  const accessToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "1d");
-  const refreshToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "7d");
-
-  res.cookie(COOKIE_KEY, accessToken, {
-    httpOnly: true,
-    // secure: process.env.NODE_ENV === "development" ? false : true,
-    // sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
-    expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
-  });
-
-  res.cookie(REFRESH_TOKEN_KEY, refreshToken, {
-    httpOnly: true,
-    // secure: process.env.NODE_ENV === "development" ? false : true,
-    // sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
-    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-  });
+  const accessToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "30d");
+  const refreshToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "60d");
 
   // Remove Sensitive Data
   const data = exclude(retailer._doc, ["password", "otp", "otpExpiry"]);
 
-  return apiResponse(res, 200, true, "Retailer Login Successfully!", { ...data, role: ROLE.RETAILER, plan });
+  return apiResponse(res, 200, true, "Retailer Login Successfully!", {
+    ...data,
+    accessToken,
+    refreshToken,
+    expiresIn: new Date().setTime(new Date().getTime() + ALARM_EXPIRE_TIME),
+    role: ROLE.RETAILER,
+    plan,
+  });
 });
 
 /**
@@ -232,7 +207,7 @@ export const retailerLogout = asyncHandler(async (_req: Request, res: Response) 
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const retailerProfile = asyncHandler(async (req: any, res: Response) => {
+export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
   // Remove Sensitive Data
   const data = exclude(req.user, ["password", "otp", "otpExpiry"]);
 
@@ -245,7 +220,7 @@ export const retailerProfile = asyncHandler(async (req: any, res: Response) => {
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const updateRetailerProfile = asyncHandler(async (req: any, res: Response) => {
+export const updateRetailerProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await retailerSchemaUpdate.validateAsync(req.body, { abortEarly: false });
   const { softDeleted, password, ...updatedBody } = result;
 
@@ -298,7 +273,7 @@ export const updateRetailerProfile = asyncHandler(async (req: any, res: Response
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const retailerForgetPassword = asyncHandler(async (req: any, res: Response) => {
+export const retailerForgetPassword = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await retailerForgetPasswordSchema.validateAsync(req.body, { abortEarly: false });
 
   const retailer = await Retailer.findOne({ email: result.email, status: true, softDeleted: false, isVerified: true });
@@ -333,7 +308,7 @@ export const retailerForgetPassword = asyncHandler(async (req: any, res: Respons
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const retailerForgetPasswordOtpVerify = asyncHandler(async (req: any, res: Response) => {
+export const retailerForgetPasswordOtpVerify = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await verifyOtpSchema.validateAsync(req.body);
 
   const isVerified = req.user.otp === Number(result.otp) && req.user.otpExpiry > new Date();
@@ -350,7 +325,7 @@ export const retailerForgetPasswordOtpVerify = asyncHandler(async (req: any, res
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const retailerChangeForgetPassword = asyncHandler(async (req: any, res: Response) => {
+export const retailerChangeForgetPassword = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await retailerChangeForgetPasswordSchema.validateAsync(req.body);
 
   const hashedPassword = await bcrypt.hash(result.password, 10);
@@ -374,7 +349,7 @@ export const retailerChangeForgetPassword = asyncHandler(async (req: any, res: R
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const retailerChangePassword = asyncHandler(async (req: any, res: Response) => {
+export const retailerChangePassword = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await retailerChangePasswordSchema.validateAsync(req.body);
 
   const retailer = await Retailer.findById(req.user._id);
