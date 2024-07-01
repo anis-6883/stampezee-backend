@@ -11,7 +11,15 @@ import {
 } from "../../../helpers";
 import { IApiRequest, IUser } from "../../../types";
 import { sendVerificationEmail } from "../service";
-import { customerRegisterSchema, locationTokenSchema, loginSchema, verifyOtpSchema } from "../validation";
+import {
+  customerChangeForgetPasswordSchema,
+  customerForgetPasswordSchema,
+  customerRegisterSchema,
+  customerUpdateProfile,
+  locationTokenSchema,
+  loginSchema,
+  verifyOtpSchema,
+} from "../validation";
 import Customer from "./model";
 
 /**
@@ -162,6 +170,97 @@ export const customerProfile = asyncHandler(async (req: IApiRequest, res: Respon
   ]);
 
   return apiResponse(res, 200, true, "Customer Profile", data);
+});
+
+/**
+ * Update Customer Profile
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const updateCustomerProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = customerUpdateProfile.validate(req.body);
+  if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
+
+  const { softDeleted, password, ...updatedBody } = result.value;
+
+  const customer: any = await Customer.findOneAndUpdate({ _id: req.user._id }, updatedBody, {
+    new: true,
+    projection: { password: 0, createdAt: 0, updatedAt: 0, otp: 0, otpExpiry: 0 },
+  });
+
+  if (!customer) {
+    return apiResponse(res, 404, false, "Customer not found!");
+  }
+
+  return apiResponse(res, 200, true, "Customer profile updated successfully!", customer);
+});
+
+/**
+ * Customer Forget Password
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const customerForgetPassword = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = customerForgetPasswordSchema.validate(req.body);
+  if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
+
+  const customer = await Customer.findOne({
+    email: result.value.email,
+    status: true,
+    isVerified: true,
+  });
+
+  if (!customer) {
+    return apiResponse(res, 404, false, "Customer not found!");
+  }
+
+  const otp = getRandomInteger(100000, 999999);
+  const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
+
+  await Customer.findByIdAndUpdate(customer._id, { otp, otpExpiry });
+
+  const tempToken = generateSignature({ email: customer.email, role: ROLE.CUSTOMER }, "15m"); // 15 min
+
+  // Send Otp to Email
+  sendVerificationEmail(customer.email, otp, "mobile");
+
+  return apiResponse(res, 200, true, "Otp sent successfully!", { temp: tempToken });
+});
+
+/**
+ * Customer Forget Password Otp Verify
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const customerForgetPasswordOtpVerify = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = verifyOtpSchema.validate(req.body);
+  if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
+
+  const isVerified = req.user.otp === Number(result.value.otp) && req.user.otpExpiry > new Date();
+  if (!isVerified) return apiResponse(res, 400, false, "Invalid Otp!");
+
+  await Customer.updateOne({ email: req.user.email }, { otp: null, otpExpiry: null });
+
+  return apiResponse(res, 200, true, "Otp verified successfully!");
+});
+
+/**
+ * Customer Changed Forget Password
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const customerChangeForgetPassword = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = customerChangeForgetPasswordSchema.validate(req.body);
+  if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
+
+  const hashedPassword = await bcrypt.hash(result.value.password, 10);
+  await Customer.updateOne({ email: req.user.email }, { password: hashedPassword });
+
+  return apiResponse(res, 200, true, "Password changed successfully!");
 });
 
 /**

@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { emailField, requiredEmailField, requiredStringField, stringField, weakPasswordField } from "../../helpers";
+import { requiredEmailField, requiredStringField, stringField, weakPasswordField } from "../../helpers";
 
 // Main schemas
 export const retailerSchema = Joi.object({
@@ -22,7 +22,7 @@ export const retailerSchema = Joi.object({
 
 // Without Password
 export const retailerSchemaUpdate = Joi.object({
-  email: emailField,
+  // email: emailField,
   storeName: stringField("storeName"),
   firstName: stringField("firstName"),
   lastName: stringField("lastName"),

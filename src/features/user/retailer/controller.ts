@@ -224,9 +224,6 @@ export const updateRetailerProfile = asyncHandler(async (req: IApiRequest, res: 
   const result = await retailerSchemaUpdate.validateAsync(req.body, { abortEarly: false });
   const { softDeleted, password, ...updatedBody } = result;
 
-  const existingRetailer = await Retailer.findOne({ email: updatedBody.email, _id: { $ne: req.user._id } });
-  if (existingRetailer) return apiResponse(res, 400, false, "This retailer already exists!");
-
   // Upload File to S3 Bucket
   if (req.file) {
     const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "users");
@@ -246,23 +243,6 @@ export const updateRetailerProfile = asyncHandler(async (req: IApiRequest, res: 
   if (!retailer) {
     return apiResponse(res, 404, false, "Retailer not found!");
   }
-
-  const accessToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "1d");
-  const refreshToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "7d");
-
-  res.cookie(COOKIE_KEY, accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
-    expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
-  });
-
-  res.cookie(REFRESH_TOKEN_KEY, refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
-    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-  });
 
   return apiResponse(res, 200, true, "Retailer profile updated successfully!", retailer);
 });
@@ -289,17 +269,10 @@ export const retailerForgetPassword = asyncHandler(async (req: IApiRequest, res:
 
   const tempToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "15m"); // 15 min
 
-  res.cookie("temp", tempToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
-    expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
-  });
-
   // Send Otp to Email
   sendVerificationEmail(retailer.email, otp);
 
-  return apiResponse(res, 200, true, "Otp sent successfully!");
+  return apiResponse(res, 200, true, "Otp sent successfully!", { temp: tempToken });
 });
 
 /**
@@ -331,14 +304,6 @@ export const retailerChangeForgetPassword = asyncHandler(async (req: IApiRequest
   const hashedPassword = await bcrypt.hash(result.password, 10);
 
   await Retailer.updateOne({ email: req.user.email }, { password: hashedPassword });
-
-  // Clear Temporary Token
-  res.clearCookie("temp", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
-    expires: new Date(Date.now()),
-  });
 
   return apiResponse(res, 200, true, "Password changed successfully!");
 });

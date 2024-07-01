@@ -27,9 +27,16 @@ export const customerRegisterSchema = Joi.object({
   email: requiredEmailField,
   password: weakPasswordField(6),
   fullName: requiredStringField("fullName"),
+  dialCode: requiredStringField("dialCode"),
   phone: requiredStringField("phone"),
   country: requiredStringField("country"),
+});
+
+export const customerUpdateProfile = Joi.object({
+  fullName: requiredStringField("fullName"),
   dialCode: requiredStringField("dialCode"),
+  phone: requiredStringField("phone"),
+  country: requiredStringField("country"),
 });
 
 export const retailerRegisterSchema = Joi.object({
@@ -86,8 +93,20 @@ export const retailerForgetPasswordSchema = Joi.object({
   email: requiredEmailField,
 });
 
+export const customerForgetPasswordSchema = Joi.object({
+  email: requiredEmailField,
+});
+
 export const retailerChangeForgetPasswordSchema = Joi.object({
   password: weakPasswordField(8),
+  confirmPassword: Joi.any().equal(Joi.ref("password")).required().messages({
+    "any.only": "passwords do not match!",
+    "any.required": "confirmPassword is required!",
+  }),
+});
+
+export const customerChangeForgetPasswordSchema = Joi.object({
+  password: weakPasswordField(6),
   confirmPassword: Joi.any().equal(Joi.ref("password")).required().messages({
     "any.only": "passwords do not match!",
     "any.required": "confirmPassword is required!",
