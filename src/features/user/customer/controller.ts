@@ -248,6 +248,27 @@ export const customerForgetPasswordOtpVerify = asyncHandler(async (req: IApiRequ
 });
 
 /**
+ * Customer Forget Password Resend Otp
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const customerForgetPasswordResendOtp = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const otp = getRandomInteger(100000, 999999);
+  const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
+
+  if (req.user.otpExpiry > new Date()) {
+    return apiResponse(res, 400, false, "Wait 2 minutes to resend OTP!");
+  }
+
+  await Customer.updateOne({ email: req.user.email }, { otp, otpExpiry });
+
+  sendVerificationEmail(req.user.email, otp);
+
+  return apiResponse(res, 200, true, "Otp resend successfully!");
+});
+
+/**
  * Customer Changed Forget Password
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.

@@ -5,6 +5,7 @@ import {
   customerChangeForgetPassword,
   customerForgetPassword,
   customerForgetPasswordOtpVerify,
+  customerForgetPasswordResendOtp,
   customerLogin,
   customerOtpVerify,
   customerProfile,
@@ -21,10 +22,11 @@ router.post("/register", customerRegistration);
 router.post("/forget-password", customerForgetPassword);
 
 router.use(authAndPermissionCheck(ROLE.CUSTOMER));
+router.get("/resend-otp", customerResendOtp);
+router.get("/resend-forget-password-otp", customerForgetPasswordResendOtp);
 router.post("/forget-password-otp-verify", customerForgetPasswordOtpVerify);
 router.post("/change-forget-password", customerChangeForgetPassword);
 router.post("/otp-verify", customerOtpVerify);
-router.get("/resend-otp", customerResendOtp);
 router.get("/profile", customerProfile);
 router.put("/profile", updateCustomerProfile);
 router.put("/update-location-token", updateLocationDeviceToken);
