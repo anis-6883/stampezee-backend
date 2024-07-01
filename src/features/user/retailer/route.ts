@@ -7,6 +7,7 @@ import {
   retailerChangePassword,
   retailerForgetPassword,
   retailerForgetPasswordOtpVerify,
+  retailerForgetPasswordResendOtp,
   retailerLogin,
   retailerLogout,
   retailerOtpVerify,
@@ -27,10 +28,11 @@ router.post("/forget-password", retailerForgetPassword);
 
 router.use(authAndPermissionCheck(ROLE.RETAILER));
 router.post("/otp-verify", retailerOtpVerify);
+router.post("/resend-otp", retailerResendOtp);
 router.post("/forget-password-otp-verify", retailerForgetPasswordOtpVerify);
 router.post("/change-forget-password", retailerChangeForgetPassword);
 router.post("/change-password", retailerChangePassword);
-router.post("/resend-otp", retailerResendOtp);
+router.post("/resend-forget-password-otp", retailerForgetPasswordResendOtp);
 router.get("/profile", retailerProfile);
 router.put("/profile", upload.single("image"), updateRetailerProfile);
 
