@@ -38,10 +38,12 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
   customerBody.otp = getRandomInteger(100000, 999999);
   customerBody.otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
 
-  const existingCustomer: IUser = await Customer.findOne({ email: customerBody.email });
+  const existingCustomer: IUser = await Customer.findOne({
+    email: new RegExp(`.*${customerBody.email}.*`, "i"),
+  });
 
   if (existingCustomer && existingCustomer.isVerified) {
-    return apiResponse(res, 400, false, "This customer already exists!");
+    throw "This customer already exists!";
   }
 
   if (existingCustomer) {
@@ -77,14 +79,18 @@ export const customerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
   const isVerified = req.user.otp === Number(req.body.otp) && req.user.otpExpiry > new Date();
   if (!isVerified) return apiResponse(res, 400, false, "Invalid Otp!");
 
-  await Customer.updateOne(
+  const customer: any = await Customer.findOneAndUpdate(
     { email: req.user.email },
-    { $set: { isVerified: true, verifiedAt: new Date(), otp: null, otpExpiry: null } }
+    { isVerified: true, verifiedAt: new Date(), otp: null, otpExpiry: null },
+    {
+      new: true,
+      projection: { password: 0, createdAt: 0, updatedAt: 0, otp: 0, otpExpiry: 0 },
+    }
   );
 
   const token = generateSignature({ email: req.user.email, role: ROLE.CUSTOMER }, "30 days");
 
-  return apiResponse(res, 200, true, "Otp verified successfully!", { token });
+  return apiResponse(res, 200, true, "Otp verified & Login successfully!", { token, ...customer._doc });
 });
 
 /**
