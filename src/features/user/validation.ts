@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { emailField, requiredEmailField, requiredStringField, stringField, weakPasswordField } from "../../helpers";
+import { requiredEmailField, requiredStringField, stringField, weakPasswordField } from "../../helpers";
 
 const updateLongitude = Joi.when("address", {
   is: Joi.exist(),
@@ -64,7 +64,6 @@ export const superAdminRegisterSchema = Joi.object({
 export const superAdminRegisterSchema2 = Joi.object({
   firstName: stringField("firstName"),
   lastName: stringField("lastName"),
-  email: emailField,
 });
 
 export const loginSchema = Joi.object({
@@ -115,6 +114,19 @@ export const customerChangeForgetPasswordSchema = Joi.object({
 export const retailerChangePasswordSchema = Joi.object({
   oldPassword: requiredStringField("oldPassword"),
   newPassword: Joi.string().required().min(8).messages({
+    "any.required": "newPassword is required!",
+    "string.base": "newPassword must be string!",
+    "string.min": "newPassword must be 8 characters long!",
+  }),
+  confirmPassword: Joi.any().equal(Joi.ref("newPassword")).required().messages({
+    "any.only": "passwords do not match!",
+    "any.required": "confirmPassword is required!",
+  }),
+});
+
+export const superAdminChangePasswordSchema = Joi.object({
+  oldPassword: requiredStringField("oldPassword"),
+  newPassword: Joi.string().required().min(6).messages({
     "any.required": "newPassword is required!",
     "string.base": "newPassword must be string!",
     "string.min": "newPassword must be 8 characters long!",

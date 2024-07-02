@@ -1,6 +1,7 @@
 import express from "express";
 import { ROLE } from "../configs/constants";
 import categoryRoutes from "../features/category/route";
+import manageCustomerRoutes from "../features/customer/route";
 import faqRoutes from "../features/faq/route";
 import manageRetailerRoutes from "../features/retailer/route";
 import settingsRoutes from "../features/settings/route";
@@ -20,6 +21,7 @@ router.use("/super-admin/settings", settingsRoutes);
 router.use("/super-admin/category", categoryRoutes);
 router.use("/super-admin/stamp-image", stampImageRoutes);
 router.use("/super-admin/manage-retailer", manageRetailerRoutes);
+router.use("/super-admin/manage-customer", manageCustomerRoutes);
 router.use("/super-admin/subscription", subscriptionRoutes);
 router.use("/super-admin/faq", faqRoutes);
 

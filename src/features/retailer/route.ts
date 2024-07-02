@@ -19,9 +19,9 @@ router.post("/", upload.single("image"), createRetailer);
 router.get("/all", getAllRetailers);
 router.get("/deleted", getAllDeletedRetailers);
 router.put("/status/:id", updateRetailerStatus);
+router.delete("/confirm/:id", confirmDeleteRetailer);
 router.get("/:id", getSingleRetailer);
 router.put("/:id", upload.single("image"), updateRetailer);
 router.delete("/:id", softDeleteRetailer);
-router.delete("/confirm/:id", confirmDeleteRetailer);
 
 export default router;
