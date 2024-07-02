@@ -284,6 +284,11 @@ export const customerChangeForgetPassword = asyncHandler(async (req: IApiRequest
   const result = customerChangeForgetPasswordSchema.validate(req.body);
   if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
 
+  const customer = await Customer.findById(req.user._id);
+
+  const isSame = await bcrypt.compare(result.value.password, customer.password);
+  if (isSame) throw "New password cannot be same as old password!";
+
   const hashedPassword = await bcrypt.hash(result.value.password, 10);
   await Customer.updateOne({ email: req.user.email }, { password: hashedPassword });
 

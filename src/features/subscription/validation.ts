@@ -4,31 +4,37 @@ import { requiredStringField, stringField } from "../../helpers";
 export const subscriptionSchema = Joi.object({
   title: requiredStringField("title"),
   slug: requiredStringField("slug"),
-  descriptions: Joi.array()
-    .items(
-      Joi.string().required().messages({
-        "string.empty": "descriptions must not be empty!",
-      })
-    )
-    .required()
-    .messages({
-      "array.base": "descriptions must be array!",
-      "any.required": "descriptions is required!",
-      "array.includesRequiredUnknowns": "At least one description is required!",
-    }),
-  price: Joi.number().required().messages({
-    "any.required": "price is required!",
-    "number.base": "price must be number!",
-    "string.empty": "price must not be empty!",
-  }),
   type: Joi.string().trim().required().lowercase().valid("addon", "subscription").messages({
     "any.required": "type is required!",
     "string.base": "type must be string!",
     "any.only": "type must be [addon, subscription]",
   }),
+  price: Joi.number().required().messages({
+    "any.required": "price is required!",
+    "number.base": "price must be number!",
+    "string.empty": "price must not be empty!",
+  }),
   duration: Joi.string().trim().valid("7", "30").messages({
     "string.base": "type must be string!",
     "any.only": "type must be [7, 30]",
+  }),
+  descriptions: Joi.alternatives().conditional("type", {
+    is: "subscription",
+    then: Joi.array()
+      .items(
+        Joi.string().required().messages({
+          "string.empty": "descriptions must not be empty!",
+        })
+      )
+      .required()
+      .messages({
+        "array.base": "descriptions must be array!",
+        "any.required": "descriptions is required!",
+        "array.includesRequiredUnknowns": "At least one description is required!",
+      }),
+    otherwise: Joi.array().messages({
+      "array.base": "descriptions must be array!",
+    }),
   }),
   allowTotalBranch: Joi.alternatives().conditional("type", {
     is: "subscription",
@@ -67,16 +73,29 @@ export const subscriptionSchema = Joi.object({
 
 export const updateSubscriptionSchema = Joi.object({
   title: stringField("title"),
-  descriptions: Joi.array()
-    .items(
-      Joi.string().required().messages({
-        "string.empty": "descriptions must not be empty!",
-      })
-    )
-    .messages({
+  type: Joi.string().trim().required().lowercase().valid("addon", "subscription").messages({
+    "any.required": "type is required!",
+    "string.base": "type must be string!",
+    "any.only": "type must be [addon, subscription]",
+  }),
+  descriptions: Joi.alternatives().conditional("type", {
+    is: "subscription",
+    then: Joi.array()
+      .items(
+        Joi.string().required().messages({
+          "string.empty": "descriptions must not be empty!",
+        })
+      )
+      .required()
+      .messages({
+        "array.base": "descriptions must be array!",
+        "any.required": "descriptions is required!",
+        "array.includesRequiredUnknowns": "At least one description is required!",
+      }),
+    otherwise: Joi.array().messages({
       "array.base": "descriptions must be array!",
-      "array.includesRequiredUnknowns": "At least one description is required!",
     }),
+  }),
   price: Joi.number().messages({
     "number.base": "price must be number!",
     "string.empty": "price must not be empty!",
