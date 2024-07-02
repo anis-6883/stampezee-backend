@@ -76,7 +76,7 @@ export const customerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     return apiResponse(res, 400, false, "This customer already verified!");
   }
 
-  const isVerified = req.user.otp === Number(req.body.otp) && req.user.otpExpiry > new Date();
+  const isVerified = req.user.otp === Number(result.value.otp) && req.user.otpExpiry > new Date();
   if (!isVerified) return apiResponse(res, 400, false, "Invalid Otp!");
 
   const customer: any = await Customer.findOneAndUpdate(
@@ -128,15 +128,15 @@ export const customerLogin = asyncHandler(async (req: Request, res: Response) =>
   const result = loginSchema.validate(req.body);
   if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
 
-  const customer: any = await Customer.findOne({ email: req.body.email });
+  const customer: any = await Customer.findOne({ email: result.value.email });
   if (!customer) return apiResponse(res, 401, false, "Please, complete your registration first!");
 
   if (!customer.isVerified) {
-    await Customer.deleteOne({ email: req.body.email });
+    await Customer.deleteOne({ email: result.value.email });
     return apiResponse(res, 401, false, "Please, complete your registration first!");
   }
 
-  const isPasswordValid = await bcrypt.compare(req.body.password, customer.password);
+  const isPasswordValid = await bcrypt.compare(result.value.password, customer.password);
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
   const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER }, "30 days");
@@ -227,12 +227,12 @@ export const customerForgetPassword = asyncHandler(async (req: IApiRequest, res:
 
   await Customer.findByIdAndUpdate(customer._id, { otp, otpExpiry });
 
-  const tempToken = generateSignature({ email: customer.email, role: ROLE.CUSTOMER }, "15m"); // 15 min
+  const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER }, "15m"); // 15 min
 
   // Send Otp to Email
   sendVerificationEmail(customer.email, otp, "mobile");
 
-  return apiResponse(res, 200, true, "Otp sent successfully!", { temp: tempToken });
+  return apiResponse(res, 200, true, "Otp sent successfully!", { token });
 });
 
 /**
