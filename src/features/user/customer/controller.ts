@@ -32,14 +32,14 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
   const result = customerRegisterSchema.validate(req.body);
   if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
 
-  const { otp, otpExpiry, isVerified, verifiedAt, image, ref, ...customerBody } = req.body;
+  const { otp, otpExpiry, isVerified, verifiedAt, image, ref, ...customerBody } = result.value;
 
   customerBody.password = await bcrypt.hash(customerBody.password, 10);
   customerBody.otp = getRandomInteger(100000, 999999);
   customerBody.otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
 
   const existingCustomer: IUser = await Customer.findOne({
-    email: new RegExp(`.*${customerBody.email}.*`, "i"),
+    email: customerBody.email,
   });
 
   if (existingCustomer && existingCustomer.isVerified) {

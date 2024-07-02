@@ -29,7 +29,7 @@ export const apiResponse = (res: Response, statusCode: number, status: boolean, 
   return res.status(statusCode).json({ status, message, data });
 };
 
-export const emailField = Joi.string().email().trim().messages({
+export const emailField = Joi.string().email().trim().lowercase().messages({
   "string.base": "email must be string!",
   "string.email": "email must be valid format!",
   "string.empty": "email must not be empty!",
