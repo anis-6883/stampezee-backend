@@ -46,6 +46,8 @@ export const refreshAccessToken = asyncHandler(async (req: IApiRequest, res: Res
 export const getUserProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
   // Remove Sensitive Data
   const data = exclude(req.user, ["password", "createdAt", "updatedAt"]);
+  data.plan = null;
+  data.planValidAt = null;
 
   // Check Subscription & Addon Enrollment
   if (req.role === ROLE.RETAILER) {

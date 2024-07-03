@@ -215,6 +215,8 @@ export const retailerLogout = asyncHandler(async (_req: Request, res: Response) 
 export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
   // Remove Sensitive Data
   const data = exclude(req.user, ["password", "otp", "otpExpiry"]);
+  data.plan = null;
+  data.planValidAt = null;
 
   // Check Subscription & Addon Enrollment
   if (req.role === ROLE.RETAILER) {

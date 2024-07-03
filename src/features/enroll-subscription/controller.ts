@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import moment from "moment";
 import Stripe from "stripe";
 import { PACKAGES } from "../../configs/constants";
@@ -73,6 +73,17 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
   if (checkCombination(slugs, [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED]) && checkDuplicates(slugs)) {
     const subscriptions: any[] = await Subscription.find({ slug: { $in: slugs } });
 
+    const enrolled = await EnrollSubscription.findOne({
+      retailerId: req.user._id,
+      "planSnapshot.type": "subscription",
+      paymentStatus: { $in: ["completed"] },
+      validityTo: { $gt: moment() },
+    }).sort({ createdAt: "desc" });
+
+    if (enrolled && slugs.includes(enrolled.planSnapshot.slug)) {
+      throw `You already take ${enrolled.planSnapshot.title} plan!`;
+    }
+
     let enrollIdDuration: { [key: string]: number } = {};
     const line_items: ILineItem[] = [];
 
@@ -101,7 +112,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       line_items,
       mode: "payment",
       metadata: enrollIdDuration,
-      success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}`,
+      success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}&takeFreeTrial=${req.user.takeFreeTrial}`,
       cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
     });
 
@@ -118,11 +129,26 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const successEnrollSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const successEnrollSubscription = asyncHandler(async (req: Request, res: Response) => {
   if (req.query.stripe_success_token === process.env.STRIPE_SUCCESS_TOKEN && req?.query?.session_id) {
     const payment: IEnrollPayment = await stripe.checkout.sessions.retrieve(String(req.query.session_id), {
       expand: ["payment_intent.payment_method"],
     });
+
+    // If a user takes a plan without taking the free trial, then the free trial isn't applicable anymore
+    if (req.query._id && req.query.takeFreeTrial && req.query.takeFreeTrial === "false") {
+      const subscription = await Subscription.findOne({ slug: "trial" });
+      Promise.all([
+        EnrollSubscription.create({
+          retailerId: req.query._id,
+          planSnapshot: subscription,
+          paymentStatus: "trial",
+          validityFrom: moment(),
+          validityTo: moment(),
+        }),
+        Retailer.findByIdAndUpdate(req.query._id, { takeFreeTrial: true }),
+      ]);
+    }
 
     let subscriptionIds = [];
     let updateSubscriptions = [];
