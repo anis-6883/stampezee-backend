@@ -49,16 +49,15 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       const subscription = await Subscription.findOne({ slug: "trial" });
 
       if (subscription) {
-        const today = new Date();
-        const expireDate = new Date(today);
-        expireDate.setDate(today.getDate() + subscription.duration);
+        const now = moment();
+        const expireDate = moment().add(subscription.duration, "days");
 
         Promise.all([
           EnrollSubscription.create({
             retailerId: req.user._id,
             planSnapshot: subscription,
             paymentStatus: "trial",
-            validityFrom: Date.now(),
+            validityFrom: now,
             validityTo: expireDate,
           }),
           Retailer.findByIdAndUpdate(req.user._id, { takeFreeTrial: true }),

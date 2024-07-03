@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
+import moment from "moment";
 import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, generateSignature, getRandomInteger } from "../../../helpers";
@@ -150,15 +151,18 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
 
   // Check Subscription & Addon Enrollment
   let plan: null | string = null;
+  let planValidAt: null | Date = null;
+
   const subscription = await EnrollSubscription.findOne({
     retailerId: retailer._id,
     "planSnapshot.type": "subscription",
     paymentStatus: { $in: ["completed", "trial"] },
-    validityTo: { $gt: Date.now() },
+    validityTo: { $gt: moment() },
   }).sort({ createdAt: "desc" });
 
   if (subscription) {
-    plan = subscription.planSnapshot.title;
+    plan = subscription.planSnapshot.slug;
+    planValidAt = subscription.validityTo;
   }
 
   const accessToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "30d");
@@ -174,6 +178,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
     expiresIn: new Date().setTime(new Date().getTime() + ALARM_EXPIRE_TIME),
     role: ROLE.RETAILER,
     plan,
+    planValidAt,
   });
 });
 
@@ -211,7 +216,24 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
   // Remove Sensitive Data
   const data = exclude(req.user, ["password", "otp", "otpExpiry"]);
 
-  return apiResponse(res, 200, true, "Retailer Profile", { ...data, role: ROLE.RETAILER });
+  // Check Subscription & Addon Enrollment
+  if (req.role === ROLE.RETAILER) {
+    const subscription = await EnrollSubscription.findOne({
+      retailerId: req.user._id,
+      "planSnapshot.type": "subscription",
+      paymentStatus: { $in: ["completed", "trial"] },
+      validityTo: { $gt: moment() },
+    }).sort({ createdAt: "desc" });
+
+    if (subscription) {
+      data.plan = subscription.planSnapshot.slug;
+      data.planValidAt = subscription.validityTo;
+    }
+  }
+
+  data.role = req.role;
+
+  return apiResponse(res, 200, true, "Retailer Profile", data);
 });
 
 /**

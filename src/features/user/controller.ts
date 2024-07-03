@@ -1,7 +1,9 @@
 import { Request, Response } from "express";
-import { COOKIE_KEY, REFRESH_TOKEN_KEY } from "../../configs/constants";
+import moment from "moment";
+import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../configs/constants";
 import { apiResponse, asyncHandler, exclude, generateSignature } from "../../helpers";
 import { IApiRequest } from "../../types";
+import { EnrollSubscription } from "../enroll-subscription/model";
 
 /**
  * Verify Access Token
@@ -45,7 +47,24 @@ export const getUserProfile = asyncHandler(async (req: IApiRequest, res: Respons
   // Remove Sensitive Data
   const data = exclude(req.user, ["password", "createdAt", "updatedAt"]);
 
-  return apiResponse(res, 200, true, "Profile fetched successfully!", { ...data, role: req.role });
+  // Check Subscription & Addon Enrollment
+  if (req.role === ROLE.RETAILER) {
+    const subscription = await EnrollSubscription.findOne({
+      retailerId: req.user._id,
+      "planSnapshot.type": "subscription",
+      paymentStatus: { $in: ["completed", "trial"] },
+      validityTo: { $gt: moment() },
+    }).sort({ createdAt: "desc" });
+
+    if (subscription) {
+      data.plan = subscription.planSnapshot.slug;
+      data.planValidAt = subscription.validityTo;
+    }
+  }
+
+  data.role = req.role;
+
+  return apiResponse(res, 200, true, "Profile fetched successfully!", data);
 });
 
 /**
