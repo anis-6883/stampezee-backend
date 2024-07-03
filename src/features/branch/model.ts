@@ -20,7 +20,7 @@ const schema = new mongoose.Schema(
           enum: ["Point"],
         },
         coordinates: {
-          type: [Number],
+          type: [Number], // [Number(long), Number(lat)]
           required: true,
         },
       },

@@ -40,6 +40,10 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
   const long = req.user.address.loc.coordinates[0];
   const lat = req.user.address.loc.coordinates[1];
 
+  if (!long || !lat) {
+    throw "Latitude & Longitude must be set!";
+  }
+
   const query: any = { status: true, softDeleted: false };
   if (search) {
     const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i

@@ -5,6 +5,7 @@ import express from "express";
 import helmet from "helmet";
 import logger from "morgan";
 import { successEnrollSubscription } from "../features/enroll-subscription/controller";
+import seederRoutes from "../features/seeder/route";
 import errorMiddleware from "../middlewares/errorMiddleware";
 import verifyApiKeyHeader from "../middlewares/verifyApiKeyHeader";
 import adminRoutes from "../routes/admin.routes";
@@ -41,6 +42,7 @@ app.use(verifyApiKeyHeader);
 app.use("/api/v1", mobileRoutes); // mobile
 app.use("/api/web", webRoutes); // web
 app.use("/api/secret-root/admin", adminRoutes); // admin
+app.use("/api/seeder", seederRoutes); // admin
 
 // 404 Route
 app.use((req, res, next) => {

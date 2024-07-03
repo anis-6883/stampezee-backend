@@ -13,10 +13,6 @@ const subscriptionSchema = new mongoose.Schema({
   },
   descriptions: {
     type: [String],
-    validate: {
-      validator: (value: [string]) => Array.isArray(value) && value.length > 0,
-      message: "At least one description is required!",
-    },
   },
   price: {
     type: Number,
@@ -99,7 +95,7 @@ const enrollPaymentSchema = new mongoose.Schema(
       type: [mongoose.Types.ObjectId],
       validate: {
         validator: (value: [string]) => Array.isArray(value) && value.length > 0,
-        message: "At least one description is required!",
+        message: "At least one id is required!",
       },
       required: true,
     },
