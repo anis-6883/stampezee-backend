@@ -19,9 +19,9 @@ router.post("/", upload.single("image"), createCategory);
 router.get("/all", getAllCategories);
 router.get("/deleted", getAllDeletedCategories);
 router.put("/status/:id", updateCategoryStatus);
+router.delete("/confirm/:id", confirmDeleteCategory);
 router.get("/:id", getSingleCategory);
 router.put("/:id", upload.single("image"), updateCategory);
 router.delete("/:id", softDeleteCategory);
-router.delete("/confirm/:id", confirmDeleteCategory);
 
 export default router;
