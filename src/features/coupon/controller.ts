@@ -1,6 +1,5 @@
 import { Response } from "express";
-import { uploadFileToS3Bucket } from "../../configs/s3Bucket";
-import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
+import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
 import Sorting from "../sorting/model";
 import Coupon from "./model";
@@ -19,46 +18,23 @@ export const createCoupon = asyncHandler(async (req: IApiRequest, res: Response)
 
   const { softDeleted, ...createBody } = result;
 
-  createBody.superAdminId = req.user._id;
+  createBody.createdBy = req.user._id;
 
-  const existingCoupon = await Coupon.findOne({ name: createBody.name });
-  if (existingCoupon) return apiResponse(res, 400, false, "This coupon already exists!");
+  const existingCoupon = await Coupon.findOne({ code: createBody.code });
+  if (existingCoupon) throw "This coupon code already exists!";
 
-  let imageKey = null;
-
-  // File Validation
-  if (req.file) {
-    const { status, message } = fileValidation(req.file, undefined, ["image/jpeg", "image/png", "image/jpg"]);
-    if (!status) {
-      return apiResponse(res, 400, false, "Invalid Request!", { image: message });
-    }
-  }
-
-  // Upload File to S3 Bucket
-  if (req.file) {
-    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "coupon");
-    if (status) {
-      imageKey = key;
-    }
-  }
-
-  const coupon: any = await Coupon.create({
-    ...createBody,
-    image: imageKey,
-  });
-
-  await Sorting.updateOne({ title: "coupon" }, { $push: { sortedData: coupon._id.toString() } }, { upsert: true });
+  const coupon = await Coupon.create(createBody);
 
   return apiResponse(res, 201, true, "Coupon created successfully!", coupon);
 });
 
 /**
- * Get All Categories
+ * Get All Coupons
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllCategories = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getAllCoupons = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
@@ -66,23 +42,18 @@ export const getAllCategories = asyncHandler(async (req: IApiRequest, res: Respo
 
   if (search) {
     const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
-    query.name = regex;
+    const orQuery = [{ title: regex }, { code: regex }];
+    query.$or = orQuery;
   }
 
   const [docs, total] = await Promise.all([
-    Coupon.find(query).limit(Number(limit)).skip(skip),
+    Coupon.find(query).limit(Number(limit)).skip(skip).sort({ createdAt: "desc" }),
     Coupon.find(query).countDocuments(),
   ]);
 
-  const sorting = await Sorting.findOne({ title: "coupon" });
-  const sortedIds = sorting ? sorting.sortedData : [];
+  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  const couponMap = new Map(docs.map((coupon) => [coupon._id.toString(), coupon]));
-  const sortedList = sortedIds.map((id) => couponMap.get(id)).filter(Boolean);
-
-  const data = makePaginate(sortedList, Number(page), Number(limit), skip, total);
-
-  return apiResponse(res, 200, true, "Categories fetched successfully!", data);
+  return apiResponse(res, 200, true, "Coupons fetched successfully!", data);
 });
 
 /**
@@ -112,13 +83,13 @@ export const updateCoupon = asyncHandler(async (req: IApiRequest, res: Response)
   });
 
   const { id } = req.params;
-  const { softDeleted, image, ...updatedBody } = result;
+  const { softDeleted, ...updatedBody } = result;
 
   const coupon = await Coupon.findOne({ _id: id });
   if (!coupon) return apiResponse(res, 404, false, "Coupon not found!");
 
-  const existingCoupon = await Coupon.findOne({ name: updatedBody.name, _id: { $ne: id } });
-  if (existingCoupon) return apiResponse(res, 400, false, "This coupon name already exists!");
+  const existingCoupon = await Coupon.findOne({ code: updatedBody.code, _id: { $ne: id } });
+  if (existingCoupon) return apiResponse(res, 400, false, "This coupon code already exists!");
 
   const updatedData: any = await Coupon.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
 
@@ -178,12 +149,12 @@ export const softDeleteCoupon = asyncHandler(async (req: IApiRequest, res: Respo
 });
 
 /**
- * Get All Deleted Categories
+ * Get All Deleted Coupons
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllDeletedCategories = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getAllDeletedCoupons = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
@@ -191,7 +162,8 @@ export const getAllDeletedCategories = asyncHandler(async (req: IApiRequest, res
 
   if (search) {
     const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
-    query.name = regex;
+    const orQuery = [{ title: regex }, { code: regex }];
+    query.$or = orQuery;
   }
 
   const [docs, total] = await Promise.all([
@@ -201,7 +173,7 @@ export const getAllDeletedCategories = asyncHandler(async (req: IApiRequest, res
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  return apiResponse(res, 200, true, "Deleted categories fetched successfully!", data);
+  return apiResponse(res, 200, true, "Deleted coupons fetched successfully!", data);
 });
 
 /**

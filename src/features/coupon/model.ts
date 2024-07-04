@@ -10,6 +10,7 @@ const schema = new mongoose.Schema(
     description: {
       type: String,
       trim: true,
+      default: null,
     },
     code: {
       type: String,
@@ -46,7 +47,7 @@ const schema = new mongoose.Schema(
     deletedBy: {
       type: "ObjectId", // mongoose.Types.ObjectId
       ref: "Retailer",
-      required: true,
+      default: null,
     },
     softDeleted: {
       type: Boolean,
@@ -58,6 +59,8 @@ const schema = new mongoose.Schema(
     versionKey: false,
   }
 );
+
+schema.index({ code: 1 });
 
 const Coupon = mongoose.model("Coupon", schema);
 

@@ -17,7 +17,7 @@ const minPurchaseAmount = Joi.number().min(0).messages({
   "number.min": "minPurchaseAmount must be greater than or equal to 0!",
 });
 
-const rewardType = Joi.string().trim().required().lowercase().valid("promotion", "discount").messages({
+const rewardType = Joi.string().trim().lowercase().valid("promotion", "discount").messages({
   "any.required": "rewardType is required!",
   "string.base": "rewardType must be string!",
   "any.only": "rewardType must be [promotion, discount]",
@@ -48,29 +48,15 @@ const discountReward = Joi.alternatives().conditional("rewardType", {
   }),
 });
 
-const startedAt = Joi.date().required().messages({
-  "any.required": "startedAt is required!",
+const startedAt = Joi.date().messages({
   "date.base": "startedAt must be date!",
 });
 
-const updateStartedAt = Joi.date().messages({
-  "date.base": "startedAt must be date!",
-});
-
-const expiredAt = Joi.date().greater(Joi.ref("startedAt")).required().messages({
-  "any.required": "expiredAt is required!",
+const expiredAt = Joi.date().greater(Joi.ref("startedAt")).messages({
   "date.base": "expiredAt must be date!",
   "date.greater": "expiredAt must be greater than startedAt!",
   "date.ref": "expiredAt must be greater than startedAt!",
 });
-
-const updateExpiredAt = Joi.date().greater(Joi.ref("startedAt")).messages({
-  "date.base": "expiredAt must be date!",
-  "date.greater": "expiredAt must be greater than startedAt!",
-  "date.ref": "expiredAt must be greater than startedAt!",
-});
-
-const status = Joi.boolean().default(true);
 
 export const stampSchema = Joi.object({
   title: requiredStringField("title"),
@@ -81,17 +67,23 @@ export const stampSchema = Joi.object({
   rules: stringField("description"),
   noOfStampsToCollect,
   minPurchaseAmount,
-  rewardType,
+  rewardType: rewardType.required().messages({
+    "any.required": "rewardType is required!",
+  }),
   promotionReward,
   discountReward,
-  startedAt,
-  expiredAt,
-  status,
+  startedAt: startedAt.required().messages({
+    "any.required": "startedAt is required!",
+  }),
+  expiredAt: expiredAt.required().messages({
+    "any.required": "expiredAt is required!",
+  }),
 });
 
 export const updateStampSchema = Joi.object({
   title: stringField("title"),
   noOfStampsToCollect: updateNoOfStampsToCollect,
-  startedAt: updateStartedAt,
-  expiredAt: updateExpiredAt,
+  startedAt,
+  expiredAt,
+  rewardType,
 });
