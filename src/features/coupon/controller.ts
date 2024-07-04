@@ -1,6 +1,7 @@
 import { Response } from "express";
-import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import { apiResponse, asyncHandler, getUTC, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
+import Settings from "../settings/model";
 import Sorting from "../sorting/model";
 import Coupon from "./model";
 import { couponSchema, couponStatusSchema, updateCouponSchema } from "./validation";
@@ -22,6 +23,18 @@ export const createCoupon = asyncHandler(async (req: IApiRequest, res: Response)
 
   const existingCoupon = await Coupon.findOne({ code: createBody.code });
   if (existingCoupon) throw "This coupon code already exists!";
+
+  const settings = await Settings.findOne(null, { "general.timezone": 1 });
+
+  if (!settings?.general?.timezone) {
+    throw "Setup TimeZone First!";
+  }
+
+  const systemTime = getUTC(createBody.startedAt, settings.general.timezone.value);
+  const expireTime = getUTC(createBody.expiredAt, settings.general.timezone.value);
+
+  createBody.startedAt = systemTime;
+  createBody.expiredAt = expireTime;
 
   const coupon = await Coupon.create(createBody);
 
@@ -90,6 +103,18 @@ export const updateCoupon = asyncHandler(async (req: IApiRequest, res: Response)
 
   const existingCoupon = await Coupon.findOne({ code: updatedBody.code, _id: { $ne: id } });
   if (existingCoupon) return apiResponse(res, 400, false, "This coupon code already exists!");
+
+  const settings = await Settings.findOne(null, { "general.timezone": 1 });
+
+  if (!settings?.general?.timezone) {
+    throw "Setup TimeZone First!";
+  }
+
+  const systemTime = getUTC(updatedBody.startedAt, settings.general.timezone.value);
+  const expireTime = getUTC(updatedBody.expiredAt, settings.general.timezone.value);
+
+  updatedBody.startedAt = systemTime;
+  updatedBody.expiredAt = expireTime;
 
   const updatedData: any = await Coupon.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
 

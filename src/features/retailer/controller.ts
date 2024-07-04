@@ -167,14 +167,13 @@ export const updateRetailerStatus = asyncHandler(async (req: IApiRequest, res: R
 export const softDeleteRetailer = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
-  const retailer = await Retailer.findOneAndUpdate(
-    { _id: id },
-    {
-      softDeleted: true,
-    }
-  );
-
+  const retailer = await Retailer.findById(id);
   if (!retailer) return apiResponse(res, 404, false, "Retailer not found!");
+
+  await Retailer.findByIdAndUpdate(id, {
+    email: `deleted-${new Date().toISOString()}-${retailer.email}`,
+    softDeleted: true,
+  });
 
   return apiResponse(res, 200, true, "Retailer deleted successfully!");
 });

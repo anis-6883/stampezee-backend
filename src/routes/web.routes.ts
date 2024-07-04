@@ -3,6 +3,7 @@ import { ROLE } from "../configs/constants";
 import branchRoutes from "../features/branch/route";
 import subscriptionRoutes from "../features/enroll-subscription/route";
 import { getAllFaqsForWeb } from "../features/faq/controller";
+import { getCommonSettings } from "../features/settings/controller";
 import stampImageRoutes from "../features/stamp-image/route";
 import stampRoutes from "../features/stamp/route";
 import subAdminRoutes from "../features/sub-admin/route";
@@ -14,6 +15,7 @@ const router = express.Router();
 
 // Common Routes
 router.get("/faqs", getAllFaqsForWeb);
+router.get("/get-common-settings", getCommonSettings);
 router.get("/verify-token", authAndPermissionCheck("", false, false), verifyToken);
 router.get("/refresh-token", authAndPermissionCheck("", false), refreshAccessToken);
 router.get("/get-profile", authAndPermissionCheck("", false), getUserProfile);

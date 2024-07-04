@@ -50,3 +50,19 @@ export const updateSettings = asyncHandler(async (req: Request, res: Response) =
 
   return apiResponse(res, 200, true, "Settings updated successfully!", data);
 });
+
+/**
+ * Get Common Settings Data
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const getCommonSettings = asyncHandler(async (req: Request, res: Response) => {
+  const settings = await Settings.findOne({}, { "general.timezone": 1 });
+
+  if (!settings) {
+    return apiResponse(res, 404, false, "Settings not found!");
+  }
+
+  return apiResponse(res, 200, true, "Settings fetched Successfully!", settings);
+});

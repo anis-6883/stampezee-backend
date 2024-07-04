@@ -220,3 +220,15 @@ export const checkDuplicates = (arr: string[]): boolean => {
 
   return true;
 };
+
+export const getUTC = (localTime: Date, timeZoneOffset: number) => {
+  const currentTime = new Date(localTime);
+
+  const currentTimeInMs = currentTime.getTime();
+
+  const utcTimeInMs = currentTimeInMs - timeZoneOffset * 60 * 60 * 1000;
+
+  const utcTime = new Date(utcTimeInMs);
+
+  return utcTime;
+};

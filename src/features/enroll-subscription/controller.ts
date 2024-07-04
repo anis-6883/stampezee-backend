@@ -108,9 +108,15 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       });
     }
 
+    // const coupon = await stripe.coupons.create({
+    //   percent_off: 10,
+    //   duration: "once",
+    // });
+
     const session = await stripe.checkout.sessions.create({
       line_items,
       mode: "payment",
+      // discounts: [{ coupon: coupon.id }],
       metadata: enrollIdDuration,
       success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}&takeFreeTrial=${req.user.takeFreeTrial}`,
       cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,

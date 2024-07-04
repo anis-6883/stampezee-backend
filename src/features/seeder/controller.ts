@@ -48,7 +48,7 @@ export const createRetailers = asyncHandler(async (req: Request, res: Response) 
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const createBranches = asyncHandler(async (req: Request, res: Response) => {
-  const retailerIds: any = (await Retailer.find(null, { _id: 1 }).limit(10)).map((retailer) => retailer._id);
+  const retailerIds: any = (await Retailer.find({}, { _id: 1 }).limit(10)).map((retailer) => retailer._id);
 
   for (let id of retailerIds) {
     const [lat, long] = faker.location.nearbyGPSCoordinate({
@@ -80,7 +80,7 @@ export const createBranches = asyncHandler(async (req: Request, res: Response) =
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const createStamps = asyncHandler(async (req: Request, res: Response) => {
-  const retailerIds: any = (await Retailer.find(null, { _id: 1 })).map((retailer) => retailer._id);
+  const retailerIds: any = (await Retailer.find({}, { _id: 1 })).map((retailer) => retailer._id);
 
   for (let id of retailerIds) {
     const branches: any = await Branch.find({ retailerId: id });
