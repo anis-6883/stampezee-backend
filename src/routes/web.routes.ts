@@ -1,7 +1,6 @@
 import express from "express";
 import { ROLE } from "../configs/constants";
 import branchRoutes from "../features/branch/route";
-import couponRoutes from "../features/coupon/route";
 import subscriptionRoutes from "../features/enroll-subscription/route";
 import { getAllFaqsForWeb } from "../features/faq/controller";
 import stampImageRoutes from "../features/stamp-image/route";
@@ -32,6 +31,5 @@ router.use("/retailer/branch", branchRoutes);
 router.use("/retailer/sub-admin", subAdminRoutes);
 router.use("/retailer/stamp-image", stampImageRoutes);
 router.use("/retailer/stamp", stampRoutes);
-router.use("/retailer/coupon", couponRoutes);
 
 export default router;
