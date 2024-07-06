@@ -32,7 +32,6 @@ const schema = new mongoose.Schema(
       required: true,
       unique: true,
       trim: true,
-      index: true,
     },
     password: {
       type: String,
@@ -56,6 +55,8 @@ const schema = new mongoose.Schema(
     versionKey: false,
   }
 );
+
+schema.index({ email: 1 });
 
 const SubAdmin = mongoose.model("SubAdmin", schema);
 

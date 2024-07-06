@@ -22,7 +22,6 @@ const schema = new mongoose.Schema(
       required: true,
       unique: true,
       trim: true,
-      index: true,
     },
     otp: {
       type: Number,
@@ -122,6 +121,8 @@ const schema = new mongoose.Schema(
     versionKey: false,
   }
 );
+
+schema.index({ email: 1 });
 
 const Retailer = mongoose.model("Retailer", schema);
 

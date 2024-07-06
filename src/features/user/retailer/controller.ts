@@ -38,7 +38,7 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
   const existingRetailer = await Retailer.findOne({ email: retailerBody.email });
 
   if (existingRetailer && existingRetailer.isVerified) {
-    return apiResponse(res, 400, false, "Your email already exists!");
+    return apiResponse(res, 400, false, "This email already registered!");
   }
 
   if (existingRetailer) {
@@ -93,7 +93,7 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     "updatedAt",
   ]);
 
-  return apiResponse(res, 200, true, "Otp verified successfully!", {
+  return apiResponse(res, 200, true, "Otp verified & Login successfully!", {
     ...data,
     accessToken,
     refreshToken,

@@ -17,7 +17,6 @@ const schema = new mongoose.Schema(
       required: true,
       unique: true,
       trim: true,
-      index: true,
     },
     password: {
       type: String,
@@ -38,14 +37,7 @@ const schema = new mongoose.Schema(
   }
 );
 
-// schema.methods.toJSON = function () {
-//     const user = this.toObject();
-//     delete user.__v;
-//     delete user.password;
-//     delete user.createdAt;
-//     delete user.updatedAt;
-//     return JSON.parse(JSON.stringify(user).replace(/_id/g, "id"));
-// };
+schema.index({ email: 1 });
 
 const SuperAdmin = mongoose.model("SuperAdmin", schema);
 
