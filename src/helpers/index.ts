@@ -221,7 +221,7 @@ export const checkDuplicates = (arr: string[]): boolean => {
   return true;
 };
 
-export const getUTC = (localTime: Date, timeZoneOffset: number) => {
+export const getUTC = (localTime: Date | string, timeZoneOffset: number) => {
   const currentTime = new Date(localTime);
 
   const currentTimeInMs = currentTime.getTime();

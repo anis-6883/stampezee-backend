@@ -2,7 +2,6 @@ import { Response } from "express";
 import { apiResponse, asyncHandler, getUTC, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
 import Settings from "../settings/model";
-import Sorting from "../sorting/model";
 import Coupon from "./model";
 import { couponSchema, couponStatusSchema, updateCouponSchema } from "./validation";
 
@@ -163,12 +162,11 @@ export const softDeleteCoupon = asyncHandler(async (req: IApiRequest, res: Respo
     { _id: id },
     {
       softDeleted: true,
+      deletedBy: req.user._id,
     }
   );
 
   if (!coupon) return apiResponse(res, 404, false, "Coupon not found!");
-
-  await Sorting.updateOne({ title: "coupon" }, { $pull: { sortedData: id } });
 
   return apiResponse(res, 200, true, "Coupon deleted successfully!");
 });

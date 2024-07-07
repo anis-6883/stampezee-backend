@@ -58,6 +58,59 @@ const subscriptionSchema = new mongoose.Schema({
   },
 });
 
+const couponSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  description: {
+    type: String,
+    trim: true,
+    default: null,
+  },
+  code: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  startedAt: {
+    type: Date,
+    required: true,
+  },
+  expiredAt: {
+    type: Date,
+    required: true,
+  },
+  discountType: {
+    type: String,
+    enum: ["percentage", "flat"],
+    required: true,
+  },
+  discount: {
+    type: Number,
+    required: true,
+  },
+  status: {
+    type: Boolean,
+    default: true,
+  },
+  createdBy: {
+    type: "ObjectId", // mongoose.Types.ObjectId
+    ref: "Retailer",
+    required: true,
+  },
+  deletedBy: {
+    type: "ObjectId", // mongoose.Types.ObjectId
+    ref: "Retailer",
+    default: null,
+  },
+  softDeleted: {
+    type: Boolean,
+    default: false,
+  },
+});
+
 const enrollSubscriptionSchema = new mongoose.Schema(
   {
     retailerId: {
@@ -68,6 +121,10 @@ const enrollSubscriptionSchema = new mongoose.Schema(
     planSnapshot: {
       type: subscriptionSchema,
       required: true,
+    },
+    couponSnapshot: {
+      type: couponSchema,
+      default: null,
     },
     paymentStatus: {
       type: String,

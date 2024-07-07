@@ -1,5 +1,6 @@
 import Joi from "joi";
 import { PACKAGES } from "../../configs/constants";
+import { requiredStringField, stringField } from "../../helpers";
 
 export const enrollSubscriptionSchema = Joi.object({
   slugs: Joi.array()
@@ -29,4 +30,9 @@ export const enrollSubscriptionSchema = Joi.object({
       "array.base": "slugs must be array!",
       "array.includesRequiredUnknowns": "At least one slug is required!",
     }),
+  code: stringField("code"),
+});
+
+export const couponSchema = Joi.object({
+  code: requiredStringField("code"),
 });

@@ -4,10 +4,11 @@ import Stripe from "stripe";
 import { PACKAGES } from "../../configs/constants";
 import { apiResponse, asyncHandler, checkCombination, checkDuplicates } from "../../helpers";
 import { IApiRequest, IEnrollPayment, ILineItem } from "../../types";
+import Coupon from "../coupon/model";
 import Subscription from "../subscription/model";
 import Retailer from "../user/retailer/model";
 import { EnrollPayment, EnrollSubscription } from "./model";
-import { enrollSubscriptionSchema } from "./validation";
+import { couponSchema, enrollSubscriptionSchema } from "./validation";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -27,6 +28,40 @@ export const getAllPlans = asyncHandler(async (req: IApiRequest, res: Response) 
 });
 
 /**
+ * Check Coupon Validity
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await couponSchema.validateAsync(req.body, {
+    abortEarly: false,
+  });
+
+  const { code } = result || {};
+
+  const coupon = await Coupon.findOne(
+    {
+      code,
+      startedAt: { $lte: new Date() },
+      expiredAt: { $gte: new Date() },
+      status: true,
+      softDeleted: false,
+    },
+    {
+      _id: 0,
+      title: 1,
+      discountType: 1,
+      discount: 1,
+    }
+  );
+
+  if (!coupon) throw "Provide invalid coupon code!";
+
+  return apiResponse(res, 200, true, "Coupon applied!", coupon);
+});
+
+/**
  * Enroll Subscription
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
@@ -37,7 +72,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     abortEarly: false,
   });
 
-  const { slugs }: { slugs: string[] } = result;
+  const { slugs, code }: { slugs: string[]; code: string } = result;
 
   if (slugs.includes(PACKAGES.TRIAL) && slugs.length > 1) {
     throw "Trial packages do not include any additional packages!";
@@ -73,6 +108,20 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     throw "Free trial already taken!";
   }
 
+  // Check & Get Coupon
+  let coupon = null;
+  if (code) {
+    coupon = await Coupon.findOne({
+      code,
+      startedAt: { $lte: new Date() },
+      expiredAt: { $gte: new Date() },
+      status: true,
+      softDeleted: false,
+    });
+
+    if (!coupon) throw "Provide invalid coupon code!";
+  }
+
   // Enroll Paid Subscription
   if (checkCombination(slugs, [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED]) && checkDuplicates(slugs)) {
     const subscriptions: any[] = await Subscription.find({ slug: { $in: slugs } });
@@ -95,6 +144,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       const enrollSubscription: any = await EnrollSubscription.create({
         retailerId: req.user._id,
         planSnapshot: subscription,
+        couponSnapshot: coupon,
         paymentStatus: "pending",
       });
 
@@ -106,21 +156,40 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           product_data: {
             name: subscription.title,
           },
-          unit_amount: Math.ceil(subscription.price * 100),
+          unit_amount: Math.ceil(subscription.price * 100), // convert into cent
         },
         quantity: 1,
       });
     }
 
-    // const coupon = await stripe.coupons.create({
-    //   percent_off: 10,
-    //   duration: "once",
-    // });
+    const discounts: any[] = [];
+
+    // Attach coupon in the checkout if it has
+    if (coupon) {
+      let stripeCoupon = null;
+
+      if (coupon.discountType === "percentage") {
+        stripeCoupon = await stripe.coupons.create({
+          percent_off: coupon.discount,
+          duration: "once",
+        });
+      } else {
+        stripeCoupon = await stripe.coupons.create({
+          amount_off: Math.ceil(coupon.discount * 100), // convert into cent
+          duration: "once",
+          currency: "cad",
+        });
+      }
+
+      discounts.push({
+        coupon: stripeCoupon.id,
+      });
+    }
 
     const session = await stripe.checkout.sessions.create({
       line_items,
       mode: "payment",
-      // discounts: [{ coupon: coupon.id }],
+      discounts,
       metadata: enrollIdDuration,
       success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}&takeFreeTrial=${req.user.takeFreeTrial}`,
       cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
