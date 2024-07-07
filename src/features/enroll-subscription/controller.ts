@@ -62,7 +62,11 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           }),
           Retailer.findByIdAndUpdate(req.user._id, { takeFreeTrial: true }),
         ]);
-        return apiResponse(res, 200, true, "Free trial enrolled successfully!");
+        return apiResponse(res, 200, true, "Free trial enrolled successfully!", {
+          takeFreeTrial: true,
+          plan: "trial",
+          planValidAt: expireDate,
+        });
       }
       throw "Free trial package not found!";
     }
