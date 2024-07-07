@@ -3,7 +3,7 @@ import moment from "moment";
 import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../configs/constants";
 import { apiResponse, asyncHandler, exclude, generateSignature } from "../../helpers";
 import { IApiRequest } from "../../types";
-import { EnrollSubscription } from "../enroll-subscription/model";
+import EnrollSubscription from "../enroll-subscription/model";
 
 /**
  * Verify Access Token

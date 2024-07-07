@@ -5,9 +5,10 @@ import { PACKAGES } from "../../configs/constants";
 import { apiResponse, asyncHandler, checkCombination, checkDuplicates } from "../../helpers";
 import { IApiRequest, IEnrollPayment, ILineItem } from "../../types";
 import Coupon from "../coupon/model";
+import Payment from "../payment/model";
 import Subscription from "../subscription/model";
 import Retailer from "../user/retailer/model";
-import { EnrollPayment, EnrollSubscription } from "./model";
+import EnrollSubscription from "./model";
 import { couponSchema, enrollSubscriptionSchema } from "./validation";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -249,7 +250,7 @@ export const successEnrollSubscription = asyncHandler(async (req: Request, res: 
 
       Promise.all(updateSubscriptions);
 
-      EnrollPayment.create({
+      Payment.create({
         enrollSubscriptionId: subscriptionIds,
         paymentId: payment.id,
         paymentIntentId: payment.payment_intent.id,

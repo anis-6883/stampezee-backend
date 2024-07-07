@@ -146,40 +146,6 @@ const enrollSubscriptionSchema = new mongoose.Schema(
   }
 );
 
-const enrollPaymentSchema = new mongoose.Schema(
-  {
-    enrollSubscriptionId: {
-      type: [mongoose.Types.ObjectId],
-      validate: {
-        validator: (value: [string]) => Array.isArray(value) && value.length > 0,
-        message: "At least one id is required!",
-      },
-      required: true,
-    },
-    paymentId: {
-      type: String,
-      required: true,
-    },
-    paymentIntentId: {
-      type: String,
-      required: true,
-    },
-    amountTotal: {
-      type: Number,
-      required: true,
-    },
-    paymentStatus: {
-      type: String,
-      required: true,
-    },
-  },
-  {
-    timestamps: true,
-    versionKey: false,
-  }
-);
-
 const EnrollSubscription = mongoose.model("EnrollSubscription", enrollSubscriptionSchema);
-const EnrollPayment = mongoose.model("EnrollPayment", enrollPaymentSchema);
 
-export { EnrollPayment, EnrollSubscription };
+export default EnrollSubscription;

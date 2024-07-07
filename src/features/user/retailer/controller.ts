@@ -5,7 +5,7 @@ import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants"
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, generateSignature, getRandomInteger } from "../../../helpers";
 import { IApiRequest } from "../../../types";
-import { EnrollSubscription } from "../../enroll-subscription/model";
+import EnrollSubscription from "../../enroll-subscription/model";
 import { retailerSchemaUpdate } from "../../retailer/validation";
 import { sendVerificationEmail } from "../service";
 import {
