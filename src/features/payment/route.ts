@@ -1,8 +1,8 @@
 import express from "express";
-import { getAllPayments } from "./controller";
+import { getSubscriptionPayments } from "./controller";
 
 const router = express.Router();
 
-router.get("/", getAllPayments);
+router.get("/subscription", getSubscriptionPayments);
 
 export default router;

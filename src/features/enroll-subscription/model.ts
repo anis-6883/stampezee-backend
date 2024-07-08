@@ -139,6 +139,10 @@ const enrollSubscriptionSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    status: {
+      type: Boolean,
+      default: true,
+    },
   },
   {
     timestamps: true,

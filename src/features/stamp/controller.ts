@@ -1,9 +1,10 @@
 import { Response } from "express";
 import { ROLE } from "../../configs/constants";
-import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import { apiResponse, asyncHandler, getUTC, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
 import Branch from "../branch/model";
 import Category from "../category/model";
+import Settings from "../settings/model";
 import Sorting from "../sorting/model";
 import StampImage from "../stamp-image/model";
 import Stamp from "./model";
@@ -36,6 +37,18 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
   createBody.branchId = branchId;
   createBody.stampImageId = stampImageId;
   createBody.categoryId = categoryId;
+
+  const settings = await Settings.findOne(null, { "general.timezone": 1 });
+
+  if (!settings?.general?.timezone) {
+    throw "Setup TimeZone First!";
+  }
+
+  const systemTime = getUTC(createBody.startedAt, settings.general.timezone.value);
+  const expireTime = getUTC(createBody.expiredAt, settings.general.timezone.value);
+
+  createBody.startedAt = systemTime;
+  createBody.expiredAt = expireTime;
 
   const stamp: any = await Stamp.create(createBody);
 
@@ -238,6 +251,18 @@ export const updateStamp = asyncHandler(async (req: IApiRequest, res: Response) 
   updatedBody.branchId = branchId;
   updatedBody.stampImageId = stampImageId;
   updatedBody.categoryId = categoryId;
+
+  const settings = await Settings.findOne(null, { "general.timezone": 1 });
+
+  if (!settings?.general?.timezone) {
+    throw "Setup TimeZone First!";
+  }
+
+  const systemTime = getUTC(updatedBody.startedAt, settings.general.timezone.value);
+  const expireTime = getUTC(updatedBody.expiredAt, settings.general.timezone.value);
+
+  updatedBody.startedAt = systemTime;
+  updatedBody.expiredAt = expireTime;
 
   const updatedData: any = await Stamp.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
 

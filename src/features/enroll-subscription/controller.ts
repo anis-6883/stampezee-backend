@@ -127,6 +127,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
   if (checkCombination(slugs, [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED]) && checkDuplicates(slugs)) {
     const subscriptions: any[] = await Subscription.find({ slug: { $in: slugs } });
 
+    // Check Already enrolled or not
     const enrolled = await EnrollSubscription.findOne({
       retailerId: req.user._id,
       "planSnapshot.type": "subscription",
@@ -138,6 +139,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       throw `You already take ${enrolled.planSnapshot.title} plan!`;
     }
 
+    // Prepare for stripe payment
     let enrollIdDuration: { [key: string]: number } = {};
     const line_items: ILineItem[] = [];
 
@@ -147,6 +149,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         planSnapshot: subscription,
         couponSnapshot: coupon,
         paymentStatus: "pending",
+        status: false,
       });
 
       enrollIdDuration[enrollSubscription._id] = subscription.duration;
@@ -225,6 +228,7 @@ export const successEnrollSubscription = asyncHandler(async (req: Request, res: 
           paymentStatus: "trial",
           validityFrom: moment(),
           validityTo: moment(),
+          status: false,
         }),
         Retailer.findByIdAndUpdate(req.query._id, { takeFreeTrial: true }),
       ]);
@@ -232,6 +236,19 @@ export const successEnrollSubscription = asyncHandler(async (req: Request, res: 
 
     let subscriptionIds = [];
     let updateSubscriptions = [];
+
+    // Deactivate last previous active plan
+    updateSubscriptions.push(
+      EnrollSubscription.updateOne(
+        {
+          retailerId: req.query._id,
+          "planSnapshot.type": "subscription",
+          paymentStatus: { $in: ["completed", "trial"] },
+          status: true,
+        },
+        { status: false }
+      )
+    );
 
     if (payment.payment_intent.status === "succeeded") {
       for (let key in payment.metadata) {
@@ -244,23 +261,26 @@ export const successEnrollSubscription = asyncHandler(async (req: Request, res: 
             paymentStatus: "completed",
             validityFrom: now,
             validityTo: expireDate,
+            status: true,
           })
         );
       }
 
-      Promise.all(updateSubscriptions);
+      // Store Payment Info
+      updateSubscriptions.push(
+        Payment.create({
+          enrollSubscriptionId: subscriptionIds,
+          paymentId: payment.id,
+          paymentIntentId: payment.payment_intent.id,
+          paymentStatus: payment.payment_intent.status,
+          amountTotal: payment.amount_total,
+        })
+      );
 
-      Payment.create({
-        enrollSubscriptionId: subscriptionIds,
-        paymentId: payment.id,
-        paymentIntentId: payment.payment_intent.id,
-        paymentStatus: payment.payment_intent.status,
-        amountTotal: payment.amount_total,
-      });
+      await Promise.all(updateSubscriptions);
 
       return res.redirect(`${process.env.FRONTEND_URL}/payment/complete`);
     }
-    throw "Something went wrong in payment!";
   } else {
     throw "Something went wrong in payment!";
   }
