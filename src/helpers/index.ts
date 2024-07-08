@@ -232,3 +232,40 @@ export const getUTC = (localTime: Date | string, timeZoneOffset: number) => {
 
   return utcTime;
 };
+
+export const checkPlanChange = (plans: string[], previousPlan: string, currentPlan: string): number => {
+  const previousIndex = plans.indexOf(previousPlan);
+  const currentIndex = plans.indexOf(currentPlan);
+
+  if (previousIndex === -1 || currentIndex === -1) {
+    throw "Invalid plan provided!";
+  }
+
+  if (currentIndex > previousIndex) {
+    return 1;
+  } else if (currentIndex < previousIndex) {
+    return -1;
+  } else {
+    return 0;
+  }
+};
+
+export const calculateBalancePrice = (startDate: Date, expirationDate: Date, planPrice: number) => {
+  const start = new Date(startDate);
+  const end = new Date(expirationDate);
+  const today = new Date("2024-07-24T10:16:45.281+00:00");
+
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || start >= end) {
+    throw "Invalid start date or expiration date !";
+  }
+
+  const totalDuration = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+  const elapsedDuration = (today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+
+  // Ensure the elapsed duration is not negative or exceeding the total duration
+  const effectiveElapsedDuration = Math.min(Math.max(elapsedDuration, 0), totalDuration);
+  const consumedPrice = (effectiveElapsedDuration / totalDuration) * planPrice;
+
+  return planPrice - consumedPrice;
+  // return parseFloat(consumedPrice.toFixed(2)); // Return the consumed price rounded to 2 decimal places
+};

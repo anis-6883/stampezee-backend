@@ -2,7 +2,14 @@ import { Request, Response } from "express";
 import moment from "moment";
 import Stripe from "stripe";
 import { PACKAGES } from "../../configs/constants";
-import { apiResponse, asyncHandler, checkCombination, checkDuplicates } from "../../helpers";
+import {
+  apiResponse,
+  asyncHandler,
+  calculateBalancePrice,
+  checkCombination,
+  checkDuplicates,
+  checkPlanChange,
+} from "../../helpers";
 import { IApiRequest, IEnrollPayment, ILineItem } from "../../types";
 import Coupon from "../coupon/model";
 import Payment from "../payment/model";
@@ -126,44 +133,96 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
   // Enroll Paid Subscription
   if (checkCombination(slugs, [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED]) && checkDuplicates(slugs)) {
     const subscriptions: any[] = await Subscription.find({ slug: { $in: slugs } });
+    const pickPlan = subscriptions.find((subs) => subs.type === "subscription");
+
+    console.log({ pickPlan });
 
     // Check Already enrolled or not
     const enrolled = await EnrollSubscription.findOne({
       retailerId: req.user._id,
       "planSnapshot.type": "subscription",
-      paymentStatus: { $in: ["completed"] },
+      paymentStatus: "completed",
       validityTo: { $gt: moment() },
-    }).sort({ createdAt: "desc" });
+      status: true,
+    });
+
+    console.log({ enrolled });
 
     if (enrolled && slugs.includes(enrolled.planSnapshot.slug)) {
       throw `You already take ${enrolled.planSnapshot.title} plan!`;
     }
 
-    // Prepare for stripe payment
-    let enrollIdDuration: { [key: string]: number } = {};
+    ////////////////////////////////////////////////////////////////////////
+    //////// Decision -> (Upgrade or Downgrade) or New Subscription ////////
+    ////////////////////////////////////////////////////////////////////////
+
+    const enrollIdDuration: { [key: string]: number } = {};
     const line_items: ILineItem[] = [];
 
-    for (const subscription of subscriptions) {
-      const enrollSubscription: any = await EnrollSubscription.create({
-        retailerId: req.user._id,
-        planSnapshot: subscription,
-        couponSnapshot: coupon,
-        paymentStatus: "pending",
-        status: false,
-      });
+    if (enrolled) {
+      const result = checkPlanChange(
+        [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED],
+        enrolled.planSnapshot.slug,
+        pickPlan?.slug
+      );
 
-      enrollIdDuration[enrollSubscription._id] = subscription.duration;
+      const balance = calculateBalancePrice(enrolled.validityFrom, enrolled.validityTo, enrolled.planSnapshot.price);
 
-      line_items.push({
-        price_data: {
-          currency: "cad",
-          product_data: {
-            name: subscription.title,
+      console.log({ balance });
+
+      for (const subscription of subscriptions) {
+        const enrollSubscription: any = await EnrollSubscription.create({
+          retailerId: req.user._id,
+          planSnapshot: subscription,
+          couponSnapshot: coupon,
+          paymentStatus: "pending",
+          status: false,
+        });
+
+        enrollIdDuration[enrollSubscription._id] = subscription.duration;
+
+        console.log("Result: ", result > 0 ? "Upgrade" : "Downgrade");
+
+        const centAmount = Math.ceil((subscription.price - balance) * 100);
+
+        console.log({ balance });
+        console.log({ minus: subscription.price - balance });
+        console.log({ centAmount });
+
+        line_items.push({
+          price_data: {
+            currency: "cad",
+            product_data: {
+              name: subscription.title,
+            },
+            unit_amount: centAmount, // convert into cent
           },
-          unit_amount: Math.ceil(subscription.price * 100), // convert into cent
-        },
-        quantity: 1,
-      });
+          quantity: 1,
+        });
+      }
+    } else {
+      for (const subscription of subscriptions) {
+        const enrollSubscription: any = await EnrollSubscription.create({
+          retailerId: req.user._id,
+          planSnapshot: subscription,
+          couponSnapshot: coupon,
+          paymentStatus: "pending",
+          status: false,
+        });
+
+        enrollIdDuration[enrollSubscription._id] = subscription.duration;
+
+        line_items.push({
+          price_data: {
+            currency: "cad",
+            product_data: {
+              name: subscription.title,
+            },
+            unit_amount: Math.ceil(subscription.price * 100), // convert into cent
+          },
+          quantity: 1,
+        });
+      }
     }
 
     const discounts: any[] = [];
@@ -203,6 +262,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
     return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
   }
+
   throw "Only one subscription and no duplicate addons are allowed!";
 });
 
