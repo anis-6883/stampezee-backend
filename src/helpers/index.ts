@@ -25,8 +25,15 @@ export const asyncHandler = (func: any) => async (req: Request, res: Response) =
   }
 };
 
-export const apiResponse = (res: Response, statusCode: number, status: boolean, message: string, data?: any) => {
-  return res.status(statusCode).json({ status, message, data });
+export const apiResponse = (
+  res: Response,
+  statusCode: number,
+  status: boolean,
+  message: string,
+  data?: any,
+  pagination?: any
+) => {
+  return res.status(statusCode).json({ status, message, data, pagination });
 };
 
 export const emailField = Joi.string().email().trim().lowercase().messages({
@@ -184,6 +191,20 @@ export const makePaginate = (docs: any[], page: number, limit: number, skip: num
 
   return {
     docs,
+    page: +page,
+    limit: +limit,
+    totalPage: Math.ceil(total / Number(limit)),
+    totalDocs: total,
+    hasNext,
+    hasPrev,
+  };
+};
+
+export const makePaginateForMobile = (page: number, limit: number, skip: number, total: number) => {
+  const hasNext = total > skip + Number(limit);
+  const hasPrev = Number(page) > 1;
+
+  return {
     page: +page,
     limit: +limit,
     totalPage: Math.ceil(total / Number(limit)),

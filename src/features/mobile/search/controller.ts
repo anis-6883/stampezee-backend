@@ -1,6 +1,6 @@
 import { Response } from "express";
 import mongoose from "mongoose";
-import { apiResponse, asyncHandler, makePaginate } from "../../../helpers";
+import { apiResponse, asyncHandler, makePaginateForMobile } from "../../../helpers";
 import { IApiRequest } from "../../../types";
 import Branch from "../../branch/model";
 import Category from "../../category/model";
@@ -141,9 +141,9 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
     Stamp.find(query2).countDocuments(),
   ]);
 
-  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
+  const mobilePagination = makePaginateForMobile(Number(page), Number(limit), skip, total);
 
-  return apiResponse(res, 200, true, "Location by stamp fetched successfully!", data);
+  return apiResponse(res, 200, true, "Location by stamp fetched successfully!", docs, mobilePagination);
 });
 
 /**
