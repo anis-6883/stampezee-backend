@@ -16,15 +16,6 @@ const schema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
-      unique: true,
-    },
-    startedAt: {
-      type: Date,
-      required: true,
-    },
-    expiredAt: {
-      type: Date,
-      required: true,
     },
     discountType: {
       type: String,
@@ -33,6 +24,22 @@ const schema = new mongoose.Schema(
     },
     discount: {
       type: Number,
+      required: true,
+    },
+    minPurchaseAmount: {
+      type: Number,
+      default: 0,
+    },
+    limit: {
+      type: Number,
+      default: 1,
+    },
+    startedAt: {
+      type: Date,
+      required: true,
+    },
+    expiredAt: {
+      type: Date,
       required: true,
     },
     status: {
@@ -59,8 +66,6 @@ const schema = new mongoose.Schema(
     versionKey: false,
   }
 );
-
-schema.index({ code: 1 });
 
 const Coupon = mongoose.model("Coupon", schema);
 

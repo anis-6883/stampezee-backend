@@ -118,11 +118,15 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
       },
       {
         $project: {
-          name: 1,
-          address: "$address.name",
+          branch: {
+            _id: "$_id",
+            name: "$name",
+            address: "$address.name",
+          },
           "retailer.storeName": 1,
           "retailer.image": 1,
           stamp: 1,
+          _id: 0,
         },
       },
       {

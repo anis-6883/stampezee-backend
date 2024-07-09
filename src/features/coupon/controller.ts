@@ -20,8 +20,13 @@ export const createCoupon = asyncHandler(async (req: IApiRequest, res: Response)
 
   createBody.createdBy = req.user._id;
 
-  const existingCoupon = await Coupon.findOne({ code: createBody.code });
-  if (existingCoupon) throw "This coupon code already exists!";
+  const existingCoupon = await Coupon.findOne({
+    code: createBody.code,
+    startedAt: { $lte: createBody.expiredAt },
+    expiredAt: { $gte: createBody.startedAt },
+  });
+
+  if (existingCoupon) throw "Coupon already exists within date range!";
 
   const settings = await Settings.findOne(null, { "general.timezone": 1 });
 
@@ -100,8 +105,13 @@ export const updateCoupon = asyncHandler(async (req: IApiRequest, res: Response)
   const coupon = await Coupon.findOne({ _id: id });
   if (!coupon) return apiResponse(res, 404, false, "Coupon not found!");
 
-  const existingCoupon = await Coupon.findOne({ code: updatedBody.code, _id: { $ne: id } });
-  if (existingCoupon) return apiResponse(res, 400, false, "This coupon code already exists!");
+  const existingCoupon = await Coupon.findOne({
+    code: updatedBody.code,
+    startedAt: { $lte: updatedBody.expiredAt },
+    expiredAt: { $gte: updatedBody.startedAt },
+  });
+
+  if (existingCoupon) throw "Coupon already exists within date range!";
 
   const settings = await Settings.findOne(null, { "general.timezone": 1 });
 

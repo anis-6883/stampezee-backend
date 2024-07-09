@@ -24,6 +24,18 @@ const discount = Joi.number().min(1).messages({
   "number.min": "discount must be greater than or equal to 1!",
 });
 
+const limit = Joi.number().min(1).messages({
+  "number.base": "limit must be number!",
+  "any.required": "limit is required!",
+  "number.min": "limit must be greater than or equal to 1!",
+});
+
+const minPurchaseAmount = Joi.number().min(0).messages({
+  "number.base": "minPurchaseAmount must be number!",
+  "any.required": "minPurchaseAmount is required!",
+  "number.min": "minPurchaseAmount must be greater than or equal to 0!",
+});
+
 const code = Joi.string().trim().min(6).messages({
   "string.base": `code must be string!`,
   "string.empty": `code must not be empty!`,
@@ -48,6 +60,12 @@ export const couponSchema = Joi.object({
   discount: discount.required().messages({
     "any.required": "discount is required!",
   }),
+  limit: limit.required().messages({
+    "any.required": "limit is required!",
+  }),
+  minPurchaseAmount: minPurchaseAmount.required().messages({
+    "any.required": "minPurchaseAmount is required!",
+  }),
 });
 
 export const updateCouponSchema = Joi.object({
@@ -58,6 +76,8 @@ export const updateCouponSchema = Joi.object({
   expiredAt,
   discountType,
   discount,
+  limit,
+  minPurchaseAmount,
 });
 
 export const couponStatusSchema = Joi.object({

@@ -274,7 +274,7 @@ export const checkPlanChange = (plans: string[], previousPlan: string, currentPl
 export const calculateBalancePrice = (startDate: Date, expirationDate: Date, planPrice: number) => {
   const start = new Date(startDate);
   const end = new Date(expirationDate);
-  const today = new Date("2024-07-24T10:16:45.281+00:00");
+  const today = new Date();
 
   if (isNaN(start.getTime()) || isNaN(end.getTime()) || start >= end) {
     throw "Invalid start date or expiration date !";
