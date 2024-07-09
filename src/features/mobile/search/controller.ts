@@ -28,7 +28,7 @@ export const getAllCategories = asyncHandler(async (req: IApiRequest, res: Respo
 });
 
 /**
- * Get All Stamps By Customer Location
+ * Get All Branches with Stamp By Customer Location
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -125,6 +125,7 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
             name: "$name",
             address: "$address.name",
           },
+          "retailer._id": 1,
           "retailer.storeName": 1,
           "retailer.image": 1,
           stamp: 1,

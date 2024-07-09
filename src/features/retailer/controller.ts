@@ -118,6 +118,18 @@ export const updateRetailer = asyncHandler(async (req: IApiRequest, res: Respons
     deleteFileFromS3Bucket(prevImage?.image);
   }
 
+  if (updatedBody.firstName || updatedBody.lastName) {
+    const retailer = await Retailer.findById(id, { firstName: 1, lastName: 1 });
+
+    if (updatedBody.firstName && updatedBody.lastName) {
+      updatedBody.fullName = `${updatedBody.firstName} ${updatedBody.lastName}`;
+    } else if (updatedBody.firstName) {
+      updatedBody.fullName = `${updatedBody.firstName} ${retailer.lastName || ""}`.trim();
+    } else if (updatedBody.lastName) {
+      updatedBody.fullName = `${retailer.firstName || ""} ${updatedBody.lastName}`.trim();
+    }
+  }
+
   const retailer: any = await Retailer.findOneAndUpdate({ _id: id }, updatedBody, {
     new: true,
     projection: { password: 0, createdAt: 0, updatedAt: 0 },

@@ -21,18 +21,65 @@ import SubAdmin from "./model";
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const subAdminLogin = asyncHandler(async (req: Request, res: Response) => {
-  const result = await loginSchema.validateAsync(req.body);
+  const result = loginSchema.validate(req.body);
+  if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
 
-  const subAdmin: any = await SubAdmin.findOne({ email: result.email, status: true });
-  if (!subAdmin) return apiResponse(res, 401, false, "Invalid Credentials!");
+  const { email, password } = result.value;
 
-  const isPasswordValid = await bcrypt.compare(result.password, subAdmin.password);
+  const newResult = await SubAdmin.aggregate([
+    { $match: { email: email, status: true, softDeleted: false } },
+    {
+      $lookup: {
+        from: "retailers",
+        localField: "retailerId",
+        foreignField: "_id",
+        as: "retailer",
+      },
+    },
+    {
+      $lookup: {
+        from: "branches",
+        localField: "branchId",
+        foreignField: "_id",
+        as: "branch",
+      },
+    },
+    {
+      $unwind: "$retailer",
+    },
+    {
+      $unwind: "$branch",
+    },
+    {
+      $project: {
+        _id: 1,
+        firstName: 1,
+        lastName: 1,
+        fullName: 1,
+        email: 1,
+        image: 1,
+        password: 1,
+        "retailer._id": 1,
+        "retailer.storeName": 1,
+        "retailer.image": 1,
+        "branch._id": 1,
+        "branch.name": 1,
+        "branch.address": "$branch.address.name",
+      },
+    },
+  ]);
+
+  if (!newResult[0]) {
+    return apiResponse(res, 401, false, "Invalid Credentials!");
+  }
+
+  const isPasswordValid = await bcrypt.compare(password, newResult[0].password);
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
-  const token = generateSignature({ email: subAdmin.email, role: ROLE.SUB_ADMIN }, "30 days");
+  const token = generateSignature({ email: newResult[0].email, role: ROLE.SUB_ADMIN }, "30 days");
 
   // Remove Sensitive Data
-  const data = exclude(subAdmin._doc, ["password", "createdAt", "updatedAt"]);
+  const data = exclude(newResult[0], ["password"]);
 
   return apiResponse(res, 200, true, "Sub Admin Login Successfully!", { token, ...data });
 });
