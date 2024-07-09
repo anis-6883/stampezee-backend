@@ -9,10 +9,10 @@ import EnrollSubscription from "../../enroll-subscription/model";
 import { retailerSchemaUpdate } from "../../retailer/validation";
 import { sendVerificationEmail } from "../service";
 import {
+  forgetPasswordSchema,
   loginSchema,
   retailerChangeForgetPasswordSchema,
   retailerChangePasswordSchema,
-  retailerForgetPasswordSchema,
   retailerRegisterSchema,
   verifyOtpSchema,
 } from "../validation";
@@ -278,7 +278,7 @@ export const updateRetailerProfile = asyncHandler(async (req: IApiRequest, res: 
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const retailerForgetPassword = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = await retailerForgetPasswordSchema.validateAsync(req.body, { abortEarly: false });
+  const result = await forgetPasswordSchema.validateAsync(req.body, { abortEarly: false });
 
   const retailer = await Retailer.findOne({ email: result.email, status: true, softDeleted: false, isVerified: true });
 

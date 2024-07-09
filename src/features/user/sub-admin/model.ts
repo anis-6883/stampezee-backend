@@ -41,6 +41,15 @@ const schema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    otp: {
+      type: Number,
+      trim: true,
+      default: null,
+    },
+    otpExpiry: {
+      type: Date,
+      default: null,
+    },
     status: {
       type: Boolean,
       default: true,

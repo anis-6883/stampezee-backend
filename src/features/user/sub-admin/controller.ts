@@ -1,9 +1,17 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
-import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
-import { apiResponse, asyncHandler, exclude, generateSignature } from "../../../helpers";
+import { ROLE } from "../../../configs/constants";
+import {
+  apiResponse,
+  asyncHandler,
+  exclude,
+  formatErrorMsg,
+  generateSignature,
+  getRandomInteger,
+} from "../../../helpers";
 import { IApiRequest } from "../../../types";
-import { loginSchema } from "../validation";
+import { sendVerificationEmail } from "../service";
+import { forgetPasswordSchema, loginSchema, subAdminChangeForgetPasswordSchema, verifyOtpSchema } from "../validation";
 import SubAdmin from "./model";
 
 /**
@@ -21,27 +29,12 @@ export const subAdminLogin = asyncHandler(async (req: Request, res: Response) =>
   const isPasswordValid = await bcrypt.compare(result.password, subAdmin.password);
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
-  const accessToken = generateSignature({ email: subAdmin.email, role: ROLE.SUB_ADMIN }, "1d");
-  const refreshToken = generateSignature({ email: subAdmin.email, role: ROLE.SUB_ADMIN }, "7d");
-
-  res.cookie(COOKIE_KEY, accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
-    expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
-  });
-
-  res.cookie(REFRESH_TOKEN_KEY, refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
-    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-  });
+  const token = generateSignature({ email: subAdmin.email, role: ROLE.SUB_ADMIN }, "30 days");
 
   // Remove Sensitive Data
   const data = exclude(subAdmin._doc, ["password", "createdAt", "updatedAt"]);
 
-  return apiResponse(res, 200, true, "SubAdmin Login Successfully!", data);
+  return apiResponse(res, 200, true, "Sub Admin Login Successfully!", { token, ...data });
 });
 
 /**
@@ -61,4 +54,96 @@ export const subAdminProfile = asyncHandler(async (req: IApiRequest, res: Respon
   } else {
     return apiResponse(res, 401, false, "Unauthorized!");
   }
+});
+
+/**
+ * Sub Admin Forget Password
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const subAdminForgetPassword = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = forgetPasswordSchema.validate(req.body);
+  if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
+
+  const subAdmin = await SubAdmin.findOne({
+    email: result.value.email,
+    status: true,
+  });
+
+  if (!subAdmin) {
+    return apiResponse(res, 404, false, "Sub Admin not found!");
+  }
+
+  const otp = getRandomInteger(100000, 999999);
+  const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
+
+  await SubAdmin.findByIdAndUpdate(subAdmin._id, { otp, otpExpiry });
+
+  const token = generateSignature({ email: subAdmin.email, role: ROLE.SUB_ADMIN }, "15m"); // 15 min
+
+  // Send Otp to Email
+  sendVerificationEmail(subAdmin.email, otp, "mobile");
+
+  return apiResponse(res, 200, true, "Otp sent successfully!", { token });
+});
+
+/**
+ * SubAdmin Forget Password Otp Verify
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const subAdminForgetPasswordOtpVerify = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = verifyOtpSchema.validate(req.body);
+  if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
+
+  const isVerified = req.user.otp === Number(result.value.otp) && req.user.otpExpiry > new Date();
+  if (!isVerified) throw "Invalid Otp!";
+
+  await SubAdmin.updateOne({ email: req.user.email }, { otp: null, otpExpiry: null });
+
+  return apiResponse(res, 200, true, "Otp verified successfully!");
+});
+
+/**
+ * SubAdmin Forget Password Resend Otp
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const subAdminForgetPasswordResendOtp = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const otp = getRandomInteger(100000, 999999);
+  const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
+
+  if (req.user.otpExpiry > new Date()) {
+    return apiResponse(res, 400, false, "Wait 2 minutes to resend OTP!");
+  }
+
+  await SubAdmin.updateOne({ email: req.user.email }, { otp, otpExpiry });
+
+  sendVerificationEmail(req.user.email, otp);
+
+  return apiResponse(res, 200, true, "Otp resend successfully!");
+});
+
+/**
+ * SubAdmin Changed Forget Password
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const subAdminChangeForgetPassword = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = subAdminChangeForgetPasswordSchema.validate(req.body);
+  if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
+
+  const subAdmin = await SubAdmin.findById(req.user._id);
+
+  const isSame = await bcrypt.compare(result.value.password, subAdmin.password);
+  if (isSame) throw "New password cannot be same as old password!";
+
+  const hashedPassword = await bcrypt.hash(result.value.password, 10);
+  await SubAdmin.updateOne({ email: req.user.email }, { password: hashedPassword });
+
+  return apiResponse(res, 200, true, "Password changed successfully!");
 });

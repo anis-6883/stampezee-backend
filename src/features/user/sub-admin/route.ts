@@ -2,11 +2,24 @@ import express from "express";
 
 import { ROLE } from "../../../configs/constants";
 import { authAndPermissionCheck } from "../../../middlewares/authMiddleware";
-import { subAdminLogin, subAdminProfile } from "./controller";
+import {
+  subAdminChangeForgetPassword,
+  subAdminForgetPassword,
+  subAdminForgetPasswordOtpVerify,
+  subAdminForgetPasswordResendOtp,
+  subAdminLogin,
+  subAdminProfile,
+} from "./controller";
 
 const router = express.Router();
 
 router.post("/login", subAdminLogin);
-router.get("/profile", authAndPermissionCheck(ROLE.SUB_ADMIN), subAdminProfile);
+router.post("/forget-password", subAdminForgetPassword);
+
+router.use(authAndPermissionCheck(ROLE.SUB_ADMIN));
+router.get("/profile", subAdminProfile);
+router.get("/resend-forget-password-otp", subAdminForgetPasswordResendOtp);
+router.post("/forget-password-otp-verify", subAdminForgetPasswordOtpVerify);
+router.post("/change-forget-password", subAdminChangeForgetPassword);
 
 export default router;

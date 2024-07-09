@@ -13,9 +13,9 @@ import { IApiRequest, IUser } from "../../../types";
 import { sendVerificationEmail } from "../service";
 import {
   customerChangeForgetPasswordSchema,
-  customerForgetPasswordSchema,
   customerRegisterSchema,
   customerUpdateProfile,
+  forgetPasswordSchema,
   locationTokenSchema,
   loginSchema,
   verifyOtpSchema,
@@ -209,7 +209,7 @@ export const updateCustomerProfile = asyncHandler(async (req: IApiRequest, res: 
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const customerForgetPassword = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = customerForgetPasswordSchema.validate(req.body);
+  const result = forgetPasswordSchema.validate(req.body);
   if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
 
   const customer = await Customer.findOne({

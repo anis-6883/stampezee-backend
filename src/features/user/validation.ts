@@ -87,11 +87,7 @@ export const locationTokenSchema = Joi.object({
   latitude: updateLatitude,
 });
 
-export const retailerForgetPasswordSchema = Joi.object({
-  email: requiredEmailField,
-});
-
-export const customerForgetPasswordSchema = Joi.object({
+export const forgetPasswordSchema = Joi.object({
   email: requiredEmailField,
 });
 
@@ -104,6 +100,14 @@ export const retailerChangeForgetPasswordSchema = Joi.object({
 });
 
 export const customerChangeForgetPasswordSchema = Joi.object({
+  password: weakPasswordField(6),
+  confirmPassword: Joi.any().equal(Joi.ref("password")).required().messages({
+    "any.only": "passwords do not match!",
+    "any.required": "confirmPassword is required!",
+  }),
+});
+
+export const subAdminChangeForgetPasswordSchema = Joi.object({
   password: weakPasswordField(6),
   confirmPassword: Joi.any().equal(Joi.ref("password")).required().messages({
     "any.only": "passwords do not match!",
