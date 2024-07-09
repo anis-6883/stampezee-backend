@@ -108,6 +108,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         return apiResponse(res, 200, true, "Free trial enrolled successfully!", {
           takeFreeTrial: true,
           plan: "trial",
+          planStartAt: now,
           planValidAt: expireDate,
         });
       }

@@ -151,6 +151,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
 
   // Check Subscription & Addon Enrollment
   let plan: null | string = null;
+  let planStartAt: null | Date = null;
   let planValidAt: null | Date = null;
 
   const subscription = await EnrollSubscription.findOne({
@@ -162,6 +163,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
 
   if (subscription) {
     plan = subscription.planSnapshot.slug;
+    planStartAt = subscription.validityFrom;
     planValidAt = subscription.validityTo;
   }
 
@@ -178,6 +180,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
     expiresIn: new Date().setTime(new Date().getTime() + ALARM_EXPIRE_TIME),
     role: ROLE.RETAILER,
     plan,
+    planStartAt,
     planValidAt,
   });
 });
@@ -216,6 +219,7 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
   // Remove Sensitive Data
   const data = exclude(req.user, ["password", "otp", "otpExpiry"]);
   data.plan = null;
+  data.planStartAt = null;
   data.planValidAt = null;
 
   // Check Subscription & Addon Enrollment
@@ -229,6 +233,7 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
 
     if (subscription) {
       data.plan = subscription.planSnapshot.slug;
+      data.planStartAt = subscription.validityFrom;
       data.planValidAt = subscription.validityTo;
     }
   }
