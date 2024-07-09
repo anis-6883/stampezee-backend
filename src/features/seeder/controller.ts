@@ -93,7 +93,7 @@ export const createStamps = asyncHandler(async (req: Request, res: Response) => 
           retailerId: id,
           branchId: branch._id,
           stampImageId: "6677eef4dde9736b3636f851",
-          categoryId: "666976af1765b4bdf352ca45",
+          categoryId: "666976e21765b4bdf352ca4e",
           title: `Buy ${randInt} Kacchi Get 1 Mojo Drink 500ml`,
           description: faker.lorem.sentences(2),
           rules: `You need to buy ${randInt} Kacchi Get 1 Mojo Drink 500ml`,

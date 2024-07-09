@@ -26,7 +26,7 @@ export const createRetailer = asyncHandler(async (req: IApiRequest, res: Respons
 
   // Upload File to S3 Bucket
   if (req.file) {
-    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "users");
+    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "brands");
     if (status) {
       imageKey = key;
     }
@@ -109,7 +109,7 @@ export const updateRetailer = asyncHandler(async (req: IApiRequest, res: Respons
 
   // Upload File to S3 Bucket
   if (req.file) {
-    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "users");
+    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "brands");
     if (status) {
       updatedBody.image = key;
     }

@@ -1,12 +1,11 @@
 import { Response } from "express";
 import mongoose from "mongoose";
-import { apiResponse, asyncHandler, makePaginateForMobile } from "../../../helpers";
+import { apiResponse, asyncHandler, formatErrorMsg, makePaginateForMobile } from "../../../helpers";
 import { IApiRequest } from "../../../types";
 import Branch from "../../branch/model";
 import Category from "../../category/model";
 import Sorting from "../../sorting/model";
 import Stamp from "../../stamp/model";
-import Customer from "../../user/customer/model";
 import CollectStamp from "./model";
 import { collectStampSchema } from "./validation";
 
@@ -83,10 +82,22 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
           from: "stamps",
           localField: "_id",
           foreignField: "branchId",
-          as: "stamps",
+          as: "stamp",
           pipeline: [
             {
               $match: query2,
+            },
+            {
+              $project: {
+                title: 1,
+                description: 1,
+                rules: 1,
+                noOfStampsToCollect: 1,
+                minPurchaseAmount: 1,
+                rewardType: 1,
+                promotionReward: 1,
+                discountReward: 1,
+              },
             },
           ],
         },
@@ -96,34 +107,22 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
           from: "retailers",
           localField: "retailerId",
           foreignField: "_id",
-          as: "retailers",
+          as: "retailer",
         },
       },
       {
-        $unwind: "$stamps",
+        $unwind: "$stamp",
       },
       {
-        $unwind: "$retailers",
+        $unwind: "$retailer",
       },
       {
         $project: {
-          _id: 0,
-          branch: {
-            _id: "$_id",
-            name: "$name",
-            distance: "$distance",
-            address: "$address.name",
-          },
-          stamp: {
-            _id: "$stamps._id",
-            title: "$stamps.title",
-            categoryId: "$stamps.categoryId",
-          },
-          retailer: {
-            _id: "$retailers._id",
-            storeName: "$retailers.storeName",
-            image: "$retailers.image",
-          },
+          name: 1,
+          address: "$address.name",
+          "retailer.storeName": 1,
+          "retailer.image": 1,
+          stamp: 1,
         },
       },
       {
@@ -153,21 +152,34 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const collectStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = await collectStampSchema.validateAsync(req.body, {
-    abortEarly: false,
-  });
+  const result: any = collectStampSchema.validate(req.body);
+  if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
 
-  const [branch, stamp, customer] = await Promise.all([
-    Branch.findById(result.branchId),
-    Stamp.findById(result.stampId),
-    Customer.findById(result.customerId),
+  const { branchId, stampId } = result.value;
+
+  const [alreadyCollected, branch, stamp] = await Promise.all([
+    CollectStamp.find({
+      branchId,
+      stampId,
+      customerId: req.user._id,
+    }),
+    Branch.findById(branchId),
+    Stamp.findById(stampId),
   ]);
 
-  if (!branch || !stamp || !customer) {
-    throw "Branch, stamp or customer not found!";
+  if (alreadyCollected) {
+    throw "This stamp already collected!";
   }
 
-  await CollectStamp.create(result);
+  if (!branch || !stamp) {
+    throw "Branch or Stamp not found!";
+  }
+
+  await CollectStamp.create({
+    branchId,
+    stampId,
+    customerId: req.user._id,
+  });
 
   return apiResponse(res, 200, true, "Stamp collected successfully!");
 });
