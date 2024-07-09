@@ -24,6 +24,7 @@ export const createCoupon = asyncHandler(async (req: IApiRequest, res: Response)
     code: createBody.code,
     startedAt: { $lte: createBody.expiredAt },
     expiredAt: { $gte: createBody.startedAt },
+    softDeleted: false,
   });
 
   if (existingCoupon) throw "Coupon already exists within date range!";
@@ -106,9 +107,11 @@ export const updateCoupon = asyncHandler(async (req: IApiRequest, res: Response)
   if (!coupon) return apiResponse(res, 404, false, "Coupon not found!");
 
   const existingCoupon = await Coupon.findOne({
+    _id: { $ne: id },
     code: updatedBody.code,
     startedAt: { $lte: updatedBody.expiredAt },
     expiredAt: { $gte: updatedBody.startedAt },
+    softDeleted: false,
   });
 
   if (existingCoupon) throw "Coupon already exists within date range!";

@@ -158,8 +158,9 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
     retailerId: retailer._id,
     "planSnapshot.type": "subscription",
     paymentStatus: { $in: ["completed", "trial"] },
-    validityTo: { $gt: moment() },
-  }).sort({ createdAt: "desc" });
+    validityTo: { $gt: new Date() },
+    status: true,
+  });
 
   if (subscription) {
     plan = subscription.planSnapshot.slug;
@@ -229,7 +230,8 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
       "planSnapshot.type": "subscription",
       paymentStatus: { $in: ["completed", "trial"] },
       validityTo: { $gt: moment() },
-    }).sort({ createdAt: "desc" });
+      status: true,
+    });
 
     if (subscription) {
       data.plan = subscription.planSnapshot.slug;

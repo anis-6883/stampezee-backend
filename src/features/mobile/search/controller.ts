@@ -97,6 +97,8 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
                 rewardType: 1,
                 promotionReward: 1,
                 discountReward: 1,
+                createdAt: 1,
+                updatedAt: 1,
               },
             },
           ],
