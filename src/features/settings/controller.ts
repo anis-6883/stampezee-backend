@@ -28,7 +28,7 @@ export const getSettings = asyncHandler(async (req: Request, res: Response) => {
 export const updateSettings = asyncHandler(async (req: Request, res: Response) => {
   const result = await settingsSchema.validateAsync(req.body);
 
-  const { general, notification, pages, s3Bucket } = result;
+  const { general, notification, pages, s3Bucket, stripe, googleMap } = result;
 
   const settings = await Settings.findOne({});
   let data = null;
@@ -36,8 +36,10 @@ export const updateSettings = asyncHandler(async (req: Request, res: Response) =
   if (!settings) {
     data = await Settings.create({
       pages,
+      stripe,
       general,
       s3Bucket,
+      googleMap,
       notification,
     });
   } else {

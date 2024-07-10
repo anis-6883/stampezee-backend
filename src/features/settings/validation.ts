@@ -13,4 +13,10 @@ export const settingsSchema = Joi.object({
   s3Bucket: Joi.object().messages({
     "object.base": "s3Bucket must be object!",
   }),
+  stripe: Joi.object().messages({
+    "object.base": "s3Bucket must be object!",
+  }),
+  googleMap: Joi.object().messages({
+    "object.base": "s3Bucket must be object!",
+  }),
 });
