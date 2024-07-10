@@ -60,7 +60,16 @@ export const updateSettings = asyncHandler(async (req: Request, res: Response) =
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getCommonSettings = asyncHandler(async (req: Request, res: Response) => {
-  const settings = await Settings.findOne({}, { "general.timezone": 1 });
+  const settings = await Settings.findOne(
+    {},
+    {
+      "general.timezone": 1,
+      "stripe.planChangeCost": 1,
+      "stripe.refundableThreshold": 1,
+      "stripe.taxTitle": 1,
+      "stripe.taxCost": 1,
+    }
+  );
 
   if (!settings) {
     return apiResponse(res, 404, false, "Settings not found!");
