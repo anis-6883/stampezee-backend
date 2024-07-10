@@ -54,14 +54,6 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
           {
             $unwind: "$retailer",
           },
-          {
-            $project: {
-              name: 1,
-              address: "$address.name",
-              "retailer.storeName": 1,
-              "retailer.image": 1,
-            },
-          },
         ],
       },
     },
@@ -72,7 +64,17 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
       $unwind: "$branch",
     },
     {
-      $project: { updatedAt: 0, stampId: 0, branchId: 0, customerId: 0 },
+      $project: {
+        _id: 1,
+        createdAt: 1,
+        stamp: 1,
+        "branch._id": "$branch._id",
+        "branch.name": "$branch.name",
+        "branch.address": "$branch.address.name",
+        "retailer._id": "$branch.retailer._id",
+        "retailer.storeName": "$branch.retailer.storeName",
+        "retailer.image": "$branch.retailer.image",
+      },
     },
   ]);
 
