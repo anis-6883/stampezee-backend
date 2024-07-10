@@ -165,7 +165,7 @@ export const collectStamp = asyncHandler(async (req: IApiRequest, res: Response)
   const { branchId, stampId } = result.value;
 
   const [alreadyCollected, branch, stamp] = await Promise.all([
-    CollectStamp.find({
+    CollectStamp.findOne({
       branchId,
       stampId,
       customerId: req.user._id,
