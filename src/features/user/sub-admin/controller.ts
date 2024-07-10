@@ -26,7 +26,7 @@ export const subAdminLogin = asyncHandler(async (req: Request, res: Response) =>
 
   const { email, password } = result.value;
 
-  const newResult = await SubAdmin.aggregate([
+  const subAdmin = await SubAdmin.aggregate([
     { $match: { email: email, status: true, softDeleted: false } },
     {
       $lookup: {
@@ -69,17 +69,17 @@ export const subAdminLogin = asyncHandler(async (req: Request, res: Response) =>
     },
   ]);
 
-  if (!newResult[0]) {
+  if (!subAdmin[0]) {
     return apiResponse(res, 401, false, "Invalid Credentials!");
   }
 
-  const isPasswordValid = await bcrypt.compare(password, newResult[0].password);
+  const isPasswordValid = await bcrypt.compare(password, subAdmin[0].password);
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
-  const token = generateSignature({ email: newResult[0].email, role: ROLE.SUB_ADMIN }, "30 days");
+  const token = generateSignature({ email: subAdmin[0].email, role: ROLE.SUB_ADMIN }, "30 days");
 
   // Remove Sensitive Data
-  const data = exclude(newResult[0], ["password"]);
+  const data = exclude(subAdmin[0], ["password"]);
 
   return apiResponse(res, 200, true, "Sub Admin Login Successfully!", { token, ...data });
 });
@@ -91,16 +91,53 @@ export const subAdminLogin = asyncHandler(async (req: Request, res: Response) =>
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const subAdminProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
-  if ("user" in req) {
-    if (!req.user) return apiResponse(res, 401, false, "Unauthorized Request!");
+  const subAdmin = await SubAdmin.aggregate([
+    { $match: { email: req.user.email, status: true, softDeleted: false } },
+    {
+      $lookup: {
+        from: "retailers",
+        localField: "retailerId",
+        foreignField: "_id",
+        as: "retailer",
+      },
+    },
+    {
+      $lookup: {
+        from: "branches",
+        localField: "branchId",
+        foreignField: "_id",
+        as: "branch",
+      },
+    },
+    {
+      $unwind: "$retailer",
+    },
+    {
+      $unwind: "$branch",
+    },
+    {
+      $project: {
+        _id: 1,
+        firstName: 1,
+        lastName: 1,
+        fullName: 1,
+        email: 1,
+        image: 1,
+        password: 1,
+        "retailer._id": 1,
+        "retailer.storeName": 1,
+        "retailer.image": 1,
+        "branch._id": 1,
+        "branch.name": 1,
+        "branch.address": "$branch.address.name",
+      },
+    },
+  ]);
 
-    // Remove Sensitive Data
-    const data = exclude(req.user, ["password", "createdAt", "updatedAt"]);
+  // Remove Sensitive Data
+  const data = exclude(subAdmin[0], ["password"]);
 
-    return apiResponse(res, 200, true, "Sub Admin Profile", { ...data, role: req.role });
-  } else {
-    return apiResponse(res, 401, false, "Unauthorized!");
-  }
+  return apiResponse(res, 200, true, "Sub Admin Profile", data);
 });
 
 /**
