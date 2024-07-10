@@ -160,13 +160,18 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     const enrollIdDuration: { [key: string]: number } = {};
     const line_items: ILineItem[] = [];
 
-    if (enrolled) {
-      const result = checkPlanChange(
-        [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED],
-        enrolled.planSnapshot.slug,
-        pickPlan?.slug
-      );
+    const changeCost = 1; // CAD
+    const refundableCost = 1; // CAD
+    const taxCost = 1; // CAD
 
+    const changeMode = checkPlanChange(
+      [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED],
+      enrolled.planSnapshot.slug,
+      pickPlan?.slug
+    );
+    console.log("Change Mode: ", changeMode > 0 ? "Upgrade" : "Downgrade");
+
+    if (enrolled) {
       const balance = calculateBalancePrice(enrolled.validityFrom, enrolled.validityTo, enrolled.planSnapshot.price);
 
       console.log({ balance });
@@ -182,21 +187,13 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
         enrollIdDuration[enrollSubscription._id] = subscription.duration;
 
-        console.log("Result: ", result > 0 ? "Upgrade" : "Downgrade");
-
-        const centAmount = Math.ceil((subscription.price - balance) * 100);
-
-        console.log({ balance });
-        console.log({ minus: subscription.price - balance });
-        console.log({ centAmount });
-
         line_items.push({
           price_data: {
             currency: "cad",
             product_data: {
               name: subscription.title,
             },
-            unit_amount: centAmount, // convert into cent
+            unit_amount: Math.ceil(subscription.price * 100), // convert into cent
           },
           quantity: 1,
         });

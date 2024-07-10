@@ -35,12 +35,26 @@ const s3Bucket = new mongoose.Schema({
   awsBucketName: { type: String, default: "", trim: true },
 });
 
+const stripe = new mongoose.Schema({
+  stripeSecretKey: { type: String, default: "", trim: true },
+  planChangeCost: { type: Number, default: 1 },
+  refundableThreshold: { type: Number, default: 1 },
+  taxTitle: { type: String, default: "", trim: true },
+  taxCost: { type: Number, default: 1 },
+});
+
+const googleMap = new mongoose.Schema({
+  googleMapsApiKey: { type: String, default: "", trim: true },
+});
+
 const schema = new mongoose.Schema(
   {
     general,
     notification,
-    page,
     s3Bucket,
+    stripe,
+    googleMap,
+    page,
   },
   {
     timestamps: true,

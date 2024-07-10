@@ -174,6 +174,7 @@ export const softDeleteCoupon = asyncHandler(async (req: IApiRequest, res: Respo
   const coupon = await Coupon.findOneAndUpdate(
     { _id: id },
     {
+      status: false,
       softDeleted: true,
       deletedBy: req.user._id,
     }
