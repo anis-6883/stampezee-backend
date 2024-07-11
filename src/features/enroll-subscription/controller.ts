@@ -122,7 +122,13 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
   // Get payment metadata
   const paymentMetadata = await Settings.findOne(
     {},
-    { "stripe.planChangeCost": 1, "stripe.refundableThreshold": 1, "stripe.taxTitle": 1, "stripe.taxCost": 1 }
+    {
+      "stripe.planChangeCost": 1,
+      "stripe.refundableThreshold": 1,
+      "stripe.taxTitle": 1,
+      "stripe.taxCost": 1,
+      "stripe.taxStatus": 1,
+    }
   );
 
   if (!paymentMetadata) {
@@ -150,7 +156,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     const subscriptions: any[] = await Subscription.find({ slug: { $in: slugs } });
     const pickPlan = subscriptions.find((subs) => subs.type === "subscription");
 
-    console.log({ pickPlan });
+    // console.log({ pickPlan });
 
     // Check Already enrolled or not
     const enrolled = await EnrollSubscription.findOne({
@@ -161,7 +167,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       status: true,
     });
 
-    console.log({ enrolled });
+    // console.log({ enrolled });
 
     if (enrolled && slugs.includes(enrolled.planSnapshot.slug)) {
       throw `You already take ${enrolled.planSnapshot.title} plan!`;
@@ -190,10 +196,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
       console.log("Change Mode: ", changeMode > 0 ? "Upgrade" : "Downgrade");
 
+      console.log({ balanceAmount });
+
       // Plan Upgrade
       if (changeMode > 0) {
-        console.log({ balanceAmount });
-
         for (const subscription of subscriptions) {
           const enrollSubscription: any = await EnrollSubscription.create({
             retailerId: req.user._id,
@@ -203,12 +209,17 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               taxTitle: taxStatus === "on" ? taxTitle : null,
               taxCost: taxStatus === "on" ? taxCost : null,
             },
+            balanceInfo: {
+              currentBalance: balanceAmount,
+              planCurrentPrice: Number(subscription.price - balanceAmount),
+            },
+            planChangeCost,
             paymentStatus: "pending",
             status: false,
           });
 
           enrollIdDuration[enrollSubscription._id] = subscription.duration;
-          totalAmount += Number(subscription.price);
+          totalAmount += Number(subscription.price - balanceAmount);
 
           line_items.push({
             price_data: {
@@ -234,12 +245,21 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           quantity: 1,
         });
       }
+
+      // Plan Downgrade
+      if (changeMode < 0) {
+        console.log("Working...");
+      }
     } else {
       for (const subscription of subscriptions) {
         const enrollSubscription: any = await EnrollSubscription.create({
           retailerId: req.user._id,
           planSnapshot: subscription,
           couponSnapshot: coupon,
+          taxSnapshot: {
+            taxTitle: taxStatus === "on" ? taxTitle : null,
+            taxCost: taxStatus === "on" ? taxCost : null,
+          },
           paymentStatus: "pending",
           status: false,
         });
@@ -280,8 +300,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     if (coupon) {
       let stripeCoupon = null;
 
-      // if (totalAmount + (Number(totalAmount) * taxCost) / 100 < coupon.minPurchaseAmount) {
-      // }
+      if (totalAmount + (Number(totalAmount) * taxCost) / 100 < coupon.minPurchaseAmount) {
+        throw `Min. ${coupon.minPurchaseAmount}CAD required to apply coupon!`;
+      }
 
       if (coupon.discountType === "percentage") {
         stripeCoupon = await stripe.coupons.create({

@@ -274,7 +274,7 @@ export const checkPlanChange = (plans: string[], previousPlan: string, currentPl
 export const calculateBalanceAmount = (startDate: Date, expirationDate: Date, planPrice: number) => {
   const start = new Date(startDate);
   const end = new Date(expirationDate);
-  const today = new Date("2024-07-10T06:08:28.884+00:00");
+  const today = new Date();
 
   if (isNaN(start.getTime()) || isNaN(end.getTime()) || start >= end) {
     throw "Invalid start date or expiration date !";
@@ -287,6 +287,8 @@ export const calculateBalanceAmount = (startDate: Date, expirationDate: Date, pl
   const effectiveElapsedDuration = Math.min(Math.max(elapsedDuration, 0), totalDuration);
   const consumedPrice = (effectiveElapsedDuration / totalDuration) * planPrice;
 
-  return planPrice - consumedPrice;
-  // return parseFloat(consumedPrice.toFixed(2)); // Return the consumed price rounded to 2 decimal places
+  console.log({ beforeTOFixed: planPrice - consumedPrice });
+
+  return parseFloat((planPrice - consumedPrice).toFixed(2)); // return 2 decimal places
+  // return planPrice - consumedPrice;
 };
