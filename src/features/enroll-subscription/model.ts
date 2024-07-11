@@ -136,6 +136,20 @@ const enrollSubscriptionSchema = new mongoose.Schema(
         default: 0,
       },
     },
+    balanceInfo: {
+      currentBalance: {
+        type: Number,
+        default: 0,
+      },
+      planCurrentPrice: {
+        type: Number,
+        default: 0,
+      },
+    },
+    planChangeCost: {
+      type: Number,
+      default: 0,
+    },
     refundAmount: {
       type: Number,
       default: 0,
