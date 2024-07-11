@@ -68,6 +68,7 @@ export const getCommonSettings = asyncHandler(async (req: Request, res: Response
       "stripe.refundableThreshold": 1,
       "stripe.taxTitle": 1,
       "stripe.taxCost": 1,
+      "stripe.taxStatus": 1,
     }
   );
 
