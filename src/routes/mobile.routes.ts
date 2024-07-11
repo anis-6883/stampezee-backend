@@ -1,7 +1,8 @@
 import express from "express";
 import { ROLE } from "../configs/constants";
-import homeScreenRoutes from "../features/mobile/home/route";
-import searchScreenRoutes from "../features/mobile/search/route";
+import homeScreenCustomerRoutes from "../features/mobile/customer/home/route";
+import searchScreenCustomerRoutes from "../features/mobile/customer/search/route";
+import homeScreenSubAdminRoutes from "../features/mobile/sub-admin/home/route";
 import customerAuthRoutes from "../features/user/customer/route";
 import subAdminAuthRoutes from "../features/user/sub-admin/route";
 import { authAndPermissionCheck } from "../middlewares/authMiddleware";
@@ -11,8 +12,11 @@ const router = express.Router();
 router.use("/auth-screen/sub-admin", subAdminAuthRoutes);
 router.use("/auth-screen/customer", customerAuthRoutes);
 
-router.use(authAndPermissionCheck(ROLE.CUSTOMER));
-router.use("/home-screen", homeScreenRoutes);
-router.use("/search-screen", searchScreenRoutes);
+//#################### CUSTOMER #########################
+router.use("/customer/home-screen", authAndPermissionCheck(ROLE.CUSTOMER), homeScreenCustomerRoutes);
+router.use("/customer/search-screen", authAndPermissionCheck(ROLE.CUSTOMER), searchScreenCustomerRoutes);
+
+//#################### SUB ADMIN #########################
+router.use("/sub-admin/home-screen", authAndPermissionCheck(ROLE.SUB_ADMIN), homeScreenSubAdminRoutes);
 
 export default router;

@@ -2,7 +2,23 @@ import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import Joi from "joi";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 import { APP_SECRET } from "../configs/constants";
+
+const objectIdExtension = (Joi: any) => ({
+  type: "objectId",
+  base: Joi.string(),
+  messages: {
+    "objectId.base": "{{#label}} must be a valid ObjectId",
+  },
+  validate(value: mongoose.Types.ObjectId, helpers: Joi.CustomHelpers) {
+    if (!mongoose.Types.ObjectId.isValid(value)) {
+      return { value, errors: helpers.error("objectId.base") };
+    }
+  },
+});
+
+const JoiExtended = Joi.extend(objectIdExtension);
 
 export const asyncHandler = (func: any) => async (req: Request, res: Response) => {
   try {
@@ -45,6 +61,15 @@ export const emailField = Joi.string().email().trim().lowercase().messages({
 export const requiredEmailField = emailField.required().messages({
   "any.required": "email is required!",
 });
+
+export const requiredObjectIdField = (fieldName: string) =>
+  JoiExtended.objectId()
+    .required()
+    .messages({
+      "any.required": `${fieldName} is required!`,
+      "objectId.base": `${fieldName} must be a valid ObjectId!`,
+      "string.empty": `${fieldName} must not be empty!`,
+    });
 
 export const requiredStringField = (fieldName: string) =>
   Joi.string()

@@ -1,6 +1,6 @@
 import { Response } from "express";
-import { apiResponse, asyncHandler } from "../../../helpers";
-import { IApiRequest } from "../../../types";
+import { apiResponse, asyncHandler } from "../../../../helpers";
+import { IApiRequest } from "../../../../types";
 import CollectStamp from "../search/model";
 
 /**
