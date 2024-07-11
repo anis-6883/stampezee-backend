@@ -41,6 +41,7 @@ const stripe = new mongoose.Schema({
   refundableThreshold: { type: Number, default: 1 },
   taxTitle: { type: String, default: "", trim: true },
   taxCost: { type: Number, default: 1 },
+  taxStatus: { type: String, enum: ["on", "off"], default: "on" },
 });
 
 const googleMap = new mongoose.Schema({

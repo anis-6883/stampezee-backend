@@ -5,7 +5,7 @@ import { PACKAGES } from "../../configs/constants";
 import {
   apiResponse,
   asyncHandler,
-  calculateBalancePrice,
+  calculateBalanceAmount,
   checkCombination,
   checkDuplicates,
   checkPlanChange,
@@ -84,8 +84,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
   const { slugs, code }: { slugs: string[]; code: string } = result;
 
-  if (slugs.includes(PACKAGES.TRIAL) && slugs.length > 1) {
-    throw "Trial packages do not include any additional packages!";
+  if ((slugs.includes(PACKAGES.TRIAL) && slugs.length > 1) || (slugs.includes(PACKAGES.TRIAL) && code)) {
+    throw "You can't take additional packages or coupon in free trial!";
   }
 
   // Enroll Free Trial
@@ -129,7 +129,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     throw "Setup payment cost threshold!";
   }
 
-  const { planChangeCost, refundableThreshold, taxTitle, taxCost } = paymentMetadata.stripe;
+  const { planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } = paymentMetadata.stripe;
 
   // Check & Get Coupon
   let coupon = null;
@@ -181,30 +181,55 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         enrolled.planSnapshot.slug,
         pickPlan?.slug
       );
+
+      const balanceAmount = calculateBalanceAmount(
+        enrolled.validityFrom,
+        enrolled.validityTo,
+        enrolled.planSnapshot.price
+      );
+
       console.log("Change Mode: ", changeMode > 0 ? "Upgrade" : "Downgrade");
 
-      const balance = calculateBalancePrice(enrolled.validityFrom, enrolled.validityTo, enrolled.planSnapshot.price);
+      // Plan Upgrade
+      if (changeMode > 0) {
+        console.log({ balanceAmount });
 
-      console.log({ balance });
+        for (const subscription of subscriptions) {
+          const enrollSubscription: any = await EnrollSubscription.create({
+            retailerId: req.user._id,
+            planSnapshot: subscription,
+            couponSnapshot: coupon,
+            taxSnapshot: {
+              taxTitle: taxStatus === "on" ? taxTitle : null,
+              taxCost: taxStatus === "on" ? taxCost : null,
+            },
+            paymentStatus: "pending",
+            status: false,
+          });
 
-      for (const subscription of subscriptions) {
-        const enrollSubscription: any = await EnrollSubscription.create({
-          retailerId: req.user._id,
-          planSnapshot: subscription,
-          couponSnapshot: coupon,
-          paymentStatus: "pending",
-          status: false,
-        });
+          enrollIdDuration[enrollSubscription._id] = subscription.duration;
+          totalAmount += Number(subscription.price);
 
-        enrollIdDuration[enrollSubscription._id] = subscription.duration;
+          line_items.push({
+            price_data: {
+              currency: "cad",
+              product_data: {
+                name: subscription.title,
+              },
+              unit_amount: Math.ceil(Number(subscription.price - balanceAmount) * 100), // remove balance amount
+            },
+            quantity: 1,
+          });
+        }
 
+        // Add Plan Change Cost
         line_items.push({
           price_data: {
             currency: "cad",
             product_data: {
-              name: subscription.title,
+              name: `Plan Change Cost`,
             },
-            unit_amount: Math.ceil(subscription.price * 100), // convert into cent
+            unit_amount: Math.ceil(Number(planChangeCost) * 100), // convert into cent
           },
           quantity: 1,
         });
@@ -233,8 +258,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           quantity: 1,
         });
       }
+    }
 
-      // Add Tax in (%)
+    // Add Tax in (%)
+    if (taxStatus === "on") {
       line_items.push({
         price_data: {
           currency: "cad",
@@ -252,6 +279,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     // Attach coupon in the checkout if it has
     if (coupon) {
       let stripeCoupon = null;
+
+      // if (totalAmount + (Number(totalAmount) * taxCost) / 100 < coupon.minPurchaseAmount) {
+      // }
 
       if (coupon.discountType === "percentage") {
         stripeCoupon = await stripe.coupons.create({
