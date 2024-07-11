@@ -19,18 +19,48 @@ export const getSubscriptionPayments = asyncHandler(async (req: IApiRequest, res
   }
 
   const [docs, total] = await Promise.all([
-    EnrollSubscription.find(query, {
-      retailerId: 1,
-      paymentStatus: 1,
-      "planSnapshot.title": 1,
-      "planSnapshot.price": 1,
-      validityFrom: 1,
-      validityTo: 1,
-      createdAt: 1,
-    })
-      .limit(Number(limit))
-      .skip(skip)
-      .sort({ createdAt: -1 }),
+    EnrollSubscription.aggregate([
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
+        $match: query,
+      },
+      {
+        $lookup: {
+          from: "retailers",
+          localField: "retailerId",
+          foreignField: "_id",
+          as: "retailer",
+        },
+      },
+      {
+        $unwind: "$retailer",
+      },
+      {
+        $project: {
+          "retailer.storeName": 1,
+          "retailer.image": 1,
+          paymentStatus: 1,
+          enrollStatus: 1,
+          "planSnapshot.title": 1,
+          "planSnapshot.price": 1,
+          "taxSnapshot.taxTitle": 1,
+          "taxSnapshot.taxCost": 1,
+          validityFrom: 1,
+          validityTo: 1,
+          createdAt: 1,
+        },
+      },
+    ]),
     EnrollSubscription.find({
       paymentStatus: { $in: ["pending", "completed"] },
     }).countDocuments(),

@@ -104,6 +104,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             paymentStatus: "trial",
             validityFrom: now,
             validityTo: expireDate,
+            enrollStatus: "trial",
           }),
           Retailer.findByIdAndUpdate(req.user._id, { takeFreeTrial: true }),
         ]);
@@ -215,6 +216,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             },
             planChangeCost,
             paymentStatus: "pending",
+            enrollStatus: "upgrade",
             status: false,
           });
 
@@ -261,6 +263,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             taxCost: taxStatus === "on" ? taxCost : null,
           },
           paymentStatus: "pending",
+          enrollStatus: "purchase",
           status: false,
         });
 
@@ -359,6 +362,7 @@ export const successEnrollSubscription = asyncHandler(async (req: Request, res: 
           retailerId: req.query._id,
           planSnapshot: subscription,
           paymentStatus: "trial",
+          enrollStatus: "trial",
           validityFrom: moment(),
           validityTo: moment(),
           status: false,
