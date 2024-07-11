@@ -159,6 +159,11 @@ const enrollSubscriptionSchema = new mongoose.Schema(
       enum: ["trial", "pending", "completed"],
       required: true,
     },
+    enrollStatus: {
+      type: String,
+      enum: ["trial", "purchase", "upgrade", "downgrade"],
+      required: true,
+    },
     validityFrom: {
       type: Date,
       default: null,
