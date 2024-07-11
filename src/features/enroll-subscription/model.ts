@@ -126,6 +126,20 @@ const enrollSubscriptionSchema = new mongoose.Schema(
       type: couponSchema,
       default: null,
     },
+    taxSnapshot: {
+      taxTitle: {
+        type: String,
+        default: null,
+      },
+      taxCost: {
+        type: Number,
+        default: 0,
+      },
+    },
+    refundAmount: {
+      type: Number,
+      default: 0,
+    },
     paymentStatus: {
       type: String,
       enum: ["trial", "pending", "completed"],

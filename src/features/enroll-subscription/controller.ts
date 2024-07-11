@@ -5,7 +5,7 @@ import { PACKAGES } from "../../configs/constants";
 import {
   apiResponse,
   asyncHandler,
-  calculateBalancePrice,
+  calculateBalanceAmount,
   checkCombination,
   checkDuplicates,
   checkPlanChange,
@@ -13,6 +13,7 @@ import {
 import { IApiRequest, IEnrollPayment, ILineItem } from "../../types";
 import Coupon from "../coupon/model";
 import Payment from "../payment/model";
+import Settings from "../settings/model";
 import Subscription from "../subscription/model";
 import Retailer from "../user/retailer/model";
 import EnrollSubscription from "./model";
@@ -61,6 +62,7 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
       title: 1,
       discountType: 1,
       discount: 1,
+      minPurchaseAmount: 1,
     }
   );
 
@@ -82,8 +84,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
   const { slugs, code }: { slugs: string[]; code: string } = result;
 
-  if (slugs.includes(PACKAGES.TRIAL) && slugs.length > 1) {
-    throw "Trial packages do not include any additional packages!";
+  if ((slugs.includes(PACKAGES.TRIAL) && slugs.length > 1) || (slugs.includes(PACKAGES.TRIAL) && code)) {
+    throw "You can't take additional packages or coupon in free trial!";
   }
 
   // Enroll Free Trial
@@ -116,6 +118,18 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     }
     throw "Free trial already taken!";
   }
+
+  // Get payment metadata
+  const paymentMetadata = await Settings.findOne(
+    {},
+    { "stripe.planChangeCost": 1, "stripe.refundableThreshold": 1, "stripe.taxTitle": 1, "stripe.taxCost": 1 }
+  );
+
+  if (!paymentMetadata) {
+    throw "Setup payment cost threshold!";
+  }
+
+  const { planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } = paymentMetadata.stripe;
 
   // Check & Get Coupon
   let coupon = null;
@@ -159,41 +173,63 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
     const enrollIdDuration: { [key: string]: number } = {};
     const line_items: ILineItem[] = [];
-
-    const changeCost = 1; // CAD
-    const refundableCost = 1; // CAD
-    const taxCost = 1; // CAD
-
-    const changeMode = checkPlanChange(
-      [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED],
-      enrolled.planSnapshot.slug,
-      pickPlan?.slug
-    );
-    console.log("Change Mode: ", changeMode > 0 ? "Upgrade" : "Downgrade");
+    let totalAmount = 0;
 
     if (enrolled) {
-      const balance = calculateBalancePrice(enrolled.validityFrom, enrolled.validityTo, enrolled.planSnapshot.price);
+      const changeMode = checkPlanChange(
+        [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED],
+        enrolled.planSnapshot.slug,
+        pickPlan?.slug
+      );
 
-      console.log({ balance });
+      const balanceAmount = calculateBalanceAmount(
+        enrolled.validityFrom,
+        enrolled.validityTo,
+        enrolled.planSnapshot.price
+      );
 
-      for (const subscription of subscriptions) {
-        const enrollSubscription: any = await EnrollSubscription.create({
-          retailerId: req.user._id,
-          planSnapshot: subscription,
-          couponSnapshot: coupon,
-          paymentStatus: "pending",
-          status: false,
-        });
+      console.log("Change Mode: ", changeMode > 0 ? "Upgrade" : "Downgrade");
 
-        enrollIdDuration[enrollSubscription._id] = subscription.duration;
+      // Plan Upgrade
+      if (changeMode > 0) {
+        console.log({ balanceAmount });
 
+        for (const subscription of subscriptions) {
+          const enrollSubscription: any = await EnrollSubscription.create({
+            retailerId: req.user._id,
+            planSnapshot: subscription,
+            couponSnapshot: coupon,
+            taxSnapshot: {
+              taxTitle: taxStatus === "on" ? taxTitle : null,
+              taxCost: taxStatus === "on" ? taxCost : null,
+            },
+            paymentStatus: "pending",
+            status: false,
+          });
+
+          enrollIdDuration[enrollSubscription._id] = subscription.duration;
+          totalAmount += Number(subscription.price);
+
+          line_items.push({
+            price_data: {
+              currency: "cad",
+              product_data: {
+                name: subscription.title,
+              },
+              unit_amount: Math.ceil(Number(subscription.price - balanceAmount) * 100), // remove balance amount
+            },
+            quantity: 1,
+          });
+        }
+
+        // Add Plan Change Cost
         line_items.push({
           price_data: {
             currency: "cad",
             product_data: {
-              name: subscription.title,
+              name: `Plan Change Cost`,
             },
-            unit_amount: Math.ceil(subscription.price * 100), // convert into cent
+            unit_amount: Math.ceil(Number(planChangeCost) * 100), // convert into cent
           },
           quantity: 1,
         });
@@ -209,6 +245,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         });
 
         enrollIdDuration[enrollSubscription._id] = subscription.duration;
+        totalAmount += Number(subscription.price);
 
         line_items.push({
           price_data: {
@@ -216,11 +253,25 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             product_data: {
               name: subscription.title,
             },
-            unit_amount: Math.ceil(subscription.price * 100), // convert into cent
+            unit_amount: Math.ceil(Number(subscription.price) * 100), // convert into cent
           },
           quantity: 1,
         });
       }
+    }
+
+    // Add Tax in (%)
+    if (taxStatus === "on") {
+      line_items.push({
+        price_data: {
+          currency: "cad",
+          product_data: {
+            name: `${taxTitle} (${taxCost}%)`,
+          },
+          unit_amount: Math.ceil(((Number(totalAmount) * taxCost) / 100) * 100), // convert into cent
+        },
+        quantity: 1,
+      });
     }
 
     const discounts: any[] = [];
@@ -228,6 +279,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     // Attach coupon in the checkout if it has
     if (coupon) {
       let stripeCoupon = null;
+
+      // if (totalAmount + (Number(totalAmount) * taxCost) / 100 < coupon.minPurchaseAmount) {
+      // }
 
       if (coupon.discountType === "percentage") {
         stripeCoupon = await stripe.coupons.create({
