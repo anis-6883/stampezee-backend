@@ -30,9 +30,18 @@ const schema = new mongoose.Schema(
         required: true,
       },
     },
+    source: {
+      type: String,
+      enum: ["subscription", "addon"],
+      required: true,
+    },
     status: {
       type: Boolean,
       default: true,
+    },
+    disabledBySystem: {
+      type: Boolean, // Handle downgrade disable branch by system
+      default: false,
     },
     softDeleted: {
       type: Boolean,
