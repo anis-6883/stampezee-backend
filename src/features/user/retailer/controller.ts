@@ -1,7 +1,6 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
-import moment from "moment";
-import { COOKIE_KEY, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
+import { COOKIE_KEY, PACKAGES, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, generateSignature, getRandomInteger } from "../../../helpers";
 import { IApiRequest } from "../../../types";
@@ -150,23 +149,31 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
   // Check Subscription & Addon Enrollment
-  let plan: null | string = null;
-  let planStartAt: null | Date = null;
-  let planValidAt: null | Date = null;
+  const [subscription, addons] = await Promise.all([
+    EnrollSubscription.findOne({
+      retailerId: retailer._id,
+      "planSnapshot.type": "subscription",
+      paymentStatus: { $in: ["completed", "trial"] },
+      validityTo: { $gt: new Date() },
+      status: true,
+    }),
+    EnrollSubscription.find({
+      retailerId: retailer._id,
+      "planSnapshot.type": "addon",
+      paymentStatus: "completed",
+      validityTo: { $gt: new Date() },
+      status: true,
+    }),
+  ]);
 
-  const subscription = await EnrollSubscription.findOne({
-    retailerId: retailer._id,
-    "planSnapshot.type": "subscription",
-    paymentStatus: { $in: ["completed", "trial"] },
-    validityTo: { $gt: new Date() },
-    status: true,
-  });
-
-  if (subscription) {
-    plan = subscription.planSnapshot.slug;
-    planStartAt = subscription.validityFrom;
-    planValidAt = subscription.validityTo;
-  }
+  const addonBranches = addons.filter((addon) => addon?.planSnapshot?.slug === PACKAGES.BRANCH).length;
+  const addonCustomStamps = addons.filter((addon) => addon?.planSnapshot?.slug === PACKAGES.STAMP).length;
+  const addonRegularNotifications = addons.filter(
+    (addon) => addon?.planSnapshot?.slug === PACKAGES.PUSH_NOTIFICATION_USER
+  ).length;
+  const addonLocationNotifications = addons.filter(
+    (addon) => addon?.planSnapshot?.slug === PACKAGES.PUSH_NOTIFICATION_LOCATION
+  ).length;
 
   const accessToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "30d");
   const refreshToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "60d");
@@ -174,16 +181,19 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   // Remove Sensitive Data
   const data = exclude(retailer._doc, ["password", "otp", "otpExpiry"]);
 
-  return apiResponse(res, 200, true, "Retailer Login Successfully!", {
-    ...data,
-    accessToken,
-    refreshToken,
-    expiresIn: new Date().setTime(new Date().getTime() + ALARM_EXPIRE_TIME),
-    role: ROLE.RETAILER,
-    plan,
-    planStartAt,
-    planValidAt,
-  });
+  data.accessToken = accessToken;
+  data.refreshToken = refreshToken;
+  data.expiresIn = new Date().setTime(new Date().getTime() + ALARM_EXPIRE_TIME);
+  data.role = ROLE.RETAILER;
+  data.plan = subscription?.planSnapshot?.slug ?? null;
+  data.planStartAt = subscription?.validityFrom ?? null;
+  data.planValidAt = subscription?.validityTo ?? null;
+  data.totalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addonBranches;
+  data.totalCustomStamp = addonCustomStamps;
+  data.totalRegularNotification = addonRegularNotifications;
+  data.totalLocationNotification = addonLocationNotifications;
+
+  return apiResponse(res, 200, true, "Retailer Login Successfully!", data);
 });
 
 /**
@@ -219,28 +229,42 @@ export const retailerLogout = asyncHandler(async (_req: Request, res: Response) 
 export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
   // Remove Sensitive Data
   const data = exclude(req.user, ["password", "otp", "otpExpiry"]);
-  data.plan = null;
-  data.planStartAt = null;
-  data.planValidAt = null;
 
   // Check Subscription & Addon Enrollment
-  if (req.role === ROLE.RETAILER) {
-    const subscription = await EnrollSubscription.findOne({
+  const [subscription, addons] = await Promise.all([
+    EnrollSubscription.findOne({
       retailerId: req.user._id,
       "planSnapshot.type": "subscription",
       paymentStatus: { $in: ["completed", "trial"] },
-      validityTo: { $gt: moment() },
+      validityTo: { $gt: new Date() },
       status: true,
-    });
+    }),
+    EnrollSubscription.find({
+      retailerId: req.user._id,
+      "planSnapshot.type": "addon",
+      paymentStatus: "completed",
+      validityTo: { $gt: new Date() },
+      status: true,
+    }),
+  ]);
 
-    if (subscription) {
-      data.plan = subscription.planSnapshot.slug;
-      data.planStartAt = subscription.validityFrom;
-      data.planValidAt = subscription.validityTo;
-    }
-  }
+  const addonBranches = addons.filter((addon) => addon?.planSnapshot?.slug === PACKAGES.BRANCH).length;
+  const addonCustomStamps = addons.filter((addon) => addon?.planSnapshot?.slug === PACKAGES.STAMP).length;
+  const addonRegularNotifications = addons.filter(
+    (addon) => addon?.planSnapshot?.slug === PACKAGES.PUSH_NOTIFICATION_USER
+  ).length;
+  const addonLocationNotifications = addons.filter(
+    (addon) => addon?.planSnapshot?.slug === PACKAGES.PUSH_NOTIFICATION_LOCATION
+  ).length;
 
-  data.role = req.role;
+  data.role = ROLE.RETAILER;
+  data.plan = subscription?.planSnapshot?.slug ?? null;
+  data.planStartAt = subscription?.validityFrom ?? null;
+  data.planValidAt = subscription?.validityTo ?? null;
+  data.allowTotalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addonBranches;
+  data.totalCustomStamp = addonCustomStamps;
+  data.totalRegularNotification = addonRegularNotifications;
+  data.totalLocationNotification = addonLocationNotifications;
 
   return apiResponse(res, 200, true, "Retailer Profile", data);
 });

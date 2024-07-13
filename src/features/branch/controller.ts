@@ -1,6 +1,8 @@
-import { Request, Response } from "express";
+import { Response } from "express";
+import { PACKAGES } from "../../configs/constants";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
+import EnrollSubscription from "../enroll-subscription/model";
 import Branch from "./model";
 import { branchSchema, branchStatusSchema, updateBranchSchema } from "./validation";
 
@@ -15,6 +17,39 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
 
   const { name, address, longitude, latitude } = result;
 
+  // Check Subscription & Addon Enrollment
+  const [subscription, addons, retailerTotalBranch] = await Promise.all([
+    EnrollSubscription.findOne({
+      retailerId: req.user._id,
+      "planSnapshot.type": "subscription",
+      paymentStatus: { $in: ["completed", "trial"] },
+      validityTo: { $gt: new Date() },
+      status: true,
+    }),
+    EnrollSubscription.find({
+      retailerId: req.user._id,
+      "planSnapshot.type": "addon",
+      "planSnapshot.slug": PACKAGES.BRANCH,
+      paymentStatus: "completed",
+      validityTo: { $gt: new Date() },
+      status: true,
+    }),
+    Branch.find({ retailerId: req.user._id, softDeleted: false }),
+  ]);
+
+  if (!subscription) {
+    throw "No one is allowed to create a branch without a plan!";
+  }
+
+  const allowTotalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addons.length;
+
+  if (retailerTotalBranch.length >= allowTotalBranch) {
+    throw "Your branch limit is over!";
+  }
+
+  const subscriptionBranchSlot = retailerTotalBranch.filter((branch) => branch.source === "subscription").length;
+  const source = subscriptionBranchSlot < subscription?.planSnapshot?.allowTotalBranch ? "subscription" : "addon";
+
   await Branch.create({
     name,
     address: {
@@ -22,6 +57,7 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
       name: address,
     },
     retailerId: req.user._id,
+    source,
   });
 
   return apiResponse(res, 201, true, "Branch created successfully!");
