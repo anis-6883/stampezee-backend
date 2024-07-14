@@ -53,6 +53,17 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
           enrollSubscriptions: { $elemMatch: { retailerId: req.user._id } },
         },
       },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
     ]),
     Payment.find().countDocuments(),
   ]);
