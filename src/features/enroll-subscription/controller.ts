@@ -196,6 +196,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     const enrollIdDuration: { [key: string]: number } = {};
     const line_items: ILineItem[] = [];
     let totalAmount = 0;
+    let unitAmount = 0;
 
     if (pickPlan && enrolled) {
       const changeMode = checkPlanChange(
@@ -211,8 +212,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       );
 
       console.log("Change Mode: ", changeMode > 0 ? "Upgrade" : "Downgrade");
-
-      console.log({ balanceAmount });
 
       // Plan Upgrade
       if (changeMode > 0) {
@@ -236,7 +235,16 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           });
 
           enrollIdDuration[enrollSubscription._id] = subscription.duration;
-          totalAmount += Number(subscription.price - balanceAmount);
+
+          if ([PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug)) {
+            totalAmount += Number(subscription.price - balanceAmount);
+            unitAmount = Math.round(Number(subscription.price - balanceAmount) * 100);
+          } else {
+            totalAmount += Number(subscription.price);
+            unitAmount = Math.round(Number(subscription.price) * 100);
+          }
+
+          // totalAmount += Number(subscription.price - balanceAmount);
 
           line_items.push({
             price_data: {
@@ -244,7 +252,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               product_data: {
                 name: subscription.title,
               },
-              unit_amount: Math.round(Number(subscription.price - balanceAmount) * 100), // remove balance amount
+              unit_amount: unitAmount,
             },
             quantity: 1,
           });
@@ -389,16 +397,14 @@ export const successEnrollSubscription = asyncHandler(async (req: Request, res: 
 
     // Deactivate last previous active plan
     if (req.query.pickPlan && req.query.enrolled && req.query.pickPlan === "true" && req.query.enrolled === "true") {
-      updateSubscriptions.push(
-        EnrollSubscription.updateOne(
-          {
-            retailerId: req.query._id,
-            "planSnapshot.type": "subscription",
-            paymentStatus: { $in: ["completed", "trial"] },
-            status: true,
-          },
-          { status: false }
-        )
+      await EnrollSubscription.updateOne(
+        {
+          retailerId: req.query._id,
+          "planSnapshot.type": "subscription",
+          paymentStatus: { $in: ["completed", "trial"] },
+          status: true,
+        },
+        { status: false }
       );
     }
 
