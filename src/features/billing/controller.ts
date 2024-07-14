@@ -13,8 +13,6 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
   const { page = 1, limit = 10 }: any = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
-  console.log({ hello: req.user });
-
   const [docs, total] = await Promise.all([
     Payment.aggregate([
       {
@@ -63,6 +61,19 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
       },
       {
         $limit: Number(limit),
+      },
+      {
+        $addFields: {
+          amountTotal: { $divide: ["$amountTotal", 100] },
+        },
+      },
+      {
+        $project: {
+          retailerId: 0,
+          updatedAt: 0,
+          paymentId: 0,
+          paymentIntentId: 0,
+        },
       },
     ]),
     Payment.find({ retailerId: req.user._id }).countDocuments(),
