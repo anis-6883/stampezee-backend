@@ -176,8 +176,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     const subscriptions: any[] = await Subscription.find({ slug: { $in: slugs } });
     const pickPlan = subscriptions.find((subs) => subs.type === "subscription");
 
-    console.log({ pickPlan });
-
     // Check Already enrolled or not
     const enrolled = await EnrollSubscription.findOne({
       retailerId: req.user._id,
@@ -186,8 +184,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       validityTo: { $gt: moment() },
       status: true,
     });
-
-    console.log({ enrolled });
 
     if (enrolled && slugs.includes(enrolled.planSnapshot.slug)) {
       throw `You already take ${enrolled.planSnapshot.title} plan!`;
@@ -349,7 +345,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       mode: "payment",
       discounts,
       metadata: enrollIdDuration,
-      success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}&takeFreeTrial=${req.user.takeFreeTrial}&pickPlan=${!!pickPlan}`,
+      success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}&takeFreeTrial=${req.user.takeFreeTrial}&pickPlan=${!!pickPlan}&enrolled=${!!enrolled}`,
       cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
     });
 
@@ -392,7 +388,7 @@ export const successEnrollSubscription = asyncHandler(async (req: Request, res: 
     let updateSubscriptions = [];
 
     // Deactivate last previous active plan
-    if (req.query.pickPlan && req.query.pickPlan === "true") {
+    if (req.query.pickPlan && req.query.enrolled && req.query.pickPlan === "true" && req.query.enrolled === "true") {
       updateSubscriptions.push(
         EnrollSubscription.updateOne(
           {

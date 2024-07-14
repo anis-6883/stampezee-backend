@@ -1,5 +1,6 @@
 import express from "express";
 import { ROLE } from "../configs/constants";
+import billingRoutes from "../features/billing/route";
 import branchRoutes from "../features/branch/route";
 import subscriptionRoutes from "../features/enroll-subscription/route";
 import { getAllFaqsForWeb } from "../features/faq/controller";
@@ -30,9 +31,10 @@ router.use("/retailer", retailerAuthRoutes);
 
 // Retailer Panel Feature Routes
 router.use(authAndPermissionCheck(ROLE.RETAILER));
+router.use("/retailer/stamp", stampRoutes);
 router.use("/retailer/branch", branchRoutes);
 router.use("/retailer/sub-admin", subAdminRoutes);
 router.use("/retailer/stamp-image", stampImageRoutes);
-router.use("/retailer/stamp", stampRoutes);
+router.use("/retailer/billing", billingRoutes);
 
 export default router;
