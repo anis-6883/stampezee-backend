@@ -11,6 +11,7 @@ import {
   checkPlanChange,
 } from "../../helpers";
 import { IApiRequest, IEnrollPayment, ILineItem } from "../../types";
+import Branch from "../branch/model";
 import Coupon from "../coupon/model";
 import Payment from "../payment/model";
 import Settings from "../settings/model";
@@ -275,6 +276,19 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       // Plan Downgrade
       if (changeMode < 0) {
         console.log("Working...");
+
+        const downgradeBranchLimit = pickPlan?.allowTotalBranch;
+        const enrolledBranchLimit = enrolled?.planSnapshot?.allowTotalBranch;
+        const branches = await Branch.find({ retailerId: req.user._id, source: "subscription" });
+        const activeBranch = branches.filter((branch) => branch.status).length;
+
+        console.log({ downgradeBranchLimit, branches: branches.length, activeBranch });
+
+        if (branches.length > downgradeBranchLimit || activeBranch > downgradeBranchLimit) {
+          throw `You have to inactive ${activeBranch - downgradeBranchLimit} branch/s before downgrade!`;
+        }
+
+        return apiResponse(res, 200, true, `You are good to go downgrade!`);
       }
     } else {
       for (const subscription of subscriptions) {
@@ -362,6 +376,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
     return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
   }
+
+  throw "Only one subscription and no duplicate addons are allowed!";
 });
 
 /**
