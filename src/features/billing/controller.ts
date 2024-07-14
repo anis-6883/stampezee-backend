@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
-import EnrollSubscription from "../enroll-subscription/model";
+import Payment from "../payment/model";
 
 /**
  * Get Subscription Payments
@@ -12,49 +12,52 @@ import EnrollSubscription from "../enroll-subscription/model";
 export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { page = 1, limit = 10 }: any = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
-  const query = { paymentStatus: "completed", retailerId: req.user._id };
+
+  console.log({ hello: req.user });
 
   const [docs, total] = await Promise.all([
-    EnrollSubscription.aggregate([
+    Payment.aggregate([
       {
-        $sort: {
-          createdAt: -1,
+        $unwind: {
+          path: "$enrollSubscriptionId",
+          preserveNullAndEmptyArrays: true,
         },
       },
       {
-        $skip: skip,
+        $lookup: {
+          from: "enrollsubscriptions",
+          localField: "enrollSubscriptionId",
+          foreignField: "_id",
+          as: "enrollSubscriptions",
+        },
       },
       {
-        $limit: Number(limit),
+        $addFields: {
+          enrollSubscriptions: { $arrayElemAt: ["$enrollSubscriptions", 0] },
+        },
       },
       {
-        $match: query,
+        $group: {
+          _id: "$_id",
+          originalFields: { $first: "$$ROOT" },
+          enrollSubscriptions: { $push: "$enrollSubscriptions" },
+        },
       },
-      // {
-      //   $lookup: {
-      //     from: "retailers",
-      //     localField: "retailerId",
-      //     foreignField: "_id",
-      //     as: "retailer",
-      //   },
-      // },
-      // {
-      //   $unwind: "$retailer",
-      // },
-      // {
-      //   $project: {
-      //     paymentStatus: 1,
-      //     enrollStatus: 1,
-      //     validityFrom: 1,
-      //     validityTo: 1,
-      //     createdAt: 1,
-      //   },
-      // },
+      {
+        $replaceRoot: {
+          newRoot: { $mergeObjects: ["$originalFields", { enrollSubscriptions: "$enrollSubscriptions" }] },
+        },
+      },
+      {
+        $match: {
+          enrollSubscriptions: { $elemMatch: { retailerId: req.user._id } },
+        },
+      },
     ]),
-    EnrollSubscription.find(query).countDocuments(),
+    Payment.find().countDocuments(),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  return apiResponse(res, 200, true, "Billing fetched successfully!", data);
+  return apiResponse(res, 200, true, "Subscription payments fetched successfully!", data);
 });
