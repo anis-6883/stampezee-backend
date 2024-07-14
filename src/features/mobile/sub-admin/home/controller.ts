@@ -56,6 +56,21 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
         from: "orderstamps",
         localField: "_id",
         foreignField: "collectStampId",
+        as: "rewardCollected",
+        pipeline: [
+          {
+            $match: {
+              rewardCollected: true,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: "orderstamps",
+        localField: "_id",
+        foreignField: "collectStampId",
         as: "stampTaken",
         pipeline: [
           {
@@ -69,23 +84,26 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
         totalStampTaken: {
           $ifNull: [{ $arrayElemAt: ["$stampTaken.totalStampTaken", 0] }, 0],
         },
+        rewardTaken: {
+          $ifNull: [{ $arrayElemAt: ["$rewardCollected", 0] }, false],
+        },
+      },
+    },
+    {
+      $project: {
+        rewardCollected: 0,
+        stampTaken: 0,
       },
     },
   ]);
 
-  if (stampIsCollected.length < 1) {
-    throw "Invalid QR Code";
-  }
+  if (stampIsCollected.length < 1) throw "Invalid QR Code";
 
-  if (stampIsCollected[0].stamps.length < 1) {
-    throw "Stamp Expired";
-  }
+  if (stampIsCollected[0].stamps.length < 1) throw "Stamp Expired";
 
-  if (stampIsCollected[0].totalStampTaken > stampIsCollected[0].stamps[0].noOfStampsToCollect) {
-    throw "You have already collected the reward.";
-  }
+  if (stampIsCollected[0].stamps.length < 1) throw "Stamp Expired";
 
-  let imageKey = null;
+  if (stampIsCollected[0].rewardTaken) throw "You have already collected the reward.";
 
   if (!req?.file) {
     return apiResponse(res, 400, false, "Invalid Request!", { image: "image file is required!" });
@@ -95,26 +113,20 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
   if (!status) {
     return apiResponse(res, 400, false, "Invalid Request!", { image: message });
   }
-  // Upload File to S3 Bucket
-  const { status: s3Status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "stamp_image");
-  if (s3Status) {
-    imageKey = key;
+
+  interface Object {
+    [key: string]: any;
   }
-  let orderBody = {
+  let orderBody: Object = {
     collectStampId,
     subAdminId: req?.user?._id,
     amount,
-    invoice: imageKey,
     stamp: {},
   };
-  interface Object {
-    [key: string]: string | number | Boolean;
-  }
-  const response: Object = { rewarded: false };
-
-  if (stampIsCollected[0].totalStampTaken == stampIsCollected[0].stamps[0].noOfStampsToCollect) {
-    const { noOfStampsToCollect, minPurchaseAmount, rewardType, promotionReward, discountReward } =
-      stampIsCollected[0].stamps[0];
+  const response: Object = { rewarded: false, totalStampCollected: stampIsCollected[0].totalStampTaken + 1 };
+  const stampData = stampIsCollected[0].stamps[0];
+  if (stampIsCollected[0].totalStampTaken >= stampData.noOfStampsToCollect) {
+    const { noOfStampsToCollect, minPurchaseAmount, rewardType, promotionReward, discountReward } = stampData;
     orderBody.stamp = {
       noOfStampsToCollect,
       minPurchaseAmount,
@@ -122,7 +134,9 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
       promotionReward,
       discountReward,
     };
+    orderBody.rewardCollected = true;
     response.rewarded = true;
+
     if (rewardType == "discount") {
       response.offer = discountReward + "%";
     } else {
@@ -130,6 +144,15 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
     }
   }
 
-  await OrderStamp.create(orderBody);
+  uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "stamp_image")
+    .then(async ({ status: s3Status, key }) => {
+      if (!s3Status) throw new Error("File upload failed");
+      orderBody.invoice = key;
+      await OrderStamp.create(orderBody);
+    })
+    .catch((err) => {
+      console.error("Something went wrong while uploading invoice image:", err);
+    });
+
   return apiResponse(res, 200, true, "Stamp collected successfully", response);
 });

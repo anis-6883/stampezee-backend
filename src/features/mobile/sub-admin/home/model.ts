@@ -20,6 +20,10 @@ const schema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    rewardCollected: {
+      type: Boolean,
+      default: false,
+    },
     stamp: {
       noOfStampsToCollect: Number,
       minPurchaseAmount: Number,
