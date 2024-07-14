@@ -2,6 +2,11 @@ import mongoose from "mongoose";
 
 const PaymentSchema = new mongoose.Schema(
   {
+    retailerId: {
+      type: "ObjectId", // mongoose.Types.ObjectId
+      ref: "Retailer",
+      required: true,
+    },
     enrollSubscriptionId: {
       type: [mongoose.Types.ObjectId],
       validate: {

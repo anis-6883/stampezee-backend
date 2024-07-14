@@ -312,8 +312,6 @@ export const calculateBalanceAmount = (startDate: Date, expirationDate: Date, pl
   const effectiveElapsedDuration = Math.min(Math.max(elapsedDuration, 0), totalDuration);
   const consumedPrice = (effectiveElapsedDuration / totalDuration) * planPrice;
 
-  console.log({ beforeTOFixed: planPrice - consumedPrice });
-
   return parseFloat((planPrice - consumedPrice).toFixed(2)); // return 2 decimal places
   // return planPrice - consumedPrice;
 };
