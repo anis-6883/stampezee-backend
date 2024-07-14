@@ -50,7 +50,7 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
       },
       {
         $match: {
-          enrollSubscriptions: { $elemMatch: { retailerId: req.user._id } },
+          retailerId: req.user._id,
         },
       },
       {
@@ -65,7 +65,7 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
         $limit: Number(limit),
       },
     ]),
-    Payment.find().countDocuments(),
+    Payment.find({ retailerId: req.user._id }).countDocuments(),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);

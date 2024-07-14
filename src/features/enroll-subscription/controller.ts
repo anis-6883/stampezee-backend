@@ -397,7 +397,10 @@ export const successEnrollSubscription = asyncHandler(async (req: Request, res: 
     let updateSubscriptions = [];
 
     // Deactivate last previous active plan
-    if (req.query.pickPlan && req.query.enrolled && req.query.pickPlan === "true" && req.query.enrolled === "true") {
+    if (
+      req.query.takeFreeTrial === "true" ||
+      (req.query.pickPlan && req.query.enrolled && req.query.pickPlan === "true" && req.query.enrolled === "true")
+    ) {
       await EnrollSubscription.updateOne(
         {
           retailerId: req.query._id,
@@ -428,6 +431,7 @@ export const successEnrollSubscription = asyncHandler(async (req: Request, res: 
       // Store Payment Info
       updateSubscriptions.push(
         Payment.create({
+          retailerId: req.query._id,
           enrollSubscriptionId: subscriptionIds,
           paymentId: payment.id,
           paymentIntentId: payment.payment_intent.id,
