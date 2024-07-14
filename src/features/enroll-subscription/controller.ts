@@ -123,6 +123,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           plan: "trial",
           planStartAt: now,
           planValidAt: expireDate,
+          totalBranch: 1,
         });
       }
       throw "Free trial package not found!";
