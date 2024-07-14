@@ -136,6 +136,20 @@ const enrollSubscriptionSchema = new mongoose.Schema(
         default: 0,
       },
     },
+    balanceInfo: {
+      currentBalance: {
+        type: Number,
+        default: 0,
+      },
+      planCurrentPrice: {
+        type: Number,
+        default: 0,
+      },
+    },
+    planChangeCost: {
+      type: Number,
+      default: 0,
+    },
     refundAmount: {
       type: Number,
       default: 0,
@@ -143,6 +157,11 @@ const enrollSubscriptionSchema = new mongoose.Schema(
     paymentStatus: {
       type: String,
       enum: ["trial", "pending", "completed"],
+      required: true,
+    },
+    enrollStatus: {
+      type: String,
+      enum: ["trial", "purchase", "upgrade", "downgrade"],
       required: true,
     },
     validityFrom: {

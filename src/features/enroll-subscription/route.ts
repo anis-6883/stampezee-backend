@@ -6,7 +6,7 @@ import { couponValidityCheck, enrollSubscription, getAllPlans } from "./controll
 const router = express.Router();
 
 router.get("/", getAllPlans);
-router.post("/coupon-validity-check", couponValidityCheck);
+router.post("/coupon-validity-check", authAndPermissionCheck(ROLE.RETAILER), couponValidityCheck);
 router.post("/checkout", authAndPermissionCheck(ROLE.RETAILER), enrollSubscription);
 
 export default router;

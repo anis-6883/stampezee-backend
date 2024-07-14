@@ -58,15 +58,25 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
       softDeleted: false,
     },
     {
-      _id: 0,
+      _id: 1,
       title: 1,
       discountType: 1,
       discount: 1,
       minPurchaseAmount: 1,
+      limit: 1,
     }
   );
 
   if (!coupon) throw "Provide invalid coupon code!";
+
+  const alreadyApplied = await EnrollSubscription.find({
+    retailerId: req.user._id,
+    "couponSnapshot._id": coupon._id,
+  }).countDocuments();
+
+  if (alreadyApplied >= coupon.limit) {
+    throw "Your coupon limit is over!";
+  }
 
   return apiResponse(res, 200, true, "Coupon applied!", coupon);
 });
@@ -104,6 +114,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             paymentStatus: "trial",
             validityFrom: now,
             validityTo: expireDate,
+            enrollStatus: "trial",
           }),
           Retailer.findByIdAndUpdate(req.user._id, { takeFreeTrial: true }),
         ]);
@@ -122,7 +133,13 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
   // Get payment metadata
   const paymentMetadata = await Settings.findOne(
     {},
-    { "stripe.planChangeCost": 1, "stripe.refundableThreshold": 1, "stripe.taxTitle": 1, "stripe.taxCost": 1 }
+    {
+      "stripe.planChangeCost": 1,
+      "stripe.refundableThreshold": 1,
+      "stripe.taxTitle": 1,
+      "stripe.taxCost": 1,
+      "stripe.taxStatus": 1,
+    }
   );
 
   if (!paymentMetadata) {
@@ -141,6 +158,15 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       status: true,
       softDeleted: false,
     });
+
+    const alreadyApplied = await EnrollSubscription.find({
+      retailerId: req.user._id,
+      "couponSnapshot._id": coupon._id,
+    }).countDocuments();
+
+    if (alreadyApplied >= coupon.limit) {
+      throw "Your coupon limit is over!";
+    }
 
     if (!coupon) throw "Provide invalid coupon code!";
   }
@@ -175,7 +201,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     const line_items: ILineItem[] = [];
     let totalAmount = 0;
 
-    if (enrolled) {
+    if (pickPlan && enrolled) {
       const changeMode = checkPlanChange(
         [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED],
         enrolled.planSnapshot.slug,
@@ -190,10 +216,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
       console.log("Change Mode: ", changeMode > 0 ? "Upgrade" : "Downgrade");
 
+      console.log({ balanceAmount });
+
       // Plan Upgrade
       if (changeMode > 0) {
-        console.log({ balanceAmount });
-
         for (const subscription of subscriptions) {
           const enrollSubscription: any = await EnrollSubscription.create({
             retailerId: req.user._id,
@@ -203,12 +229,18 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               taxTitle: taxStatus === "on" ? taxTitle : null,
               taxCost: taxStatus === "on" ? taxCost : null,
             },
+            balanceInfo: {
+              currentBalance: balanceAmount,
+              planCurrentPrice: parseFloat(Number(subscription.price - balanceAmount).toFixed(2)),
+            },
+            planChangeCost,
             paymentStatus: "pending",
+            enrollStatus: "upgrade",
             status: false,
           });
 
           enrollIdDuration[enrollSubscription._id] = subscription.duration;
-          totalAmount += Number(subscription.price);
+          totalAmount += Number(subscription.price - balanceAmount);
 
           line_items.push({
             price_data: {
@@ -216,7 +248,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               product_data: {
                 name: subscription.title,
               },
-              unit_amount: Math.ceil(Number(subscription.price - balanceAmount) * 100), // remove balance amount
+              unit_amount: Math.round(Number(subscription.price - balanceAmount) * 100), // remove balance amount
             },
             quantity: 1,
           });
@@ -229,10 +261,15 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             product_data: {
               name: `Plan Change Cost`,
             },
-            unit_amount: Math.ceil(Number(planChangeCost) * 100), // convert into cent
+            unit_amount: Math.round(Number(planChangeCost) * 100), // convert into cent
           },
           quantity: 1,
         });
+      }
+
+      // Plan Downgrade
+      if (changeMode < 0) {
+        console.log("Working...");
       }
     } else {
       for (const subscription of subscriptions) {
@@ -240,7 +277,12 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           retailerId: req.user._id,
           planSnapshot: subscription,
           couponSnapshot: coupon,
+          taxSnapshot: {
+            taxTitle: taxStatus === "on" ? taxTitle : null,
+            taxCost: taxStatus === "on" ? taxCost : null,
+          },
           paymentStatus: "pending",
+          enrollStatus: "purchase",
           status: false,
         });
 
@@ -253,7 +295,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             product_data: {
               name: subscription.title,
             },
-            unit_amount: Math.ceil(Number(subscription.price) * 100), // convert into cent
+            unit_amount: Math.round(Number(subscription.price) * 100), // convert into cent
           },
           quantity: 1,
         });
@@ -268,7 +310,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           product_data: {
             name: `${taxTitle} (${taxCost}%)`,
           },
-          unit_amount: Math.ceil(((Number(totalAmount) * taxCost) / 100) * 100), // convert into cent
+          unit_amount: Math.round(((Number(totalAmount) * taxCost) / 100) * 100), // convert into cent
         },
         quantity: 1,
       });
@@ -280,8 +322,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     if (coupon) {
       let stripeCoupon = null;
 
-      // if (totalAmount + (Number(totalAmount) * taxCost) / 100 < coupon.minPurchaseAmount) {
-      // }
+      if (totalAmount + (Number(totalAmount) * taxCost) / 100 < coupon.minPurchaseAmount) {
+        throw `Min. ${coupon.minPurchaseAmount}CAD required to apply coupon!`;
+      }
 
       if (coupon.discountType === "percentage") {
         stripeCoupon = await stripe.coupons.create({
@@ -290,7 +333,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         });
       } else {
         stripeCoupon = await stripe.coupons.create({
-          amount_off: Math.ceil(coupon.discount * 100), // convert into cent
+          amount_off: coupon.discount * 100, // convert into cent
           duration: "once",
           currency: "cad",
         });
@@ -306,7 +349,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       mode: "payment",
       discounts,
       metadata: enrollIdDuration,
-      success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}&takeFreeTrial=${req.user.takeFreeTrial}`,
+      success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}&takeFreeTrial=${req.user.takeFreeTrial}&pickPlan=${!!pickPlan}`,
       cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
     });
 
@@ -314,8 +357,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
     return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
   }
-
-  throw "Only one subscription and no duplicate addons are allowed!";
 });
 
 /**
@@ -338,6 +379,7 @@ export const successEnrollSubscription = asyncHandler(async (req: Request, res: 
           retailerId: req.query._id,
           planSnapshot: subscription,
           paymentStatus: "trial",
+          enrollStatus: "trial",
           validityFrom: moment(),
           validityTo: moment(),
           status: false,
@@ -350,17 +392,19 @@ export const successEnrollSubscription = asyncHandler(async (req: Request, res: 
     let updateSubscriptions = [];
 
     // Deactivate last previous active plan
-    updateSubscriptions.push(
-      EnrollSubscription.updateOne(
-        {
-          retailerId: req.query._id,
-          "planSnapshot.type": "subscription",
-          paymentStatus: { $in: ["completed", "trial"] },
-          status: true,
-        },
-        { status: false }
-      )
-    );
+    if (req.query.pickPlan && req.query.pickPlan === "true") {
+      updateSubscriptions.push(
+        EnrollSubscription.updateOne(
+          {
+            retailerId: req.query._id,
+            "planSnapshot.type": "subscription",
+            paymentStatus: { $in: ["completed", "trial"] },
+            status: true,
+          },
+          { status: false }
+        )
+      );
+    }
 
     if (payment.payment_intent.status === "succeeded") {
       for (let key in payment.metadata) {
