@@ -4,8 +4,9 @@ import { uploadFileToS3Bucket } from "../../../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, formatErrorMsg } from "../../../../helpers";
 import { IApiRequest } from "../../../../types";
 import CollectStamp from "../../customer/search/model";
+import { stampCollected } from "../../socket/socket";
 import OrderStamp from "./model";
-import { orderStampSchema } from "./validation";
+import { orderStampSchema, updateStampSchema } from "./validation";
 
 /**
  * Get All Collected Stamps
@@ -16,7 +17,7 @@ import { orderStampSchema } from "./validation";
 export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result: any = orderStampSchema.validate(req.body);
   if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
-  const { collectStampId, amount } = req?.body;
+  const { collectStampId } = req?.body;
 
   const stampIsCollected = await CollectStamp.aggregate([
     {
@@ -105,22 +106,13 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
 
   if (stampIsCollected[0].rewardTaken) throw "You have already collected the reward.";
 
-  if (!req?.file) {
-    return apiResponse(res, 400, false, "Invalid Request!", { image: "image file is required!" });
-  }
-
-  const { status, message } = fileValidation(req.file, undefined, ["image/jpeg", "image/png", "image/jpg"]);
-  if (!status) {
-    return apiResponse(res, 400, false, "Invalid Request!", { image: message });
-  }
-
   interface Object {
     [key: string]: any;
   }
+
   let orderBody: Object = {
     collectStampId,
     subAdminId: req?.user?._id,
-    amount,
     stamp: {},
   };
   const response: Object = { rewarded: false, totalStampCollected: stampIsCollected[0].totalStampTaken + 1 };
@@ -136,7 +128,6 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
     };
     orderBody.rewardCollected = true;
     response.rewarded = true;
-
     if (rewardType == "discount") {
       response.offer = discountReward + "%";
     } else {
@@ -144,15 +135,63 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
     }
   }
 
+  const newOrder: any = await OrderStamp.create(orderBody);
+  const data: Object = { collectStampId, response };
+  stampCollected(data);
+  return apiResponse(res, 200, true, "Stamp collected successfully", {
+    ...response,
+    collectStampId: newOrder._id,
+  });
+});
+
+export const uploadInvoice = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result: any = updateStampSchema.validate(req.params);
+  if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
+  const { amount } = req?.body;
+  const orderStampId = req.params.orderStampId;
+
+  const orderIsAvailable = await OrderStamp.aggregate([
+    {
+      $match: {
+        _id: mongoose.Types.ObjectId.createFromHexString(orderStampId),
+      },
+    },
+    {
+      $lookup: {
+        from: "subadmins",
+        localField: "subAdminId",
+        foreignField: "_id",
+        as: "subAdmin",
+        pipeline: [
+          {
+            $match: {
+              branchId: req?.user?.branchId,
+            },
+          },
+        ],
+      },
+    },
+  ]);
+  if (orderIsAvailable.length < 1) throw "Invalid Order";
+  if (orderIsAvailable[0].subAdmin.length < 1) return apiResponse(res, 401, false, "Unauthorized Request!");
+
+  if (!req?.file) {
+    return apiResponse(res, 400, false, "Invalid Request!", { image: "image file is required!" });
+  }
+
+  const { status, message } = fileValidation(req.file, undefined, ["image/jpeg", "image/png", "image/jpg"]);
+  if (!status) {
+    return apiResponse(res, 400, false, "Invalid Request!", { image: message });
+  }
+
   uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "stamp_image")
     .then(async ({ status: s3Status, key }) => {
       if (!s3Status) throw new Error("File upload failed");
-      orderBody.invoice = key;
-      await OrderStamp.create(orderBody);
+      await OrderStamp.findByIdAndUpdate({ _id: orderStampId }, { invoice: key, amount });
     })
     .catch((err) => {
       console.error("Something went wrong while uploading invoice image:", err);
     });
 
-  return apiResponse(res, 200, true, "Stamp collected successfully", response);
+  return apiResponse(res, 200, true, "Stamp invoice updated successfully");
 });

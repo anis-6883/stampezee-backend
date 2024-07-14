@@ -14,11 +14,11 @@ const schema = new mongoose.Schema(
     },
     amount: {
       type: Number,
-      required: true,
+      default: 0,
     },
     invoice: {
       type: String,
-      required: true,
+      default: null,
     },
     rewardCollected: {
       type: Boolean,

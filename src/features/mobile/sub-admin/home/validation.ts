@@ -9,5 +9,8 @@ const amount = Joi.number().required().min(1).messages({
 
 export const orderStampSchema = Joi.object({
   collectStampId: requiredObjectIdField("collectStampId"),
-  amount,
+});
+
+export const updateStampSchema = Joi.object({
+  orderStampId: requiredObjectIdField("orderStampId"),
 });
