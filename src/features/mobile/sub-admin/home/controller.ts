@@ -111,8 +111,6 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
 
   if (stampIsCollected[0].stamps.length < 1) throw "Stamp Expired";
 
-  if (stampIsCollected[0].stamps.length < 1) throw "Stamp Expired";
-
   if (stampIsCollected[0].rewardTaken) throw "You have already collected the reward.";
 
   interface Object {
