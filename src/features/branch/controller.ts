@@ -47,6 +47,12 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
     throw "Your branch limit is over!";
   }
 
+  const retailerAddonIds = retailerTotalBranch
+    .filter((branch) => branch.source === "addon")
+    .map((branch) => branch.enrollSubscriptionId.toString());
+  const addonIds = addons.map((branch) => branch._id.toString());
+  const unUsedIds = addonIds.filter((item) => !retailerAddonIds.includes(item));
+
   const subscriptionBranchSlot = retailerTotalBranch.filter((branch) => branch.source === "subscription").length;
   const source = subscriptionBranchSlot < subscription?.planSnapshot?.allowTotalBranch ? "subscription" : "addon";
 
@@ -58,6 +64,7 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
     },
     retailerId: req.user._id,
     source,
+    enrollSubscriptionId: source === "subscription" ? subscription._id : unUsedIds[0],
   });
 
   return apiResponse(res, 201, true, "Branch created successfully!");
@@ -80,7 +87,44 @@ export const getAllBranches = asyncHandler(async (req: IApiRequest, res: Respons
   }
 
   const [docs, total] = await Promise.all([
-    Branch.find(query).limit(Number(limit)).skip(skip).sort({ createdAt: "desc" }),
+    Branch.aggregate([
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
+        $match: query,
+      },
+      {
+        $lookup: {
+          from: "enrollsubscriptions",
+          localField: "enrollSubscriptionId",
+          foreignField: "_id",
+          as: "enrollSubscription",
+          pipeline: [
+            {
+              $project: {
+                validityFrom: 1,
+                validityTo: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: "$enrollSubscription",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+    ]),
     Branch.find(query).countDocuments(),
   ]);
 

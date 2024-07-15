@@ -67,6 +67,7 @@ export const createBranches = asyncHandler(async (req: Request, res: Response) =
         name: faker.location.streetAddress(true),
       },
       retailerId: id,
+      source: "subscription",
     });
   }
 
