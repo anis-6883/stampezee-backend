@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
-import EnrollSubscription from "../enroll-subscription/model";
+import Payment from "./model";
 
 /**
  * Get Subscription Payments
@@ -19,7 +19,63 @@ export const getSubscriptionPayments = asyncHandler(async (req: IApiRequest, res
   }
 
   const [docs, total] = await Promise.all([
-    EnrollSubscription.aggregate([
+    Payment.aggregate([
+      {
+        $unwind: {
+          path: "$enrollSubscriptionId",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "enrollsubscriptions",
+          localField: "enrollSubscriptionId",
+          foreignField: "_id",
+          as: "enrollSubscriptions",
+        },
+      },
+      {
+        $lookup: {
+          from: "retailers",
+          localField: "retailerId",
+          foreignField: "_id",
+          as: "retailer",
+          pipeline: [
+            {
+              $project: {
+                _id: 1,
+                storeName: 1,
+                email: 1,
+                fullName: 1,
+                image: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: "$retailer",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields: {
+          enrollSubscriptions: { $arrayElemAt: ["$enrollSubscriptions", 0] },
+        },
+      },
+      {
+        $group: {
+          _id: "$_id",
+          originalFields: { $first: "$$ROOT" },
+          enrollSubscriptions: { $push: "$enrollSubscriptions" },
+        },
+      },
+      {
+        $replaceRoot: {
+          newRoot: { $mergeObjects: ["$originalFields", { enrollSubscriptions: "$enrollSubscriptions" }] },
+        },
+      },
       {
         $sort: {
           createdAt: -1,
@@ -32,38 +88,18 @@ export const getSubscriptionPayments = asyncHandler(async (req: IApiRequest, res
         $limit: Number(limit),
       },
       {
-        $match: query,
-      },
-      {
-        $lookup: {
-          from: "retailers",
-          localField: "retailerId",
-          foreignField: "_id",
-          as: "retailer",
+        $addFields: {
+          amountTotal: { $divide: ["$amountTotal", 100] },
         },
-      },
-      {
-        $unwind: "$retailer",
       },
       {
         $project: {
-          "retailer.storeName": 1,
-          "retailer.image": 1,
-          paymentStatus: 1,
-          enrollStatus: 1,
-          "planSnapshot.title": 1,
-          "planSnapshot.price": 1,
-          "taxSnapshot.taxTitle": 1,
-          "taxSnapshot.taxCost": 1,
-          validityFrom: 1,
-          validityTo: 1,
-          createdAt: 1,
+          enrollSubscriptionId: 0,
+          retailerId: 0,
         },
       },
     ]),
-    EnrollSubscription.find({
-      paymentStatus: { $in: ["pending", "completed"] },
-    }).countDocuments(),
+    Payment.find().countDocuments(),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
