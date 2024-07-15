@@ -7,6 +7,11 @@ const schema = new mongoose.Schema(
       ref: "Retailer",
       required: true,
     },
+    enrollSubscriptionId: {
+      type: "ObjectId", // mongoose.Types.ObjectId
+      ref: "EnrollSubscription",
+      required: true,
+    },
     name: {
       type: String,
       required: true,

@@ -246,8 +246,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             unitAmount = Math.round(Number(subscription.price) * 100);
           }
 
-          // totalAmount += Number(subscription.price - balanceAmount);
-
           line_items.push({
             price_data: {
               currency: "cad",
@@ -413,10 +411,7 @@ export const successEnrollSubscription = asyncHandler(async (req: Request, res: 
     let updateSubscriptions = [];
 
     // Deactivate last previous active plan
-    if (
-      req.query.takeFreeTrial === "true" ||
-      (req.query.pickPlan && req.query.enrolled && req.query.pickPlan === "true" && req.query.enrolled === "true")
-    ) {
+    if (req.query.pickPlan === "true" && (req.query.takeFreeTrial === "true" || req.query.enrolled === "true")) {
       await EnrollSubscription.updateOne(
         {
           retailerId: req.query._id,
