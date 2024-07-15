@@ -127,6 +127,7 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
         _id: 1,
         createdAt: 1,
         stampsTaken: 1,
+        noOfStampsToCollect: "$stamp.noOfStampsToCollect",
         stampImage: "$stamp.stampImage.image",
       },
     },

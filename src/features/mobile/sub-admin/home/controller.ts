@@ -195,3 +195,39 @@ export const uploadInvoice = asyncHandler(async (req: IApiRequest, res: Response
 
   return apiResponse(res, 200, true, "Stamp invoice updated successfully");
 });
+
+export const scanHistory = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const scanDetails = await OrderStamp.aggregate([
+    {
+      $match: {
+        subAdminId: req.user._id,
+      },
+    },
+    {
+      $lookup: {
+        from: "subadmins",
+        localField: "subAdminId",
+        foreignField: "_id",
+        as: "subAdmin",
+        pipeline: [
+          {
+            $lookup: {
+              from: "branches",
+              localField: "branchId",
+              foreignField: "_id",
+              as: "branch",
+            },
+          },
+          {
+            $unwind: "$branch",
+          },
+        ],
+      },
+    },
+    {
+      $unwind: "$subAdmin",
+    },
+  ]);
+
+  return apiResponse(res, 200, true, "Collected stamps fetched successfully!", scanDetails);
+});
