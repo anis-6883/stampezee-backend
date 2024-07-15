@@ -7,6 +7,10 @@ const schema = new mongoose.Schema(
       ref: "CollectStamp",
       required: true,
     },
+    number: {
+      type: Number,
+      required: true,
+    },
     subAdminId: {
       type: "ObjectId", // mongoose.Types.ObjectId
       ref: "Retailer",

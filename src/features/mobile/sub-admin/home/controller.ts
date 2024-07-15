@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
 import { uploadFileToS3Bucket } from "../../../../configs/s3Bucket";
-import { apiResponse, asyncHandler, fileValidation, formatErrorMsg } from "../../../../helpers";
-import { IApiRequest } from "../../../../types";
+import { apiResponse, asyncHandler, fileValidation, formatErrorMsg, makePaginateForMobile } from "../../../../helpers";
+import { IApiRequest, INumberObject } from "../../../../types";
+import Branch from "../../../branch/model";
 import CollectStamp from "../../customer/search/model";
 import { stampCollected } from "../../socket/socket";
 import OrderStamp from "./model";
@@ -17,7 +18,15 @@ import { orderStampSchema, updateStampSchema } from "./validation";
 export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result: any = orderStampSchema.validate(req.body);
   if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
-  const { collectStampId } = req?.body;
+  const { collectStampId, number } = req?.body;
+  const alreadyScanned = await OrderStamp.findOne({ collectStampId, number });
+  if (alreadyScanned) {
+    if (alreadyScanned.invoice == null) {
+      await OrderStamp.deleteOne({ _id: alreadyScanned._id });
+    } else {
+      throw "This stamp has already been used.";
+    }
+  }
 
   const stampIsCollected = await CollectStamp.aggregate([
     {
@@ -112,6 +121,7 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
 
   let orderBody: Object = {
     collectStampId,
+    number,
     subAdminId: req?.user?._id,
     stamp: {},
   };
@@ -197,37 +207,113 @@ export const uploadInvoice = asyncHandler(async (req: IApiRequest, res: Response
 });
 
 export const scanHistory = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const scanDetails = await OrderStamp.aggregate([
-    {
-      $match: {
-        subAdminId: req.user._id,
+  const { page = 1, limit = 10 }: any = req.query;
+  const skip: number = (Number(page) - 1) * Number(limit);
+  const startOfWeek = new Date();
+  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); // Set to the beginning of the week
+  startOfWeek.setHours(0, 0, 0, 0);
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+  const startOfYear = new Date();
+  startOfYear.setMonth(0);
+  startOfYear.setDate(1);
+  startOfYear.setHours(0, 0, 0, 0);
+  const [storeDetails, thisWeek, thisMonth, thisYear, total] = await Promise.all([
+    Branch.aggregate([
+      {
+        $match: {
+          _id: req?.user?.branchId,
+        },
       },
-    },
-    {
-      $lookup: {
-        from: "subadmins",
-        localField: "subAdminId",
-        foreignField: "_id",
-        as: "subAdmin",
-        pipeline: [
-          {
-            $lookup: {
-              from: "branches",
-              localField: "branchId",
-              foreignField: "_id",
-              as: "branch",
+      {
+        $lookup: {
+          from: "retailers",
+          localField: "retailerId",
+          foreignField: "_id",
+          as: "retailer",
+          pipeline: [
+            {
+              $project: {
+                image: 1,
+                storeName: 1,
+              },
             },
-          },
-          {
-            $unwind: "$branch",
-          },
-        ],
+          ],
+        },
       },
-    },
-    {
-      $unwind: "$subAdmin",
-    },
+      {
+        $unwind: "$retailer",
+      },
+      {
+        $project: {
+          name: 1,
+          address: 1,
+          retailer: 1,
+        },
+      },
+    ]),
+    OrderStamp.countDocuments({
+      subAdminId: req.user._id,
+      createdAt: { $gte: startOfWeek },
+    }),
+    OrderStamp.countDocuments({
+      subAdminId: req.user._id,
+      createdAt: { $gte: startOfMonth },
+    }),
+    OrderStamp.countDocuments({
+      subAdminId: req.user._id,
+      createdAt: { $gte: startOfYear },
+    }),
+    OrderStamp.find({ subAdminId: req.user._id }).countDocuments(),
   ]);
 
-  return apiResponse(res, 200, true, "Collected stamps fetched successfully!", scanDetails);
+  const recentStamps: INumberObject = {
+    thisWeek,
+    thisMonth,
+    thisYear,
+    total,
+  };
+
+  return apiResponse(res, 200, true, "Stamp scan history fetched successfully", {
+    storeDetails: storeDetails[0],
+    recentStamps,
+  });
+});
+
+export const recentScans = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { page = 1, limit = 10 }: any = req.query;
+  const skip: number = (Number(page) - 1) * Number(limit);
+  const [docs, total] = await Promise.all([
+    OrderStamp.aggregate([
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
+        $match: {
+          subAdminId: req.user._id,
+        },
+      },
+      {
+        $project: {
+          invoice: 1,
+          amount: 1,
+          createdAt: 1,
+        },
+      },
+    ]),
+    OrderStamp.find({ subAdminId: req.user._id }).countDocuments(),
+  ]);
+
+  const mobilePagination = makePaginateForMobile(Number(page), Number(limit), skip, total);
+
+  return apiResponse(res, 200, true, "Recent scans have fetched successfully!", docs, mobilePagination);
 });

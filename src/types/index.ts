@@ -69,3 +69,7 @@ export interface IStamp {
   rewardCollected: boolean;
   createdAt: Date;
 }
+
+export interface INumberObject {
+  [key: string]: string | number;
+}
