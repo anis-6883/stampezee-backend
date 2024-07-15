@@ -58,3 +58,14 @@ export interface ILineItem {
   price_data: { unit_amount: number; currency: string; product_data: { name: string } };
   quantity: number;
 }
+
+export interface IOwn {
+  totalStampCollected: Number;
+  rewardTaken: Boolean;
+  stampCollectionDate: { createdAt: Date }[];
+}
+
+export interface IStamp {
+  rewardCollected: boolean;
+  createdAt: Date;
+}
