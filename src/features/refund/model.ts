@@ -16,6 +16,11 @@ const schema = new mongoose.Schema(
       enum: ["pending", "completed"],
       default: "pending",
     },
+    refundedBy: {
+      type: "ObjectId", // mongoose.Types.ObjectId
+      ref: "SuperAdmin",
+      default: null,
+    },
     refundedAt: {
       type: Date,
       default: null,

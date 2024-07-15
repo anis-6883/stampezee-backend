@@ -14,6 +14,7 @@ import { IApiRequest, IEnrollPayment, ILineItem } from "../../types";
 import Branch from "../branch/model";
 import Coupon from "../coupon/model";
 import Payment from "../payment/model";
+import Refund from "../refund/model";
 import Settings from "../settings/model";
 import Subscription from "../subscription/model";
 import Retailer from "../user/retailer/model";
@@ -257,37 +258,102 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             quantity: 1,
           });
         }
-
-        // Add Plan Change Cost
-        line_items.push({
-          price_data: {
-            currency: "cad",
-            product_data: {
-              name: `Plan Change Cost`,
-            },
-            unit_amount: Math.round(Number(planChangeCost) * 100), // convert into cent
-          },
-          quantity: 1,
-        });
       }
 
       // Plan Downgrade
       if (changeMode < 0) {
-        console.log("Working...");
-
         const downgradeBranchLimit = pickPlan?.allowTotalBranch;
-        const enrolledBranchLimit = enrolled?.planSnapshot?.allowTotalBranch;
         const branches = await Branch.find({ retailerId: req.user._id, source: "subscription" });
         const activeBranch = branches.filter((branch) => branch.status).length;
 
-        console.log({ downgradeBranchLimit, branches: branches.length, activeBranch });
-
-        if (branches.length > downgradeBranchLimit || activeBranch > downgradeBranchLimit) {
-          throw `You have to inactive ${activeBranch - downgradeBranchLimit} branch/s before downgrade!`;
+        if (branches.length > downgradeBranchLimit && activeBranch > downgradeBranchLimit) {
+          throw `You have to inactive ${activeBranch - downgradeBranchLimit} subscription branch/s before downgrade!`;
         }
 
-        return apiResponse(res, 200, true, `You are good to go downgrade!`);
+        const decisionAmount = pickPlan.price - balanceAmount;
+        const now = moment();
+        const expireDate = moment().add(pickPlan.duration, "days");
+
+        // Decision: Refund & Downgrade
+        if (decisionAmount < 0) {
+          const isRefunded = Math.abs(decisionAmount) >= refundableThreshold;
+
+          const enrollSubscription = await EnrollSubscription.create({
+            retailerId: req.user._id,
+            planSnapshot: pickPlan,
+            paymentStatus: "completed",
+            enrollStatus: "downgrade",
+            validityFrom: now,
+            validityTo: expireDate,
+          });
+
+          const updateQueries: any = [
+            Branch.updateMany(
+              { retailerId: req.user._id, source: "subscription", status: false },
+              { disabledBySystem: true }
+            ),
+            EnrollSubscription.updateOne({ _id: enrolled._id }, { status: false }),
+          ];
+
+          if (isRefunded) {
+            updateQueries.push(
+              Refund.create({
+                enrollSubscriptionId: enrollSubscription._id,
+                refundAmount: parseFloat(Math.abs(decisionAmount).toFixed(2)),
+                refundStatus: "pending",
+              })
+            );
+          }
+
+          await Promise.all(updateQueries);
+
+          return apiResponse(res, 200, true, `Your plan successfully downgraded!`);
+        }
+
+        // Decision: Payment & Downgrade or Not Now
+        if (decisionAmount > 0) {
+          console.log("Working...");
+
+          if (decisionAmount < 0.5) {
+            console.log(`You will pay ${Math.abs(decisionAmount)} CAD!`);
+          } else {
+            console.log(`You are not allowed to downgrade with ${Math.abs(decisionAmount)} CAD!`);
+          }
+        }
+
+        ////// if decisionAmount === 0 //////
+        await Promise.all([
+          Branch.updateMany(
+            { retailerId: req.user._id, source: "subscription", status: false },
+            { disabledBySystem: true }
+          ),
+          EnrollSubscription.updateOne({ _id: enrolled._id }, { status: false }),
+          EnrollSubscription.create({
+            retailerId: req.user._id,
+            planSnapshot: pickPlan,
+            paymentStatus: "completed",
+            enrollStatus: "downgrade",
+            validityFrom: now,
+            validityTo: expireDate,
+          }),
+        ]);
+
+        console.log({ pickPlanPrice: pickPlan.price, balanceAmount, decisionAmount });
+
+        return apiResponse(res, 200, true, `Your plan successfully downgraded!`);
       }
+
+      // Add Plan Change Cost
+      line_items.push({
+        price_data: {
+          currency: "cad",
+          product_data: {
+            name: `Plan Change Cost`,
+          },
+          unit_amount: Math.round(Number(planChangeCost) * 100), // convert into cent
+        },
+        quantity: 1,
+      });
     } else {
       for (const subscription of subscriptions) {
         const enrollSubscription: any = await EnrollSubscription.create({
