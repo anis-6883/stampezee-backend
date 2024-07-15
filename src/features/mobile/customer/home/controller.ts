@@ -1,7 +1,7 @@
 import { Response } from "express";
 import mongoose from "mongoose";
 import { apiResponse, asyncHandler } from "../../../../helpers";
-import { IApiRequest, IOwn, IStamp } from "../../../../types";
+import { IApiRequest, IStamp } from "../../../../types";
 import CollectStamp from "../search/model";
 
 /**
@@ -98,37 +98,15 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
         as: "stamp",
         pipeline: [
           {
-            $project: {
-              title: 1,
-              description: 1,
-              rules: 1,
-              noOfStampsToCollect: 1,
-              minPurchaseAmount: 1,
-              rewardType: 1,
-              promotionReward: 1,
-              discountReward: 1,
-            },
-          },
-        ],
-      },
-    },
-    {
-      $lookup: {
-        from: "branches",
-        localField: "branchId",
-        foreignField: "_id",
-        as: "branch",
-        pipeline: [
-          {
             $lookup: {
-              from: "retailers",
-              localField: "retailerId",
+              from: "stampimages",
+              localField: "stampImageId",
               foreignField: "_id",
-              as: "retailer",
+              as: "stampImage",
             },
           },
           {
-            $unwind: "$retailer",
+            $unwind: "$stampImage",
           },
         ],
       },
@@ -145,41 +123,26 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
       $unwind: "$stamp",
     },
     {
-      $unwind: "$branch",
-    },
-    {
       $project: {
         _id: 1,
         createdAt: 1,
-        stamp: 1,
         stampsTaken: 1,
-        "branch._id": "$branch._id",
-        "branch.name": "$branch.name",
-        "branch.address": "$branch.address.name",
-        "retailer._id": "$branch.retailer._id",
-        "retailer.storeName": "$branch.retailer.storeName",
-        "retailer.image": "$branch.retailer.image",
+        stampImage: "$stamp.stampImage.image",
       },
     },
   ]);
 
   if (collectedStamp.length < 1) throw "Please collect the stamp first";
 
-  let own: IOwn = {
-    rewardTaken: false,
-    totalStampCollected: 0, // You can initialize it with 0 or add a `?` to make it optional
-    stampCollectionDate: [], // You can initialize it with an empty array or add a `?` to make it optional
-  };
-
-  own.totalStampCollected = collectedStamp[0].stampsTaken.length;
+  const stampCollectionDate: { createdAt: Date }[] = [];
+  collectedStamp[0].totalStampCollected = collectedStamp[0].stampsTaken.length;
   collectedStamp[0].stampsTaken.forEach((data: IStamp) => {
     if (data.rewardCollected) {
-      own.rewardTaken = true;
+      collectedStamp[0].rewardTaken = true;
     }
-    own.stampCollectionDate.push({ createdAt: data.createdAt });
+    stampCollectionDate.push({ createdAt: data.createdAt });
   });
-
+  collectedStamp[0].stampCollectionDate = stampCollectionDate;
   delete collectedStamp[0].stampsTaken;
-  collectedStamp[0].own = own;
-  return apiResponse(res, 200, true, "Collected stamps fetched successfully!", collectedStamp);
+  return apiResponse(res, 200, true, "Collected stamps fetched successfully!", collectedStamp[0]);
 });
