@@ -108,6 +108,19 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
           {
             $unwind: "$stampImage",
           },
+          {
+            $project: {
+              title: 1,
+              description: 1,
+              rules: 1,
+              noOfStampsToCollect: 1,
+              minPurchaseAmount: 1,
+              rewardType: 1,
+              promotionReward: 1,
+              discountReward: 1,
+              stampImage: "$stampImage.image",
+            },
+          },
         ],
       },
     },
@@ -123,12 +136,45 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
       $unwind: "$stamp",
     },
     {
+      $lookup: {
+        from: "branches",
+        localField: "branchId",
+        foreignField: "_id",
+        as: "branch",
+        pipeline: [
+          {
+            $lookup: {
+              from: "retailers",
+              localField: "retailerId",
+              foreignField: "_id",
+              as: "retailer",
+            },
+          },
+          {
+            $unwind: "$retailer",
+          },
+        ],
+      },
+    },
+    {
+      $unwind: "$stamp",
+    },
+    {
+      $unwind: "$branch",
+    },
+    {
       $project: {
         _id: 1,
         createdAt: 1,
         stampsTaken: 1,
+        stamp: 1,
+        "branch._id": "$branch._id",
+        "branch.name": "$branch.name",
+        "branch.address": "$branch.address.name",
+        "retailer._id": "$branch.retailer._id",
+        "retailer.storeName": "$branch.retailer.storeName",
+        "retailer.image": "$branch.retailer.image",
         noOfStampsToCollect: "$stamp.noOfStampsToCollect",
-        stampImage: "$stamp.stampImage.image",
       },
     },
   ]);
