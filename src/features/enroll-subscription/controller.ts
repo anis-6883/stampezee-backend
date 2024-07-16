@@ -221,10 +221,14 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       if (changeMode > 0) {
         for (const subscription of subscriptions) {
           let planCurrentPrice = 0;
+          let enrollStatus = "upgrade";
+
           if ([PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug)) {
             planCurrentPrice = parseFloat(Number(subscription.price - balanceAmount).toFixed(2));
+            enrollStatus = "upgrade";
           } else {
             planCurrentPrice = parseFloat(Number(subscription.price).toFixed(2));
+            enrollStatus = "purchase";
           }
 
           const enrollSubscription: any = await EnrollSubscription.create({
@@ -241,7 +245,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             },
             planChangeCost,
             paymentStatus: "pending",
-            enrollStatus: "upgrade",
+            enrollStatus,
             status: false,
           });
 
@@ -304,9 +308,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             validityTo: expireDate,
             balanceInfo: {
               currentBalance: balanceAmount,
-              planCurrentPrice: totalAmount,
+              planCurrentPrice: pickPlan.price,
             },
             status: true,
+            planChangeCost,
           });
 
           const updateQueries: any = [
@@ -321,7 +326,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             updateQueries.push(
               Refund.create({
                 enrollSubscriptionId: enrollSubscription._id,
-                refundAmount: parseFloat(Math.abs(totalAmount).toFixed(2)),
+                refundAmount: parseFloat(Math.abs(totalAmount + planChangeCost).toFixed(2)),
                 refundStatus: "pending",
               })
             );
@@ -329,7 +334,12 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
           await Promise.all(updateQueries);
 
-          return apiResponse(res, 200, true, `Your plan successfully downgraded!`);
+          return apiResponse(res, 200, true, `Your plan successfully downgraded!`, {
+            plan: pickPlan?.slug,
+            planStartAt: now,
+            planValidAt: expireDate,
+            totalBranch: pickPlan?.allowTotalBranch,
+          });
         }
         // Decision 2: Payment & Downgrade or Not Now
         else if (totalAmount > 0) {

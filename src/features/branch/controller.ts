@@ -80,7 +80,7 @@ export const getAllBranches = asyncHandler(async (req: IApiRequest, res: Respons
   const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
-  const query: any = { retailerId: req.user._id, softDeleted: false, disabledBySystem: false };
+  const query: any = { retailerId: req.user._id, softDeleted: false };
   if (search) {
     const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
     query.name = regex;
