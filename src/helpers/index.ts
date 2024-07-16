@@ -189,7 +189,7 @@ export const flattenObject = (obj: any, parentKey: string = "", result: any = {}
 
 export const fileValidation = (
   file: any,
-  size: number = 1024 * 1024,
+  size: number = 1024 * 1024 * 100,
   types: string[] = ["image/jpeg", "image/png", "image/jpg"]
 ) => {
   if (file?.size > size) {
