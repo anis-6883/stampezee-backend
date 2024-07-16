@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
 import { uploadFileToS3Bucket } from "../../../../configs/s3Bucket";
-import { apiResponse, asyncHandler, fileValidation, formatErrorMsg, makePaginateForMobile } from "../../../../helpers";
+import { apiResponse, asyncHandler, formatErrorMsg, makePaginateForMobile } from "../../../../helpers";
 import { IApiRequest, INumberObject } from "../../../../types";
 import Branch from "../../../branch/model";
 import CollectStamp from "../../customer/search/model";
@@ -192,10 +192,11 @@ export const uploadInvoice = asyncHandler(async (req: IApiRequest, res: Response
     return apiResponse(res, 400, false, "Invalid Request!", { image: "image file is required!" });
   }
 
-  const { status, message } = fileValidation(req.file, undefined, ["image/jpeg", "image/png", "image/jpg"]);
-  if (!status) {
-    return apiResponse(res, 400, false, "Invalid Request!", { image: message });
-  }
+  console.log({ file: req?.file, type: req?.file.mimetype });
+  // const { status, message } = fileValidation(req.file, undefined, ["image/jpeg", "image/png", "image/jpg"]);
+  // if (!status) {
+  //   return apiResponse(res, 400, false, "Invalid Request!", { image: message });
+  // }
 
   uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "stamp_image")
     .then(async ({ status: s3Status, key }) => {
