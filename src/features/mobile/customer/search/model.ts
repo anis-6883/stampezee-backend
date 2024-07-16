@@ -17,6 +17,14 @@ const schema = new mongoose.Schema(
       ref: "Stamp",
       required: true,
     },
+    eligibleForReward: {
+      type: Boolean,
+      default: false,
+    },
+    rewardCollected: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

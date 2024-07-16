@@ -111,8 +111,6 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
 
   if (stampIsCollected[0].stamps.length < 1) throw "Stamp Expired";
 
-  if (stampIsCollected[0].stamps.length < 1) throw "Stamp Expired";
-
   if (stampIsCollected[0].rewardTaken) throw "You have already collected the reward.";
 
   interface Object {
@@ -122,11 +120,15 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
   let orderBody: Object = {
     collectStampId,
     number,
+    customerId: stampIsCollected[0].customerId,
     subAdminId: req?.user?._id,
     stamp: {},
   };
   const response: Object = { rewarded: false, totalStampCollected: stampIsCollected[0].totalStampTaken + 1 };
   const stampData = stampIsCollected[0].stamps[0];
+  if (stampIsCollected[0].totalStampTaken + 1 == stampData.noOfStampsToCollect) {
+    await CollectStamp.updateOne({ _id: collectStampId }, { eligibleForReward: true });
+  }
   if (stampIsCollected[0].totalStampTaken >= stampData.noOfStampsToCollect) {
     const { noOfStampsToCollect, minPurchaseAmount, rewardType, promotionReward, discountReward } = stampData;
     orderBody.stamp = {
@@ -137,6 +139,7 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
       discountReward,
     };
     orderBody.rewardCollected = true;
+    await CollectStamp.updateOne({ _id: collectStampId }, { eligibleForReward: false, rewardCollected: true });
     response.rewarded = true;
     if (rewardType == "discount") {
       response.offer = discountReward + "%";
