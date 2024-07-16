@@ -14,6 +14,7 @@ import { IApiRequest, IEnrollPayment, ILineItem } from "../../types";
 import Branch from "../branch/model";
 import Coupon from "../coupon/model";
 import Payment from "../payment/model";
+import Refund from "../refund/model";
 import Settings from "../settings/model";
 import Subscription from "../subscription/model";
 import Retailer from "../user/retailer/model";
@@ -164,6 +165,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     const alreadyApplied = await EnrollSubscription.find({
       retailerId: req.user._id,
       "couponSnapshot._id": coupon._id,
+      paymentStatus: "completed",
     }).countDocuments();
 
     if (alreadyApplied >= coupon.limit) {
@@ -218,6 +220,13 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       // Plan Upgrade
       if (changeMode > 0) {
         for (const subscription of subscriptions) {
+          let planCurrentPrice = 0;
+          if ([PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug)) {
+            planCurrentPrice = parseFloat(Number(subscription.price - balanceAmount).toFixed(2));
+          } else {
+            planCurrentPrice = parseFloat(Number(subscription.price).toFixed(2));
+          }
+
           const enrollSubscription: any = await EnrollSubscription.create({
             retailerId: req.user._id,
             planSnapshot: subscription,
@@ -228,7 +237,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             },
             balanceInfo: {
               currentBalance: balanceAmount,
-              planCurrentPrice: parseFloat(Number(subscription.price - balanceAmount).toFixed(2)),
+              planCurrentPrice,
             },
             planChangeCost,
             paymentStatus: "pending",
@@ -257,37 +266,192 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             quantity: 1,
           });
         }
-
-        // Add Plan Change Cost
-        line_items.push({
-          price_data: {
-            currency: "cad",
-            product_data: {
-              name: `Plan Change Cost`,
-            },
-            unit_amount: Math.round(Number(planChangeCost) * 100), // convert into cent
-          },
-          quantity: 1,
-        });
       }
 
       // Plan Downgrade
       if (changeMode < 0) {
-        console.log("Working...");
-
         const downgradeBranchLimit = pickPlan?.allowTotalBranch;
-        const enrolledBranchLimit = enrolled?.planSnapshot?.allowTotalBranch;
         const branches = await Branch.find({ retailerId: req.user._id, source: "subscription" });
         const activeBranch = branches.filter((branch) => branch.status).length;
 
-        console.log({ downgradeBranchLimit, branches: branches.length, activeBranch });
-
-        if (branches.length > downgradeBranchLimit || activeBranch > downgradeBranchLimit) {
-          throw `You have to inactive ${activeBranch - downgradeBranchLimit} branch/s before downgrade!`;
+        if (branches.length > downgradeBranchLimit && activeBranch > downgradeBranchLimit) {
+          throw `You have to inactive ${activeBranch - downgradeBranchLimit} subscription branch/s before downgrade!`;
         }
 
-        return apiResponse(res, 200, true, `You are good to go downgrade!`);
+        for (const subscription of subscriptions) {
+          if ([PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug)) {
+            totalAmount += Number(subscription.price - balanceAmount);
+          } else {
+            totalAmount += Number(subscription.price);
+          }
+        }
+
+        console.log({ totalAmount });
+
+        const now = moment();
+        const expireDate = moment().add(pickPlan.duration, "days");
+
+        // Decision 1: Refund & Downgrade
+        if (totalAmount < 0) {
+          const isRefunded = Math.abs(totalAmount) >= refundableThreshold;
+
+          const enrollSubscription = await EnrollSubscription.create({
+            retailerId: req.user._id,
+            planSnapshot: pickPlan,
+            paymentStatus: "completed",
+            enrollStatus: "downgrade",
+            validityFrom: now,
+            validityTo: expireDate,
+            balanceInfo: {
+              currentBalance: balanceAmount,
+              planCurrentPrice: totalAmount,
+            },
+            status: true,
+          });
+
+          const updateQueries: any = [
+            Branch.updateMany(
+              { retailerId: req.user._id, source: "subscription", status: false },
+              { disabledBySystem: true }
+            ),
+            EnrollSubscription.updateOne({ _id: enrolled._id }, { status: false }),
+          ];
+
+          if (isRefunded) {
+            updateQueries.push(
+              Refund.create({
+                enrollSubscriptionId: enrollSubscription._id,
+                refundAmount: parseFloat(Math.abs(totalAmount).toFixed(2)),
+                refundStatus: "pending",
+              })
+            );
+          }
+
+          await Promise.all(updateQueries);
+
+          return apiResponse(res, 200, true, `Your plan successfully downgraded!`);
+        }
+        // Decision 2: Payment & Downgrade or Not Now
+        else if (totalAmount > 0) {
+          console.log("Working...");
+
+          for (const subscription of subscriptions) {
+            if ([PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug)) {
+              const planCurrentPrice = parseFloat(Number(subscription.price - balanceAmount).toFixed(2)); // This amount can be negative!
+
+              // Decision: Stripe Entry or Not
+              if (planCurrentPrice < 0) {
+                await EnrollSubscription.create({
+                  retailerId: req.user._id,
+                  planSnapshot: pickPlan,
+                  paymentStatus: "completed",
+                  enrollStatus: "downgrade",
+                  validityFrom: now,
+                  validityTo: expireDate,
+                  balanceInfo: {
+                    currentBalance: balanceAmount,
+                    planCurrentPrice: totalAmount,
+                  },
+                  status: true,
+                });
+              } else {
+                const enrollSubscription: any = await EnrollSubscription.create({
+                  retailerId: req.user._id,
+                  planSnapshot: subscription,
+                  couponSnapshot: coupon,
+                  taxSnapshot: {
+                    taxTitle: taxStatus === "on" ? taxTitle : null,
+                    taxCost: taxStatus === "on" ? taxCost : null,
+                  },
+                  paymentStatus: "pending",
+                  enrollStatus: "downgrade",
+                  status: false,
+                });
+
+                enrollIdDuration[enrollSubscription._id] = subscription.duration;
+
+                line_items.push({
+                  price_data: {
+                    currency: "cad",
+                    product_data: {
+                      name: subscription.title,
+                    },
+                    unit_amount: planCurrentPrice * 100,
+                  },
+                  quantity: 1,
+                });
+              }
+            } else {
+              const enrollSubscription: any = await EnrollSubscription.create({
+                retailerId: req.user._id,
+                planSnapshot: subscription,
+                couponSnapshot: coupon,
+                taxSnapshot: {
+                  taxTitle: taxStatus === "on" ? taxTitle : null,
+                  taxCost: taxStatus === "on" ? taxCost : null,
+                },
+                balanceInfo: {
+                  currentBalance: balanceAmount,
+                  planCurrentPrice: subscription.price,
+                },
+                planChangeCost,
+                paymentStatus: "pending",
+                enrollStatus: "purchase",
+                status: false,
+              });
+
+              enrollIdDuration[enrollSubscription._id] = subscription.duration;
+
+              line_items.push({
+                price_data: {
+                  currency: "cad",
+                  product_data: {
+                    name: subscription.title,
+                  },
+                  unit_amount: Math.round(Number(subscription.price) * 100), // convert into cent
+                },
+                quantity: 1,
+              });
+            }
+          }
+        }
+        ////// if totalAmount === 0 //////
+        else {
+          await Promise.all([
+            Branch.updateMany(
+              { retailerId: req.user._id, source: "subscription", status: false },
+              { disabledBySystem: true }
+            ),
+            EnrollSubscription.updateOne({ _id: enrolled._id }, { status: false }),
+            EnrollSubscription.create({
+              retailerId: req.user._id,
+              planSnapshot: pickPlan,
+              paymentStatus: "completed",
+              enrollStatus: "downgrade",
+              validityFrom: now,
+              validityTo: expireDate,
+              balanceInfo: {
+                currentBalance: balanceAmount,
+                planCurrentPrice: totalAmount,
+              },
+            }),
+          ]);
+
+          return apiResponse(res, 200, true, `Your plan successfully downgraded!`);
+        }
       }
+
+      // Add Plan Change Cost
+      line_items.push({
+        price_data: {
+          currency: "cad",
+          product_data: {
+            name: `Plan Change Cost`,
+          },
+          unit_amount: Math.round(Number(planChangeCost) * 100), // convert into cent
+        },
+        quantity: 1,
+      });
     } else {
       for (const subscription of subscriptions) {
         const enrollSubscription: any = await EnrollSubscription.create({
