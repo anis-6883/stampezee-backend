@@ -290,6 +290,11 @@ export const recentScans = asyncHandler(async (req: IApiRequest, res: Response) 
   const [docs, total] = await Promise.all([
     OrderStamp.aggregate([
       {
+        $match: {
+          subAdminId: req.user._id,
+        },
+      },
+      {
         $sort: {
           createdAt: -1,
         },
@@ -301,12 +306,45 @@ export const recentScans = asyncHandler(async (req: IApiRequest, res: Response) 
         $limit: Number(limit),
       },
       {
-        $match: {
-          subAdminId: req.user._id,
+        $lookup: {
+          from: "collectstamps",
+          localField: "collectStampId",
+          foreignField: "_id",
+          as: "collectedstamps",
+          pipeline: [
+            {
+              $lookup: {
+                from: "stamps",
+                localField: "stampId",
+                foreignField: "_id",
+                as: "stampDetails",
+                pipeline: [
+                  {
+                    $project: {
+                      title: 1,
+                      rules: 1,
+                      noOfStampsToCollect: 1,
+                      minPurchaseAmount: 1,
+                      rewardType: 1,
+                      promotionReward: 1,
+                      discountReward: 1,
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              $unwind: "$stampDetails",
+            },
+          ],
         },
       },
       {
+        $unwind: "$collectedstamps",
+      },
+      {
         $project: {
+          stamp: "$collectedstamps.stampDetails",
           invoice: 1,
           amount: 1,
           createdAt: 1,
