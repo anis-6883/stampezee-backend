@@ -65,6 +65,25 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
       $unwind: "$branch",
     },
     {
+      $lookup: {
+        from: "orderstamps",
+        localField: "_id",
+        foreignField: "collectStampId",
+        as: "stampsTaken",
+        pipeline: [
+          {
+            $count: "totalStampsTaken",
+          },
+        ],
+      },
+    },
+    {
+      $unwind: {
+        path: "$stampsTaken",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
       $project: {
         _id: 1,
         createdAt: 1,
@@ -75,6 +94,9 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
         "retailer._id": "$branch.retailer._id",
         "retailer.storeName": "$branch.retailer.storeName",
         "retailer.image": "$branch.retailer.image",
+        totalStampsCollected: {
+          $ifNull: ["$stampsTaken.totalStampsTaken", 0],
+        },
       },
     },
   ]);
