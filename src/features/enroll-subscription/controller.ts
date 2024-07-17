@@ -175,6 +175,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     if (!coupon) throw "Provide invalid coupon code!";
   }
 
+  // Plan Enroll ID - Need for updating branch expiration
+  let planEnrollmentId;
+
   // Enroll Paid Subscription
   if (checkCombination(slugs, [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED]) && checkDuplicates(slugs)) {
     const subscriptions: any[] = await Subscription.find({ slug: { $in: slugs } });
@@ -249,6 +252,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             status: false,
           });
 
+          if (subscription.type === "subscription") {
+            planEnrollmentId = enrollSubscription._id;
+          }
+
           enrollIdDuration[enrollSubscription._id] = subscription.duration;
 
           if ([PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug)) {
@@ -290,10 +297,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           }
         }
 
-        console.log({ totalAmount });
-
-        // const expireDate = moment().add(pickPlan.duration, "days");
-
         // Decision 1: Refund & Downgrade
         if (totalAmount < 0) {
           const isRefunded = Math.abs(totalAmount + planChangeCost) >= refundableThreshold;
@@ -320,6 +323,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
             if (subscription.type === "subscription") {
               enrollSubscriptionId = enrollSubscription._id;
+              planEnrollmentId = enrollSubscription._id;
             }
           }
 
@@ -352,8 +356,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         }
         // Decision 2: Payment & Downgrade or Not Now
         else if (totalAmount > 0) {
-          console.log("Working...");
-
           let togetherPaymentAmount = 0;
           const planCurrentPrice = parseFloat(Number(pickPlan.price - balanceAmount).toFixed(2)); // This amount can be negative!
 
@@ -361,7 +363,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             if ([PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug)) {
               // Decision: Stripe Entry or Not
               if (planCurrentPrice < 0) {
-                await EnrollSubscription.create({
+                const enrollSubscription = await EnrollSubscription.create({
                   retailerId: req.user._id,
                   planSnapshot: pickPlan,
                   paymentStatus: "completed",
@@ -374,6 +376,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                   },
                   status: true,
                 });
+
+                planEnrollmentId = enrollSubscription._id;
               } else {
                 const enrollSubscription: any = await EnrollSubscription.create({
                   retailerId: req.user._id,
@@ -388,11 +392,13 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                   status: false,
                 });
 
+                planEnrollmentId = enrollSubscription._id;
                 enrollIdDuration[enrollSubscription._id] = subscription.duration;
 
                 togetherPaymentAmount += planCurrentPrice;
               }
             } else {
+              // Take Ad-ons with downgrade
               const enrollSubscription: any = await EnrollSubscription.create({
                 retailerId: req.user._id,
                 planSnapshot: subscription,
@@ -421,7 +427,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             togetherPaymentAmount -= Math.abs(planCurrentPrice);
           }
 
-          // Plan & Ad-ons Al-together cause (-) value is not allow in stripe
+          // Plan & Ad-ons Al-together cause (-) value is not allow to show in stripe
           line_items.push({
             price_data: {
               currency: "cad",
@@ -433,7 +439,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             quantity: 1,
           });
         }
-        ////// if totalAmount === 0 //////
+        ////// if totalAmount === 0 ////// (Rare Case)
         else {
           await Promise.all([
             Branch.updateMany(
@@ -441,19 +447,22 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               { disabledBySystem: true }
             ),
             EnrollSubscription.updateOne({ _id: enrolled._id }, { status: false }),
-            EnrollSubscription.create({
-              retailerId: req.user._id,
-              planSnapshot: pickPlan,
-              paymentStatus: "completed",
-              enrollStatus: "downgrade",
-              validityFrom: moment(),
-              validityTo: moment().add(pickPlan.duration, "days"),
-              balanceInfo: {
-                currentBalance: balanceAmount,
-                planCurrentPrice: 0,
-              },
-            }),
           ]);
+
+          const enrollSubscription = await EnrollSubscription.create({
+            retailerId: req.user._id,
+            planSnapshot: pickPlan,
+            paymentStatus: "completed",
+            enrollStatus: "downgrade",
+            validityFrom: moment(),
+            validityTo: moment().add(pickPlan.duration, "days"),
+            balanceInfo: {
+              currentBalance: balanceAmount,
+              planCurrentPrice: 0,
+            },
+          });
+
+          planEnrollmentId = enrollSubscription._id;
 
           return apiResponse(res, 200, true, `Your plan successfully downgraded!`);
         }
@@ -484,6 +493,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           enrollStatus: "purchase",
           status: false,
         });
+
+        if (subscription.type === "subscription") {
+          planEnrollmentId = enrollSubscription._id;
+        }
 
         enrollIdDuration[enrollSubscription._id] = subscription.duration;
         totalAmount += Number(subscription.price);
@@ -548,7 +561,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       mode: "payment",
       discounts,
       metadata: enrollIdDuration,
-      success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}&takeFreeTrial=${req.user.takeFreeTrial}&pickPlan=${!!pickPlan}&enrolled=${!!enrolled}`,
+      success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}&takeFreeTrial=${req.user.takeFreeTrial}&pickPlan=${!!pickPlan}&enrolled=${!!enrolled}&planEnrollmentId=${planEnrollmentId}`,
       cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
     });
 
@@ -633,9 +646,24 @@ export const successEnrollSubscription = asyncHandler(async (req: Request, res: 
         })
       );
 
+      // Update expiration for already created branch
+      if (req.query.pickPlan === "true") {
+        updateSubscriptions.push(
+          Branch.updateMany(
+            {
+              retailerId: req.query._id,
+              source: "subscription",
+            },
+            { enrollSubscriptionId: req.query.planEnrollmentId }
+          )
+        );
+      }
+
       await Promise.all(updateSubscriptions);
 
       return res.redirect(`${process.env.FRONTEND_URL}/payment/complete`);
+    } else {
+      throw "Something went wrong in payment!";
     }
   } else {
     throw "Something went wrong in payment!";
