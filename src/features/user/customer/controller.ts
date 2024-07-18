@@ -79,16 +79,16 @@ export const customerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
   const isVerified = req.user.otp === Number(result.value.otp) && req.user.otpExpiry > new Date();
   if (!isVerified) return apiResponse(res, 400, false, "Invalid Otp!");
 
+  const token = generateSignature({ email: req.user.email, role: ROLE.CUSTOMER }, "30 days");
+
   const customer: any = await Customer.findOneAndUpdate(
     { email: req.user.email },
-    { isVerified: true, verifiedAt: new Date(), otp: null, otpExpiry: null },
+    { isVerified: true, token, verifiedAt: new Date(), otp: null, otpExpiry: null },
     {
       new: true,
       projection: { password: 0, createdAt: 0, updatedAt: 0, otp: 0, otpExpiry: 0 },
     }
   );
-
-  const token = generateSignature({ email: req.user.email, role: ROLE.CUSTOMER }, "30 days");
 
   return apiResponse(res, 200, true, "Otp verified & Login successfully!", { token, ...customer._doc });
 });
@@ -140,6 +140,7 @@ export const customerLogin = asyncHandler(async (req: Request, res: Response) =>
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
   const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER }, "30 days");
+  await Customer.updateMany({ email: customer.email }, { token });
 
   // Remove Sensitive Data
   const data = exclude(customer._doc, [
