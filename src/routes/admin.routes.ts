@@ -2,7 +2,7 @@ import express from "express";
 import { ROLE } from "../configs/constants";
 import categoryRoutes from "../features/category/route";
 import couponRoutes from "../features/coupon/route";
-import manageCustomerRoutes from "../features/customer/route";
+import manageCustomerRoutes from "../features/customer/routes/super-admin";
 import faqRoutes from "../features/faq/route";
 import paymentRoutes from "../features/payment/route";
 import refundRoutes from "../features/refund/routes/super-admin";

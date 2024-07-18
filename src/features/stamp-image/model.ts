@@ -20,6 +20,11 @@ const schema = new mongoose.Schema(
       enum: ["super_admin", "retailer"],
       default: "retailer",
     },
+    enrollSubscriptionId: {
+      type: "ObjectId", // mongoose.Types.ObjectId
+      ref: "EnrollSubscription",
+      default: null,
+    },
     status: {
       type: Boolean,
       default: true,
