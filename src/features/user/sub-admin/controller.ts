@@ -78,8 +78,10 @@ export const subAdminLogin = asyncHandler(async (req: Request, res: Response) =>
 
   const token = generateSignature({ email: subAdmin[0].email, role: ROLE.SUB_ADMIN }, "30 days");
 
+  await SubAdmin.updateOne({ _id: subAdmin[0]._id }, { token });
+
   // Remove Sensitive Data
-  const data = exclude(subAdmin[0], ["password"]);
+  const data = exclude(subAdmin[0], ["password", "token"]);
 
   return apiResponse(res, 200, true, "Sub Admin Login Successfully!", { token, ...data });
 });

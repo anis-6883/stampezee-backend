@@ -151,6 +151,7 @@ export const customerLogin = asyncHandler(async (req: Request, res: Response) =>
     "verifiedAt",
     "createdAt",
     "updatedAt",
+    "token",
   ]);
 
   return apiResponse(res, 200, true, "Customer Login Successfully!", { token, ...data });
