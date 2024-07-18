@@ -4,6 +4,7 @@ import billingRoutes from "../features/billing/route";
 import branchRoutes from "../features/branch/route";
 import subscriptionRoutes from "../features/enroll-subscription/route";
 import { getAllFaqsForWeb } from "../features/faq/controller";
+import refundRoutes from "../features/refund/routes/retailer";
 import { getCommonSettings, getSecretSettings } from "../features/settings/controller";
 import stampImageRoutes from "../features/stamp-image/route";
 import stampRoutes from "../features/stamp/route";
@@ -36,5 +37,6 @@ router.use("/retailer/branch", branchRoutes);
 router.use("/retailer/sub-admin", subAdminRoutes);
 router.use("/retailer/stamp-image", stampImageRoutes);
 router.use("/retailer/billing", billingRoutes);
+router.use("/retailer/refund", refundRoutes);
 
 export default router;
