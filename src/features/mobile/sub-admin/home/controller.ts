@@ -124,7 +124,7 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
     subAdminId: req?.user?._id,
     stamp: {},
   };
-  const response: Object = { rewarded: false, totalStampCollected: stampIsCollected[0].totalStampTaken + 1 };
+  const response: Object = { isRewarded: false, totalStampCollected: stampIsCollected[0].totalStampTaken + 1 };
   const stampData = stampIsCollected[0].stamps[0];
   if (stampIsCollected[0].totalStampTaken + 1 == stampData.noOfStampsToCollect) {
     await CollectStamp.updateOne({ _id: collectStampId }, { eligibleForReward: true });
@@ -139,8 +139,9 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
       discountReward,
     };
     orderBody.rewardCollected = true;
+    response.totalStampCollected = stampIsCollected[0].totalStampTaken;
     await CollectStamp.updateOne({ _id: collectStampId }, { eligibleForReward: false, rewardCollected: true });
-    response.rewarded = true;
+    response.isRewarded = true;
     if (rewardType == "discount") {
       response.offer = discountReward + "%";
     } else {

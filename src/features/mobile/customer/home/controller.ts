@@ -95,6 +95,9 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
                 $ifNull: ["$stampsTaken.totalStampsTaken", 0],
               },
             },
+            {
+              isRewarded: "$rewardCollected",
+            },
           ],
         },
         "branch._id": "$branch._id",
