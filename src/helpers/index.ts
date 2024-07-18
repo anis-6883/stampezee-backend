@@ -267,10 +267,15 @@ export const checkDuplicates = (arr: string[]): boolean => {
   return true;
 };
 
-export const getUTC = (localTime: Date | string, timeZoneOffset: number) => {
+export const getUTC = (localTime: Date | string, timeZoneOffset: number, endOfDay: boolean = false) => {
   const currentTime = new Date(localTime);
 
-  const currentTimeInMs = currentTime.getTime();
+  // Adjust to UTC end of day
+  const utcEndOfDay = new Date(
+    Date.UTC(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), 23, 59, 59, 999)
+  );
+
+  const currentTimeInMs = endOfDay ? utcEndOfDay.getTime() : currentTime.getTime();
 
   const utcTimeInMs = currentTimeInMs - timeZoneOffset * 60 * 60 * 1000;
 
