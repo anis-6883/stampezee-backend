@@ -36,7 +36,7 @@ export const createCoupon = asyncHandler(async (req: IApiRequest, res: Response)
   }
 
   const systemTime = getUTC(createBody.startedAt, settings.general.timezone.value);
-  const expireTime = getUTC(createBody.expiredAt, settings.general.timezone.value);
+  const expireTime = getUTC(createBody.expiredAt, settings.general.timezone.value, true);
 
   createBody.startedAt = systemTime;
   createBody.expiredAt = expireTime;
@@ -123,7 +123,7 @@ export const updateCoupon = asyncHandler(async (req: IApiRequest, res: Response)
   }
 
   const systemTime = getUTC(updatedBody.startedAt, settings.general.timezone.value);
-  const expireTime = getUTC(updatedBody.expiredAt, settings.general.timezone.value);
+  const expireTime = getUTC(updatedBody.expiredAt, settings.general.timezone.value, true);
 
   updatedBody.startedAt = systemTime;
   updatedBody.expiredAt = expireTime;
