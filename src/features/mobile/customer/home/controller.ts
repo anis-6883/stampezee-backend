@@ -72,6 +72,11 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
         as: "stampsTaken",
         pipeline: [
           {
+            $match: {
+              rewardCollected: false,
+            },
+          },
+          {
             $count: "totalStampsTaken",
           },
         ],
@@ -161,6 +166,13 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
         localField: "_id",
         foreignField: "collectStampId",
         as: "stampsTaken",
+        pipeline: [
+          {
+            $match: {
+              rewardCollected: false,
+            },
+          },
+        ],
       },
     },
     {
