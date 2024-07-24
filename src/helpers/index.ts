@@ -89,6 +89,11 @@ export const stringField = (fieldName: string) =>
       "string.empty": `${fieldName} must not be empty!`,
     });
 
+export const numberField = (fieldName: string) =>
+  Joi.number().messages({
+    "number.base": `${fieldName} must be number!`,
+  });
+
 export const requiredLowercaseStringField = (fieldName: string) =>
   Joi.string()
     .trim()

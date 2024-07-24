@@ -1,0 +1,48 @@
+import mongoose from "mongoose";
+
+const schema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: true,
+    },
+    description: {
+      type: String,
+      required: true,
+    },
+    image: { type: String, default: "" },
+    type: {
+      type: String,
+      enum: ["all", "location"],
+      default: "all",
+    },
+    radius: {
+      type: Number,
+      default: 0,
+    },
+    address: {
+      loc: {
+        type: {
+          type: String,
+          default: "Point",
+          enum: ["Point"],
+        },
+        coordinates: {
+          type: [Number],
+        },
+      },
+      name: {
+        type: String,
+        trim: true,
+        default: null,
+      },
+    },
+  },
+  { timestamps: true, versionKey: false }
+);
+
+schema.index({ "address.loc": "2dsphere" });
+
+const Notification = mongoose.model("Notification", schema);
+
+export default Notification;
