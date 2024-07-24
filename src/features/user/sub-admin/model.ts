@@ -50,6 +50,10 @@ const schema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    token: {
+      type: String,
+      default: null,
+    },
     status: {
       type: Boolean,
       default: true,

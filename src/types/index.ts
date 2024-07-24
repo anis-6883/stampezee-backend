@@ -73,3 +73,8 @@ export interface IStamp {
 export interface INumberObject {
   [key: string]: string | number;
 }
+
+export interface IJWTQuery {
+  email: string;
+  token?: string;
+}

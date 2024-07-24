@@ -84,6 +84,11 @@ const schema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    token: {
+      type: String,
+      trim: true,
+      default: null,
+    },
   },
   {
     timestamps: true,

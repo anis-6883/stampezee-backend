@@ -7,7 +7,7 @@ import Retailer from "../features/user/retailer/model";
 import SubAdmin from "../features/user/sub-admin/model";
 import SuperAdmin from "../features/user/super-admin/model";
 import { apiResponse } from "../helpers";
-import { IApiRequest } from "../types";
+import { IApiRequest, IJWTQuery } from "../types";
 
 export const authAndPermissionCheck =
   (role: string, checkPermission: boolean = true, findUser: boolean = true) =>
@@ -24,6 +24,7 @@ export const authAndPermissionCheck =
         return apiResponse(res, 403, false, "You are not authorized to perform this action!");
       }
 
+      const query: IJWTQuery = { email: decoded?.email };
       if (findUser) {
         switch (decoded.role) {
           case ROLE.SUPER_ADMIN:
@@ -33,16 +34,18 @@ export const authAndPermissionCheck =
             model = Retailer;
             break;
           case ROLE.SUB_ADMIN:
+            query.token = token;
             model = SubAdmin;
             break;
           case ROLE.CUSTOMER:
+            query.token = token;
             model = Customer;
             break;
           default:
             return apiResponse(res, 401, false, "Unauthorized!");
         }
 
-        const user: any = await model.findOne({ email: decoded?.email });
+        const user: any = await model.findOne(query);
         if (!user) return apiResponse(res, 401, false, "Unauthorized Request!");
         req.user = user._doc;
       }

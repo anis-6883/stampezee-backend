@@ -72,6 +72,11 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
         as: "stampsTaken",
         pipeline: [
           {
+            $match: {
+              rewardCollected: false,
+            },
+          },
+          {
             $count: "totalStampsTaken",
           },
         ],
@@ -94,6 +99,9 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
               totalStampsCollected: {
                 $ifNull: ["$stampsTaken.totalStampsTaken", 0],
               },
+            },
+            {
+              isRewarded: "$rewardCollected",
             },
           ],
         },
@@ -158,6 +166,13 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
         localField: "_id",
         foreignField: "collectStampId",
         as: "stampsTaken",
+        pipeline: [
+          {
+            $match: {
+              rewardCollected: false,
+            },
+          },
+        ],
       },
     },
     {
@@ -195,7 +210,14 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
         _id: 1,
         createdAt: 1,
         stampsTaken: 1,
-        stamp: 1,
+        stamp: {
+          $mergeObjects: [
+            "$stamp",
+            {
+              isRewarded: "$rewardCollected",
+            },
+          ],
+        },
         "branch._id": "$branch._id",
         "branch.name": "$branch.name",
         "branch.address": "$branch.address.name",
