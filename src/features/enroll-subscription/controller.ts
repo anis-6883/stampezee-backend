@@ -332,6 +332,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               { retailerId: req.user._id, source: "subscription", status: false },
               { disabledBySystem: true }
             ),
+            Branch.updateMany({ retailerId: req.user._id, source: "subscription" }, { enrollSubscriptionId }),
             EnrollSubscription.updateOne({ _id: enrolled._id }, { status: false }),
           ];
 
@@ -441,14 +442,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         }
         ////// if totalAmount === 0 ////// (Rare Case)
         else {
-          await Promise.all([
-            Branch.updateMany(
-              { retailerId: req.user._id, source: "subscription", status: false },
-              { disabledBySystem: true }
-            ),
-            EnrollSubscription.updateOne({ _id: enrolled._id }, { status: false }),
-          ]);
-
           const enrollSubscription = await EnrollSubscription.create({
             retailerId: req.user._id,
             planSnapshot: pickPlan,
@@ -461,6 +454,18 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               planCurrentPrice: 0,
             },
           });
+
+          await Promise.all([
+            Branch.updateMany(
+              { retailerId: req.user._id, source: "subscription", status: false },
+              { disabledBySystem: true }
+            ),
+            Branch.updateMany(
+              { retailerId: req.user._id, source: "subscription" },
+              { enrollSubscriptionId: enrollSubscription._id }
+            ),
+            EnrollSubscription.updateOne({ _id: enrolled._id }, { status: false }),
+          ]);
 
           planEnrollmentId = enrollSubscription._id;
 
