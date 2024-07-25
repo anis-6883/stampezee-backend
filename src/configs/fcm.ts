@@ -37,7 +37,7 @@ class NotificationClass {
         stringData[key] = String(data[key]);
       }
     }
-    console.log({ title, description, image: imageUrl });
+
     // Create the message description
     const messageBody: any = {
       apns: {

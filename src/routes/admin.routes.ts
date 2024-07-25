@@ -4,6 +4,7 @@ import categoryRoutes from "../features/category/route";
 import couponRoutes from "../features/coupon/route";
 import manageCustomerRoutes from "../features/customer/routes/super-admin";
 import faqRoutes from "../features/faq/route";
+import notificationRoutes from "../features/notification/routes/super-admin";
 import paymentRoutes from "../features/payment/route";
 import refundRoutes from "../features/refund/routes/super-admin";
 import manageRetailerRoutes from "../features/retailer/route";
@@ -30,5 +31,6 @@ router.use("/super-admin/stamp-image", stampImageRoutes);
 router.use("/super-admin/subscription", subscriptionRoutes);
 router.use("/super-admin/manage-retailer", manageRetailerRoutes);
 router.use("/super-admin/manage-customer", manageCustomerRoutes);
+router.use("/super-admin/notification", notificationRoutes);
 
 export default router;

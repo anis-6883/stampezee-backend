@@ -106,3 +106,70 @@ export const getAllNotificationsForRetailer = asyncHandler(async (req: IApiReque
 
   return apiResponse(res, 200, true, "Notificationes fetched successfully!", data);
 });
+
+export const getAllNotificationsForSuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { page = 1, limit = 10, search } = req.query;
+  const skip: number = (Number(page) - 1) * Number(limit);
+
+  const query: any = {};
+  if (search) {
+    query.$or = [{ title: { $regex: search, $options: "i" } }, { description: { $regex: search, $options: "i" } }];
+  }
+
+  const [docs, total] = await Promise.all([
+    Notification.aggregate([
+      {
+        $match: query,
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
+        $lookup: {
+          from: "retailers",
+          localField: "retailerId",
+          foreignField: "_id",
+          as: "retailers",
+          pipeline: [
+            {
+              $project: {
+                firstName: 1,
+                lastName: 1,
+                storeName: 1,
+                email: 1,
+                image: 1,
+                dialCode: 1,
+                phone: 1,
+                country: 1,
+                city: 1,
+                address: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: "$retailers",
+      },
+      {
+        $project: {
+          retailerId: 0,
+          updatedAt: 0,
+        },
+      },
+    ]),
+    Notification.find(query).countDocuments(),
+  ]);
+
+  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
+
+  return apiResponse(res, 200, true, "Notificationes fetched successfully!", data);
+});
