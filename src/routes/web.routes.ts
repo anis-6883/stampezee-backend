@@ -2,6 +2,7 @@ import express from "express";
 import { ROLE } from "../configs/constants";
 import billingRoutes from "../features/billing/route";
 import branchRoutes from "../features/branch/route";
+import customerRoutes from "../features/customer/routes/retailer";
 import subscriptionRoutes from "../features/enroll-subscription/route";
 import { getAllFaqsForWeb } from "../features/faq/controller";
 import notificationRoutes from "../features/notification/routes/retailer";
@@ -40,5 +41,6 @@ router.use("/retailer/stamp-image", stampImageRoutes);
 router.use("/retailer/billing", billingRoutes);
 router.use("/retailer/notification", notificationRoutes);
 router.use("/retailer/refund", refundRoutes);
+router.use("/retailer/manage-customer", customerRoutes);
 
 export default router;

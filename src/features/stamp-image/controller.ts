@@ -1,8 +1,9 @@
 import { Response } from "express";
-import { ROLE } from "../../configs/constants";
+import { PACKAGES, ROLE } from "../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
+import EnrollSubscription from "../enroll-subscription/model";
 import Sorting from "../sorting/model";
 import StampImage from "./model";
 import { stampImageSchema, stampImageStatusSchema, stampImageUpdateSchema } from "./validation";
@@ -22,7 +23,32 @@ export const createStampImage = asyncHandler(async (req: IApiRequest, res: Respo
   createBody.userId = req.user._id;
   createBody.ref = req.role;
 
-  let imageKey = null;
+  if (req.role === ROLE.RETAILER) {
+    const [addons, retailerTotalStamp] = await Promise.all([
+      EnrollSubscription.find({
+        retailerId: req.user._id,
+        "planSnapshot.type": "addon",
+        "planSnapshot.slug": PACKAGES.STAMP,
+        paymentStatus: "completed",
+        validityTo: { $gt: new Date() },
+        status: true,
+      }),
+      StampImage.find({
+        userId: req.user._id,
+        ref: "retailer",
+      }),
+    ]);
+
+    const addonIds = addons.map((stamp) => stamp._id.toString());
+    const retailerAddonIds = retailerTotalStamp.map((stamp) => stamp.enrollSubscriptionId.toString());
+    const unUsedIds = addonIds.filter((item) => !retailerAddonIds.includes(item));
+
+    if (unUsedIds.length === 0) {
+      throw "Your stamp image limit is over!";
+    }
+
+    createBody.enrollSubscriptionId = unUsedIds[0];
+  }
 
   if (!req?.file) {
     return apiResponse(res, 400, false, "Invalid Request!", { image: "image file is required!" });
@@ -35,6 +61,8 @@ export const createStampImage = asyncHandler(async (req: IApiRequest, res: Respo
   }
 
   // Upload File to S3 Bucket
+  let imageKey = null;
+
   const { status: s3Status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "stamp_image");
   if (s3Status) {
     imageKey = key;
@@ -53,7 +81,7 @@ export const createStampImage = asyncHandler(async (req: IApiRequest, res: Respo
     );
   }
 
-  return apiResponse(res, 201, true, "Stamp image created successfully!", stampImage);
+  return apiResponse(res, 201, true, "Stamp image created successfully!");
 });
 
 /**

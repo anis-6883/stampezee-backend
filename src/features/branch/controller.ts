@@ -89,20 +89,6 @@ export const getAllBranches = asyncHandler(async (req: IApiRequest, res: Respons
   const [docs, total] = await Promise.all([
     Branch.aggregate([
       {
-        $sort: {
-          createdAt: -1,
-        },
-      },
-      {
-        $skip: skip,
-      },
-      {
-        $limit: Number(limit),
-      },
-      {
-        $match: query,
-      },
-      {
         $lookup: {
           from: "enrollsubscriptions",
           localField: "enrollSubscriptionId",
@@ -123,6 +109,20 @@ export const getAllBranches = asyncHandler(async (req: IApiRequest, res: Respons
           path: "$enrollSubscription",
           preserveNullAndEmptyArrays: true,
         },
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $match: query,
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
       },
     ]),
     Branch.find(query).countDocuments(),
