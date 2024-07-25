@@ -21,8 +21,6 @@ import Retailer from "../user/retailer/model";
 import EnrollSubscription from "./model";
 import { couponSchema, enrollSubscriptionSchema } from "./validation";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
 /**
  * Get Active Subscription Plans
  * @param {Request} req - The HTTP request object.
@@ -142,14 +140,16 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       "stripe.taxTitle": 1,
       "stripe.taxCost": 1,
       "stripe.taxStatus": 1,
+      "stripe.stripeSecretKey": 1,
     }
   );
 
   if (!paymentMetadata) {
-    throw "Setup payment cost threshold!";
+    throw "Something went wrong in Stripe settings!";
   }
 
-  const { planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } = paymentMetadata.stripe;
+  const { stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } = paymentMetadata.stripe;
+  const stripe = new Stripe(stripeSecretKey);
 
   // Check & Get Coupon
   let coupon = null;
@@ -586,6 +586,12 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
  */
 export const successEnrollSubscription = asyncHandler(async (req: Request, res: Response) => {
   if (req.query.stripe_success_token === process.env.STRIPE_SUCCESS_TOKEN && req?.query?.session_id) {
+    const stripeMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
+    const { stripeSecretKey } = stripeMetadata?.stripe || {};
+
+    if (!stripeSecretKey) throw "Something went wrong in Stripe settings!";
+    const stripe = new Stripe(stripeSecretKey);
+
     const payment: IEnrollPayment = await stripe.checkout.sessions.retrieve(String(req.query.session_id), {
       expand: ["payment_intent.payment_method"],
     });

@@ -4,6 +4,7 @@ import "dotenv/config";
 import express from "express";
 import helmet from "helmet";
 import logger from "morgan";
+import { successRenewBranch } from "../features/branch/controller";
 import { successEnrollSubscription } from "../features/enroll-subscription/controller";
 import seederRoutes from "../features/seeder/route";
 import errorMiddleware from "../middlewares/errorMiddleware";
@@ -36,6 +37,7 @@ app.get("/", (req, res) => {
 
 // Payment Success Route
 app.get("/payment/complete", successEnrollSubscription);
+app.get("/renew-branch/payment/complete", successRenewBranch);
 
 // Main Routes
 app.use(verifyApiKeyHeader);

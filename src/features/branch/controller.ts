@@ -1,8 +1,13 @@
 import { Response } from "express";
+import moment from "moment";
+import Stripe from "stripe";
 import { PACKAGES } from "../../configs/constants";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
-import { IApiRequest } from "../../types";
+import { IApiRequest, IEnrollPayment } from "../../types";
 import EnrollSubscription from "../enroll-subscription/model";
+import Payment from "../payment/model";
+import Settings from "../settings/model";
+import Subscription from "../subscription/model";
 import Branch from "./model";
 import { branchSchema, branchStatusSchema, updateBranchSchema } from "./validation";
 
@@ -241,6 +246,98 @@ export const activateSystemDisabledBranch = asyncHandler(async (req: IApiRequest
   if (!updateBranch) throw "Branch not found!";
 
   return apiResponse(res, 200, true, "Branch activated successfully!");
+});
+
+/**
+ * Branch Renew
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const branchRenew = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { id } = req.params;
+
+  const [stripeMetadata, addOnBranch, enrollCheck] = await Promise.all([
+    Settings.findOne({}, { "stripe.stripeSecretKey": 1 }),
+    Subscription.findOne({ slug: PACKAGES.BRANCH }),
+    EnrollSubscription.findOne({ _id: id, paymentStatus: "completed" }),
+  ]);
+
+  const { stripeSecretKey } = stripeMetadata?.stripe || {};
+
+  if (!stripeSecretKey) throw "Something went wrong in Stripe settings!";
+  if (!addOnBranch) throw "No add-on branch found!";
+  if (!enrollCheck) throw "No enroll add-on branch found!";
+
+  const stripe = new Stripe(stripeSecretKey);
+
+  const session = await stripe.checkout.sessions.create({
+    line_items: [
+      {
+        price_data: {
+          currency: "cad",
+          product_data: {
+            name: `${addOnBranch.title} (Renewal)`,
+          },
+          unit_amount: Math.round(Number(addOnBranch.price) * 100), // convert into cent
+        },
+        quantity: 1,
+      },
+    ],
+    mode: "payment",
+    metadata: {
+      enrollId: id,
+      duration: addOnBranch.duration,
+    },
+    success_url: `${process.env.BACKEND_URL}/renew-branch/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}`,
+    cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
+  });
+
+  return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
+});
+
+/**
+ * Success Renew Branch
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const successRenewBranch = asyncHandler(async (req: IApiRequest, res: Response) => {
+  if (req.query.stripe_success_token === process.env.STRIPE_SUCCESS_TOKEN && req?.query?.session_id) {
+    const stripeMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
+    const { stripeSecretKey } = stripeMetadata?.stripe || {};
+
+    if (!stripeSecretKey) throw "Something went wrong in Stripe settings!";
+    const stripe = new Stripe(stripeSecretKey);
+
+    const payment: IEnrollPayment = await stripe.checkout.sessions.retrieve(String(req.query.session_id), {
+      expand: ["payment_intent.payment_method"],
+    });
+
+    if (payment.payment_intent.status === "succeeded") {
+      await Promise.all([
+        EnrollSubscription.findByIdAndUpdate(payment.metadata.enrollId, {
+          validityFrom: moment(),
+          validityTo: moment().add(payment.metadata.duration, "days"),
+          status: true,
+        }),
+        Payment.create({
+          retailerId: req.query._id,
+          enrollSubscriptionId: [payment.metadata.enrollId],
+          paymentId: payment.id,
+          paymentIntentId: payment.payment_intent.id,
+          paymentStatus: payment.payment_intent.status,
+          amountTotal: payment.amount_total,
+        }),
+      ]);
+
+      return res.redirect(`${process.env.FRONTEND_URL}/payment/complete`);
+    } else {
+      throw "Something went wrong in payment!";
+    }
+  } else {
+    throw "Something went wrong in payment!";
+  }
 });
 
 /**
