@@ -212,6 +212,38 @@ export const updateBranchStatus = asyncHandler(async (req: IApiRequest, res: Res
 });
 
 /**
+ * Activate System Disabled Branch
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const activateSystemDisabledBranch = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { id } = req.params;
+
+  // Check Subscription & Addon Enrollment
+  const [subscription, retailerTotalActiveBranch] = await Promise.all([
+    EnrollSubscription.findOne({
+      retailerId: req.user._id,
+      "planSnapshot.type": "subscription",
+      paymentStatus: { $in: ["completed", "trial"] },
+      validityTo: { $gt: new Date() },
+      status: true,
+    }),
+    Branch.find({ retailerId: req.user._id, softDeleted: false, source: "subscription", disabledBySystem: false }),
+  ]);
+
+  if (!subscription) throw "No one is allowed to activate branch without a plan!";
+
+  const allowTotalBranch = subscription?.planSnapshot?.allowTotalBranch ?? 0;
+  if (retailerTotalActiveBranch.length >= allowTotalBranch) throw "Your branch limit is over to activate!";
+
+  const updateBranch = await Branch.findByIdAndUpdate(id, { status: true, disabledBySystem: false }, { new: true });
+  if (!updateBranch) throw "Branch not found!";
+
+  return apiResponse(res, 200, true, "Branch activated successfully!");
+});
+
+/**
  * Soft Delete A Single Branch
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
