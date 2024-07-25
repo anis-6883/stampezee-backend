@@ -46,18 +46,19 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
     throw "This customer already exists!";
   }
 
-  if (existingCustomer) {
-    await Customer.updateOne(
-      { email: customerBody.email },
-      { $set: { otp: customerBody.otp, otpExpiry: customerBody.otpExpiry } }
-    );
-  } else {
-    await Customer.create(customerBody);
-  }
-
   const token = generateSignature({ email: customerBody.email, role: ROLE.CUSTOMER }, "15m"); // 15 min
 
   sendVerificationEmail(customerBody.email, customerBody.otp, "mobile");
+
+  if (existingCustomer) {
+    await Customer.updateOne(
+      { email: customerBody.email },
+      { $set: { otp: customerBody.otp, otpExpiry: customerBody.otpExpiry, token } }
+    );
+  } else {
+    customerBody.token = token;
+    await Customer.create(customerBody);
+  }
 
   return apiResponse(res, 201, true, "Otp send successfully!", { token });
 });
