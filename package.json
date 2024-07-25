@@ -2,7 +2,7 @@
   "name": "stampezee",
   "version": "1.0.0",
   "description": "StampEzee is a comprehensive stamp collection system designed to streamline the process of purchasing stamps by order.",
-  "main": "index.js",
+  "main": "src/index.ts",
   "scripts": {
     "start": "node ./dist/index.js",
     "dev": "nodemon",
@@ -35,6 +35,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.18.2",
+    "firebase-admin": "^12.2.0",
     "helmet": "^7.1.0",
     "husky": "^9.0.11",
     "ioredis": "^5.4.1",

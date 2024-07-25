@@ -35,8 +35,8 @@ export const createCoupon = asyncHandler(async (req: IApiRequest, res: Response)
     throw "Setup TimeZone First!";
   }
 
-  const systemTime = getUTC(createBody.startedAt, settings.general.timezone.value);
-  const expireTime = getUTC(createBody.expiredAt, settings.general.timezone.value, true);
+  const systemTime = getUTC(createBody.startedAt, Number(settings.general.timezone.value));
+  const expireTime = getUTC(createBody.expiredAt, Number(settings.general.timezone.value), true);
 
   createBody.startedAt = systemTime;
   createBody.expiredAt = expireTime;
@@ -122,8 +122,8 @@ export const updateCoupon = asyncHandler(async (req: IApiRequest, res: Response)
     throw "Setup TimeZone First!";
   }
 
-  const systemTime = getUTC(updatedBody.startedAt, settings.general.timezone.value);
-  const expireTime = getUTC(updatedBody.expiredAt, settings.general.timezone.value, true);
+  const systemTime = getUTC(updatedBody.startedAt, Number(settings.general.timezone.value));
+  const expireTime = getUTC(updatedBody.expiredAt, Number(settings.general.timezone.value), true);
 
   updatedBody.startedAt = systemTime;
   updatedBody.expiredAt = expireTime;

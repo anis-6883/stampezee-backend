@@ -37,6 +37,11 @@ const schema = new mongoose.Schema(
         default: null,
       },
     },
+    retailerId: {
+      type: "ObjectId", // mongoose.Types.ObjectId
+      ref: "Retailer",
+      required: true,
+    },
   },
   { timestamps: true, versionKey: false }
 );

@@ -1,6 +1,9 @@
 import { Response } from "express";
-import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import notification from "../../configs/fcm";
+import { uploadFileToS3Bucket } from "../../configs/s3Bucket";
+import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
+import Settings from "../settings/model";
 import Notification from "./model";
 import { notificationSchema } from "./validation";
 
@@ -12,20 +15,50 @@ import { notificationSchema } from "./validation";
  */
 export const createNotification = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await notificationSchema.validateAsync(req.body);
+  const { title, description, imageType, image, address, radius, longitude, latitude } = result;
+  const settings = await Settings.findOne().select("notification");
 
-  const { title, description, address, radius, longitude, latitude } = result;
+  let notificationObj = { title, description, image };
+  // File Validation
+  if (req.file) {
+    const { status, message } = fileValidation(req.file, undefined, ["image/jpeg", "image/png", "image/jpg"]);
+    if (!status) {
+      return apiResponse(res, 400, false, "Invalid Request!", { image: message });
+    }
+  }
+
+  // Upload File to S3 Bucket
+  if (req.file) {
+    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "category");
+    if (status) {
+      notificationObj.image = key;
+    }
+  }
+  if (imageType == "url") {
+    notificationObj.image = image;
+  }
+
+  notification.sendNotification({
+    title,
+    description,
+    imageUrl: notificationObj.image,
+    data: { image: notificationObj.image },
+    topic: settings.notification.firebaseTopics,
+  });
 
   await Notification.create({
     title,
     description,
+    image: notificationObj.image,
     address: {
       loc: { type: "Point", coordinates: [longitude, latitude] },
       name: address,
     },
+    retailerId: req?.user?._id,
     radius,
   });
 
-  return apiResponse(res, 201, true, "Notification created successfully!");
+  return apiResponse(res, 200, true, "Notification created successfully!");
 });
 
 /**
@@ -34,18 +67,20 @@ export const createNotification = asyncHandler(async (req: IApiRequest, res: Res
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllNotificationes = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getAllNotificationsForRetailer = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
-  const query: any = { retailerId: req.user._id, softDeleted: false };
+  const query: any = { retailerId: req?.user?._id };
   if (search) {
-    const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
-    query.name = regex;
+    query.$or = [{ title: { $regex: search, $options: "i" } }, { description: { $regex: search, $options: "i" } }];
   }
 
   const [docs, total] = await Promise.all([
     Notification.aggregate([
+      {
+        $match: query,
+      },
       {
         $sort: {
           createdAt: -1,
@@ -58,28 +93,9 @@ export const getAllNotificationes = asyncHandler(async (req: IApiRequest, res: R
         $limit: Number(limit),
       },
       {
-        $match: query,
-      },
-      {
-        $lookup: {
-          from: "enrollsubscriptions",
-          localField: "enrollSubscriptionId",
-          foreignField: "_id",
-          as: "enrollSubscription",
-          pipeline: [
-            {
-              $project: {
-                validityFrom: 1,
-                validityTo: 1,
-              },
-            },
-          ],
-        },
-      },
-      {
-        $unwind: {
-          path: "$enrollSubscription",
-          preserveNullAndEmptyArrays: true,
+        $project: {
+          retailerId: 0,
+          updatedAt: 0,
         },
       },
     ]),

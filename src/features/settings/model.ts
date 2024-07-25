@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const general = new mongoose.Schema({
   companyName: { type: String, default: "", trim: true },

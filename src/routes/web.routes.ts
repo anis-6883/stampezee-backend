@@ -4,7 +4,7 @@ import billingRoutes from "../features/billing/route";
 import branchRoutes from "../features/branch/route";
 import subscriptionRoutes from "../features/enroll-subscription/route";
 import { getAllFaqsForWeb } from "../features/faq/controller";
-import notificationRoutes from "../features/notification/route";
+import notificationRoutes from "../features/notification/routes/retailer";
 import refundRoutes from "../features/refund/routes/retailer";
 import { getCommonSettings, getSecretSettings } from "../features/settings/controller";
 import stampImageRoutes from "../features/stamp-image/route";

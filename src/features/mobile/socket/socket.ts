@@ -1,6 +1,5 @@
-const { Server, Socket } = require("socket.io");
-const { createAdapter } = require("@socket.io/redis-adapter");
-const Redis = require("ioredis");
+import Redis from "ioredis";
+import { Server } from "socket.io";
 const pubClient = new Redis(process.env.REDIS_URL);
 const subClient = pubClient.duplicate();
 
@@ -23,13 +22,12 @@ export const stampCollected = (data: Object) => {
 };
 
 export const socket = (server: any) => {
-  const io = new Server(
-    server,
-    {
-      connectionStateRecovery: {},
+  const io = new Server(server, {
+    connectionStateRecovery: {},
+    cors: {
+      origin: "*",
     },
-    { cors: { origin: "*" } }
-  );
+  });
 
   subClient.on("message", async (channel: string, message: string) => {
     if (channel == "stampCollected") {
@@ -39,7 +37,7 @@ export const socket = (server: any) => {
     }
   });
 
-  io.use((socket: typeof Socket, next: (err?: Error) => void) => {
+  io.use((socket, next: (err?: Error) => void) => {
     const token = socket.handshake.headers.token as string | undefined;
 
     if (!token || token !== process.env.SOCKET_TOKEN) {
@@ -49,7 +47,7 @@ export const socket = (server: any) => {
     next();
   });
 
-  io.on("connection", (socket: typeof Socket) => {
+  io.on("connection", (socket) => {
     socket.on("join", async (data: { collectStampId: string }) => {
       const { collectStampId } = data;
       if (!collectStampId) {
