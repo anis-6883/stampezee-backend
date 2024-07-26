@@ -1,29 +1,36 @@
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import crypto from "crypto";
+import Settings from "../features/settings/model";
 import { AWS_BUCKET_EXPIRE_TIME } from "./constants";
 
 async function getS3BucketInstance() {
-  //   const generalSettings = await GeneralSettings.findOne();
+  // Get s3Bucket metadata
+  const s3BucketMetadata = await Settings.findOne(
+    {},
+    {
+      "s3Bucket.awsRegion": 1,
+      "s3Bucket.awsAccessKeyId": 1,
+      "s3Bucket.awsSecretAccessKey": 1,
+      "s3Bucket.awsBucketName": 1,
+    }
+  );
 
-  //   if (
-  //     generalSettings?.awsRegion === "" ||
-  //     generalSettings?.awsAccessKeyId === "" ||
-  //     generalSettings?.awsSecretAccessKey === "" ||
-  //     generalSettings?.awsBucketName === ""
-  //   ) {
-  //     throw new Error("Update the AWS S3 Bucket config first!");
-  //   }
+  if (!s3BucketMetadata) {
+    throw "Something went wrong in s3Bucket settings!";
+  }
+
+  const { awsRegion, awsAccessKeyId, awsSecretAccessKey, awsBucketName } = s3BucketMetadata.s3Bucket;
 
   const s3: any = new S3Client({
-    region: process.env.AWS_REGION,
+    region: awsRegion,
     credentials: {
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      accessKeyId: awsAccessKeyId,
+      secretAccessKey: awsSecretAccessKey,
     },
   });
 
-  return [s3, process.env.AWS_BUCKET_NAME];
+  return [s3, awsBucketName];
 }
 
 const randomString = () => {
@@ -45,8 +52,6 @@ export const uploadFileToS3Bucket = async (bufferFile: Buffer, mimeType: string,
 
     const command = new PutObjectCommand(params);
     await s3.send(command);
-
-    // const imageUrl = `${process.env.S3_BASE_URL}/${Key}`;
 
     return {
       status: true,

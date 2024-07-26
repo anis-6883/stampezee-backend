@@ -161,7 +161,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
       retailerId: retailer._id,
       "planSnapshot.type": "addon",
       paymentStatus: "completed",
-      validityTo: { $gt: new Date() },
+      // validityTo: { $gt: new Date() },
       status: true,
     }),
   ]);
@@ -243,7 +243,7 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
       retailerId: req.user._id,
       "planSnapshot.type": "addon",
       paymentStatus: "completed",
-      validityTo: { $gt: new Date() },
+      // validityTo: { $gt: new Date() },
       status: true,
     }),
   ]);

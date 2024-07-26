@@ -144,9 +144,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     }
   );
 
-  if (!paymentMetadata) {
-    throw "Something went wrong in Stripe settings!";
-  }
+  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
 
   const { stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } = paymentMetadata.stripe;
   const stripe = new Stripe(stripeSecretKey);
@@ -168,10 +166,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       paymentStatus: "completed",
     }).countDocuments();
 
-    if (alreadyApplied >= coupon.limit) {
-      throw "Your coupon limit is over!";
-    }
-
+    if (alreadyApplied >= coupon.limit) throw "Your coupon limit is over!";
     if (!coupon) throw "Provide invalid coupon code!";
   }
 

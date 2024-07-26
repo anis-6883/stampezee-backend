@@ -258,32 +258,49 @@ export const branchRenew = asyncHandler(async (req: IApiRequest, res: Response) 
   const { id } = req.params;
 
   const [stripeMetadata, addOnBranch, enrollCheck] = await Promise.all([
-    Settings.findOne({}, { "stripe.stripeSecretKey": 1 }),
+    Settings.findOne(
+      {},
+      { "stripe.stripeSecretKey": 1, "stripe.taxTitle": 1, "stripe.taxCost": 1, "stripe.taxStatus": 1 }
+    ),
     Subscription.findOne({ slug: PACKAGES.BRANCH }),
     EnrollSubscription.findOne({ _id: id, paymentStatus: "completed" }),
   ]);
 
-  const { stripeSecretKey } = stripeMetadata?.stripe || {};
-
-  if (!stripeSecretKey) throw "Something went wrong in Stripe settings!";
+  if (!stripeMetadata) throw "Something went wrong in Stripe settings!";
   if (!addOnBranch) throw "No add-on branch found!";
   if (!enrollCheck) throw "No enroll add-on branch found!";
 
+  const { stripeSecretKey, taxTitle, taxCost, taxStatus } = stripeMetadata?.stripe || {};
   const stripe = new Stripe(stripeSecretKey);
+  const line_items = [];
+
+  line_items.push({
+    price_data: {
+      currency: "cad",
+      product_data: {
+        name: `${addOnBranch.title} (Renewal)`,
+      },
+      unit_amount: Math.round(Number(addOnBranch.price) * 100), // convert into cent
+    },
+    quantity: 1,
+  });
+
+  // Add Tax in (%)
+  if (taxStatus === "on") {
+    line_items.push({
+      price_data: {
+        currency: "cad",
+        product_data: {
+          name: `${taxTitle} (${taxCost}%)`,
+        },
+        unit_amount: Math.round(((Number(addOnBranch.price) * taxCost) / 100) * 100), // convert into cent
+      },
+      quantity: 1,
+    });
+  }
 
   const session = await stripe.checkout.sessions.create({
-    line_items: [
-      {
-        price_data: {
-          currency: "cad",
-          product_data: {
-            name: `${addOnBranch.title} (Renewal)`,
-          },
-          unit_amount: Math.round(Number(addOnBranch.price) * 100), // convert into cent
-        },
-        quantity: 1,
-      },
-    ],
+    line_items,
     mode: "payment",
     metadata: {
       enrollId: id,
