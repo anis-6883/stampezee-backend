@@ -115,7 +115,51 @@ export const getAllStampImages = asyncHandler(async (req: IApiRequest, res: Resp
     const finalQuery = { ...commonQuery, ...roleSpecificQuery };
 
     [docs, total] = await Promise.all([
-      StampImage.find(finalQuery).limit(Number(limit)).skip(skip).sort({ createdAt: "desc" }),
+      StampImage.aggregate([
+        {
+          $lookup: {
+            from: "enrollsubscriptions",
+            localField: "enrollSubscriptionId",
+            foreignField: "_id",
+            as: "enrollSubscription",
+            pipeline: [
+              {
+                $project: {
+                  validityFrom: 1,
+                  validityTo: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: {
+            path: "$enrollSubscription",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $sort: {
+            createdAt: -1,
+          },
+        },
+        {
+          $match: finalQuery,
+        },
+        {
+          $skip: skip,
+        },
+        {
+          $limit: Number(limit),
+        },
+        {
+          $project: {
+            enrollSubscriptionId: 0,
+            userId: 0,
+            ref: 0,
+          },
+        },
+      ]),
       StampImage.countDocuments(finalQuery),
     ]);
   }
