@@ -1,0 +1,47 @@
+import { Response } from "express";
+import { apiResponse, asyncHandler, makePaginateForMobile } from "../../../../helpers/index";
+import { IApiRequest } from "../../../../types/index";
+import Notification from "../../../notification/model";
+
+/**
+ * Get All Single Notificationes
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const getAllNotificationsForCustomer = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { page = 1, limit = 10, search } = req.query;
+  const skip: number = (Number(page) - 1) * Number(limit);
+
+  console.log({ id: req?.user?._id });
+  const query = { $or: [{ type: "all" }, { sentTo: { $in: [req?.user?._id.toString()] } }] };
+
+  const [docs, total] = await Promise.all([
+    Notification.aggregate([
+      {
+        $match: query,
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
+        $project: {
+          retailerId: 0,
+          updatedAt: 0,
+        },
+      },
+    ]),
+    Notification.find(query).countDocuments(),
+  ]);
+
+  const mobilePagination = makePaginateForMobile(Number(page), Number(limit), skip, total);
+  return apiResponse(res, 200, true, "Notificationes fetched successfully!", docs, mobilePagination);
+});

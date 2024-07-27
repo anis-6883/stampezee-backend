@@ -122,6 +122,7 @@ export const createNotificationBasedOnLocation = asyncHandler(async (req: IApiRe
     title,
     description,
     sentTo: ids,
+    type: "location",
     image: notificationObj.image,
     address: {
       loc: { type: "Point", coordinates: [longitude, latitude] },
