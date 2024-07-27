@@ -277,7 +277,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       // Plan Downgrade
       if (changeMode < 0) {
         const downgradeBranchLimit = pickPlan?.allowTotalBranch;
-        const branches = await Branch.find({ retailerId: req.user._id, source: "subscription" });
+        const branches = await Branch.find({ retailerId: req.user._id, source: "subscription", softDeleted: false });
         const activeBranch = branches.filter((branch) => branch.status).length;
 
         if (branches.length > downgradeBranchLimit && activeBranch > downgradeBranchLimit) {
