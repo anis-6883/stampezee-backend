@@ -10,6 +10,10 @@ const schema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    sentTo: {
+      type: [String],
+      default: [],
+    },
     image: { type: String, default: "" },
     type: {
       type: String,
@@ -29,6 +33,7 @@ const schema = new mongoose.Schema(
         },
         coordinates: {
           type: [Number],
+          default: [83.222195, -7.457475],
         },
       },
       name: {

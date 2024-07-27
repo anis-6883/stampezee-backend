@@ -4,8 +4,9 @@ import { uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
 import Settings from "../settings/model";
+import Customer from "../user/customer/model";
 import Notification from "./model";
-import { notificationSchema } from "./validation";
+import { notificationBasedOnLocationSchema, notificationSchema } from "./validation";
 
 /**
  * Create A Notification
@@ -15,7 +16,7 @@ import { notificationSchema } from "./validation";
  */
 export const createNotification = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await notificationSchema.validateAsync(req.body);
-  const { title, description, imageType, image, address, radius, longitude, latitude } = result;
+  const { title, description, imageType, image, address, radius } = result;
   const settings = await Settings.findOne().select("notification");
 
   let notificationObj = { title, description, image };
@@ -50,6 +51,78 @@ export const createNotification = asyncHandler(async (req: IApiRequest, res: Res
     title,
     description,
     image: notificationObj.image,
+    retailerId: req?.user?._id,
+    radius,
+  });
+
+  return apiResponse(res, 200, true, "Notification created successfully!");
+});
+
+export const createNotificationBasedOnLocation = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await notificationBasedOnLocationSchema.validateAsync(req.body);
+  const { title, description, imageType, image, address, radius, longitude, latitude } = result;
+
+  let notificationObj = { title, description, image };
+  // File Validation
+  if (req.file) {
+    const { status, message } = fileValidation(req.file, undefined, ["image/jpeg", "image/png", "image/jpg"]);
+    if (!status) {
+      return apiResponse(res, 400, false, "Invalid Request!", { image: message });
+    }
+  }
+
+  // Upload File to S3 Bucket
+  if (req.file) {
+    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "category");
+    if (status) {
+      notificationObj.image = key;
+    }
+  }
+  if (imageType == "url") {
+    notificationObj.image = image;
+  }
+  const earthRadiusInMiles = 3959;
+  const radiusInMiles = radius ** 0.621371;
+  const deviceTokens = await Customer.aggregate([
+    {
+      $match: {
+        "address.loc": {
+          $geoWithin: {
+            $centerSphere: [[Number(longitude), Number(latitude)], radiusInMiles / earthRadiusInMiles],
+          },
+        },
+        isVerified: true,
+        deviceToken: { $ne: null },
+      },
+    },
+    {
+      $project: {
+        deviceToken: 1,
+      },
+    },
+  ]);
+
+  const tokens: string[] = [];
+  const ids: string[] = [];
+
+  deviceTokens.forEach(({ _id, deviceToken }) => {
+    tokens.push(deviceToken);
+    ids.push(_id);
+  });
+
+  notification.sendNotification({
+    title,
+    description,
+    imageUrl: notificationObj.image,
+    data: { image: notificationObj.image },
+    tokens,
+  });
+
+  await Notification.create({
+    title,
+    description,
+    sentTo: ids,
+    image: notificationObj.image,
     address: {
       loc: { type: "Point", coordinates: [longitude, latitude] },
       name: address,
@@ -60,7 +133,6 @@ export const createNotification = asyncHandler(async (req: IApiRequest, res: Res
 
   return apiResponse(res, 200, true, "Notification created successfully!");
 });
-
 /**
  * Get All Single Notificationes
  * @param {Request} req - The HTTP request object.

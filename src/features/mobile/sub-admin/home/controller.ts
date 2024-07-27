@@ -124,9 +124,16 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
     subAdminId: req?.user?._id,
     stamp: {},
   };
-  const response: Object = { isRewarded: false, totalStampCollected: stampIsCollected[0].totalStampTaken + 1 };
+  const response: Object = {
+    message: "Scan was successful",
+    eligibleForReward: false,
+    isRewarded: false,
+    totalStampCollected: stampIsCollected[0].totalStampTaken + 1,
+    offer: null,
+  };
   const stampData = stampIsCollected[0].stamps[0];
   if (stampIsCollected[0].totalStampTaken + 1 == stampData.noOfStampsToCollect) {
+    response.eligibleForReward = true;
     await CollectStamp.updateOne({ _id: collectStampId }, { eligibleForReward: true });
   }
   if (stampIsCollected[0].totalStampTaken >= stampData.noOfStampsToCollect) {
