@@ -47,8 +47,9 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
   }
 
   const allowTotalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addons.length;
+  const branchWithoutSystemDisabled = retailerTotalBranch.filter((branch) => !branch.disabledBySystem).length;
 
-  if (retailerTotalBranch.length >= allowTotalBranch) {
+  if (branchWithoutSystemDisabled >= allowTotalBranch) {
     throw "Your branch limit is over!";
   }
 
@@ -58,7 +59,10 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
   const addonIds = addons.map((branch) => branch._id.toString());
   const unUsedIds = addonIds.filter((item) => !retailerAddonIds.includes(item));
 
-  const subscriptionBranchSlot = retailerTotalBranch.filter((branch) => branch.source === "subscription").length;
+  const subscriptionBranchSlot = retailerTotalBranch.filter(
+    (branch) => branch.source === "subscription" && !branch.disabledBySystem
+  ).length;
+
   const source = subscriptionBranchSlot < subscription?.planSnapshot?.allowTotalBranch ? "subscription" : "addon";
 
   await Branch.create({
