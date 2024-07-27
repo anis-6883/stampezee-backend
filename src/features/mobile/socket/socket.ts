@@ -33,7 +33,7 @@ export const socket = (server: any) => {
     if (channel == "stampCollected") {
       const data = JSON.parse(message);
       io.to(data.collectStampId).emit("status", data.response);
-      io.socketsLeave(data.collectStampId);
+      // io.socketsLeave(data.collectStampId);
     }
   });
 
