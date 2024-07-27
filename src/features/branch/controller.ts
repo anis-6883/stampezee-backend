@@ -370,7 +370,7 @@ export const successRenewBranch = asyncHandler(async (req: IApiRequest, res: Res
 export const softDeleteBranch = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
-  const branch = await Branch.findOneAndUpdate({ _id: id }, { $set: { softDeleted: true } });
+  const branch = await Branch.findOneAndUpdate({ _id: id }, { softDeleted: true, status: false });
   if (!branch) return apiResponse(res, 404, false, "Branch not found!");
 
   return apiResponse(res, 200, true, "Branch deleted successfully!");
