@@ -141,10 +141,13 @@ export const createNotificationBasedOnLocation = asyncHandler(async (req: IApiRe
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getAllNotificationsForRetailer = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10, search } = req.query;
+  const { page = 1, limit = 10, search, type } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
   const query: any = { retailerId: req?.user?._id };
+  if (type) {
+    query.type = type;
+  }
   if (search) {
     query.$or = [{ title: { $regex: search, $options: "i" } }, { description: { $regex: search, $options: "i" } }];
   }
@@ -181,10 +184,13 @@ export const getAllNotificationsForRetailer = asyncHandler(async (req: IApiReque
 });
 
 export const getAllNotificationsForSuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10, search } = req.query;
+  const { page = 1, limit = 10, search, type } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
   const query: any = {};
+  if (type) {
+    query.type = type;
+  }
   if (search) {
     query.$or = [{ title: { $regex: search, $options: "i" } }, { description: { $regex: search, $options: "i" } }];
   }
