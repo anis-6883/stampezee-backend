@@ -1,9 +1,10 @@
 import express from "express";
-import { createNotification, getAllNotificationsForRetailer } from "../controller";
+import { createNotification, createNotificationBasedOnLocation, getAllNotificationsForRetailer } from "../controller";
 
 const router = express.Router();
 
-router.post("/", createNotification);
+router.post("/all", createNotification);
+router.post("/location", createNotificationBasedOnLocation);
 router.get("/all", getAllNotificationsForRetailer);
 
 export default router;

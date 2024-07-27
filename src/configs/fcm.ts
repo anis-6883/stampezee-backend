@@ -19,7 +19,7 @@ class NotificationClass {
     description = "",
     data = {},
     imageUrl = "",
-    token = "",
+    tokens = [],
     topic = "",
     sound = "default",
   }: {
@@ -27,7 +27,7 @@ class NotificationClass {
     description?: string;
     data?: { [key: string]: string };
     imageUrl?: string;
-    token?: string;
+    tokens?: string[];
     topic?: string;
     sound?: string;
   }): Promise<void> {
@@ -38,6 +38,7 @@ class NotificationClass {
       }
     }
 
+    console.log("Preparing to send notification...");
     // Create the message description
     const messageBody: any = {
       apns: {
@@ -50,26 +51,38 @@ class NotificationClass {
       notification: {
         title,
         body: description,
-        image: imageUrl, // use `image` for the image URL
+        image: imageUrl,
       },
       data: stringData,
     };
 
     // Conditional properties
-    if (token) {
-      messageBody.token = token;
-    } else if (topic) {
-      messageBody.topic = topic;
-    } else {
-      throw new Error("Either token or topic must be provided.");
-    }
+    if (tokens && tokens.length > 0) {
+      // Using `sendMulticast` for multiple tokens
+      const multicastMessage = {
+        ...messageBody,
+        tokens: tokens, // Use the array of tokens
+      };
 
-    // Send the notification
-    try {
-      await getMessaging().send(messageBody);
-      console.log("=> Notification sent!");
-    } catch (err) {
-      console.error("=> Error Sending Notification", err);
+      try {
+        const response: any = await getMessaging().sendEachForMulticast(multicastMessage);
+        console.log(`=> Notification sent to ${response.successCount} devices`);
+        if (response.failureCount > 0) {
+          console.error(`=> ${response.failureCount} notifications failed`);
+        }
+      } catch (err) {
+        console.error("=> Error Sending Notification", err);
+      }
+    } else if (topic) {
+      // Send to a topic if tokens are not provided
+      try {
+        await getMessaging().send({ ...messageBody, topic });
+        console.log("=> Notification sent to topic!");
+      } catch (err) {
+        console.error("=> Error Sending Notification", err);
+      }
+    } else {
+      throw new Error("Either tokens or topic must be provided.");
     }
   }
 }
