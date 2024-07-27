@@ -62,25 +62,17 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getAllStamps = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10 } = req.query;
+  const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
+
+  const query: any = { retailerId: req.user._id, softDeleted: false };
+  if (search) {
+    const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
+    query.title = regex;
+  }
 
   const [docs, total] = await Promise.all([
     Stamp.aggregate([
-      {
-        $sort: {
-          createdAt: -1,
-        },
-      },
-      {
-        $skip: skip,
-      },
-      {
-        $limit: Number(limit),
-      },
-      {
-        $match: { retailerId: req.user._id, softDeleted: { $eq: false } },
-      },
       {
         $lookup: {
           from: "branches",
@@ -147,6 +139,20 @@ export const getAllStamps = asyncHandler(async (req: IApiRequest, res: Response)
         },
       },
       {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $match: query,
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
         $project: {
           branchId: 0,
           categoryId: 0,
@@ -154,7 +160,7 @@ export const getAllStamps = asyncHandler(async (req: IApiRequest, res: Response)
         },
       },
     ]),
-    Stamp.find({ retailerId: req.user._id, softDeleted: { $eq: false } }).countDocuments(),
+    Stamp.countDocuments(query),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
