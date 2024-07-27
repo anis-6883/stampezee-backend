@@ -29,6 +29,7 @@ const schema = new mongoose.Schema(
         },
         coordinates: {
           type: [Number],
+          default: [83.222195, -7.457475],
         },
       },
       name: {
