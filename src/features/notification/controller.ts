@@ -125,7 +125,7 @@ export const createNotificationBasedOnLocation = asyncHandler(async (req: IApiRe
     radius,
   });
 
-  return apiResponse(res, 200, true, "Notification created successfully!", deviceTokens);
+  return apiResponse(res, 200, true, "Notification created successfully!");
 });
 /**
  * Get All Single Notificationes
