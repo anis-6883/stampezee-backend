@@ -4,8 +4,10 @@ import "dotenv/config";
 import express from "express";
 import helmet from "helmet";
 import logger from "morgan";
+import { successRenewBranch } from "../features/branch/controller";
 import { successEnrollSubscription } from "../features/enroll-subscription/controller";
 import seederRoutes from "../features/seeder/route";
+import { successRenewCustomStamp } from "../features/stamp-image/controller";
 import errorMiddleware from "../middlewares/errorMiddleware";
 import verifyApiKeyHeader from "../middlewares/verifyApiKeyHeader";
 import adminRoutes from "../routes/admin.routes";
@@ -36,6 +38,8 @@ app.get("/", (req, res) => {
 
 // Payment Success Route
 app.get("/payment/complete", successEnrollSubscription);
+app.get("/renew-branch/payment/complete", successRenewBranch);
+app.get("/renew-custom-stamp/payment/complete", successRenewCustomStamp);
 
 // Main Routes
 app.use(verifyApiKeyHeader);

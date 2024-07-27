@@ -188,15 +188,56 @@ export const getBranchCategoryImageList = asyncHandler(async (req: IApiRequest, 
     Category.find({ softDeleted: false, status: true }, { name: 1, image: 1 }).sort({
       createdAt: "desc",
     }),
-    Branch.find({ retailerId: req.user._id, softDeleted: false, status: true }, { name: 1 }).sort({
+    Branch.find(
+      { retailerId: req.user._id, softDeleted: false, status: true, disabledBySystem: false },
+      { name: 1 }
+    ).sort({
       createdAt: "desc",
     }),
     StampImage.find({ softDeleted: false, status: true, ref: ROLE.SUPER_ADMIN }, { image: 1, title: 1, ref: 1 }).sort({
       createdAt: "desc",
     }),
-    StampImage.find({ softDeleted: false, status: true, userId: req.user._id }, { image: 1, title: 1, ref: 1 }).sort({
-      createdAt: "desc",
-    }),
+    StampImage.aggregate([
+      {
+        $lookup: {
+          from: "enrollsubscriptions",
+          localField: "enrollSubscriptionId",
+          foreignField: "_id",
+          as: "enrollSubscription",
+          pipeline: [
+            {
+              $project: {
+                validityFrom: 1,
+                validityTo: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: "$enrollSubscription",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $match: {
+          softDeleted: false,
+          status: true,
+          userId: req.user._id,
+          "enrollSubscription.validityFrom": { $lte: new Date() },
+          "enrollSubscription.validityTo": { $gte: new Date() },
+        },
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $project: { image: 1, title: 1, ref: 1 },
+      },
+    ]),
   ]);
 
   const sorting = await Sorting.findOne({ title: "default_stamp_image" });

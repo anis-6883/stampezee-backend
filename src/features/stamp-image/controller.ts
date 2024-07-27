@@ -1,10 +1,15 @@
 import { Response } from "express";
+import moment from "moment";
+import Stripe from "stripe";
 import { PACKAGES, ROLE } from "../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
-import { IApiRequest } from "../../types";
+import { IApiRequest, IEnrollPayment } from "../../types";
 import EnrollSubscription from "../enroll-subscription/model";
+import Payment from "../payment/model";
+import Settings from "../settings/model";
 import Sorting from "../sorting/model";
+import Subscription from "../subscription/model";
 import StampImage from "./model";
 import { stampImageSchema, stampImageStatusSchema, stampImageUpdateSchema } from "./validation";
 
@@ -115,7 +120,51 @@ export const getAllStampImages = asyncHandler(async (req: IApiRequest, res: Resp
     const finalQuery = { ...commonQuery, ...roleSpecificQuery };
 
     [docs, total] = await Promise.all([
-      StampImage.find(finalQuery).limit(Number(limit)).skip(skip).sort({ createdAt: "desc" }),
+      StampImage.aggregate([
+        {
+          $lookup: {
+            from: "enrollsubscriptions",
+            localField: "enrollSubscriptionId",
+            foreignField: "_id",
+            as: "enrollSubscription",
+            pipeline: [
+              {
+                $project: {
+                  validityFrom: 1,
+                  validityTo: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: {
+            path: "$enrollSubscription",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $sort: {
+            createdAt: -1,
+          },
+        },
+        {
+          $match: finalQuery,
+        },
+        {
+          $skip: skip,
+        },
+        {
+          $limit: Number(limit),
+        },
+        {
+          $project: {
+            enrollSubscriptionId: 0,
+            userId: 0,
+            ref: 0,
+          },
+        },
+      ]),
       StampImage.countDocuments(finalQuery),
     ]);
   }
@@ -216,6 +265,117 @@ export const updateStampImageStatus = asyncHandler(async (req: IApiRequest, res:
   if (!stampImage) return apiResponse(res, 404, false, "Stamp image not found!");
 
   return apiResponse(res, 200, true, "Stamp image status updated successfully!");
+});
+
+/**
+ * Custom Stamp Renew
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const customStampRenew = asyncHandler(async (req: IApiRequest, res: Response) => {
+  if (req.role === ROLE.SUPER_ADMIN) throw "You are not authorized to perform this action!";
+
+  const { id } = req.params;
+
+  const [stripeMetadata, addOnStamp, enrollCheck] = await Promise.all([
+    Settings.findOne(
+      {},
+      { "stripe.stripeSecretKey": 1, "stripe.taxTitle": 1, "stripe.taxCost": 1, "stripe.taxStatus": 1 }
+    ),
+    Subscription.findOne({ slug: PACKAGES.STAMP }),
+    EnrollSubscription.findOne({ _id: id, paymentStatus: "completed" }),
+  ]);
+
+  if (!stripeMetadata) throw "Something went wrong in Stripe settings!";
+  if (!addOnStamp) throw "No add-on stamp found!";
+  if (!enrollCheck) throw "No enroll add-on stamp found!";
+
+  const { stripeSecretKey, taxTitle, taxCost, taxStatus } = stripeMetadata?.stripe || {};
+  const stripe = new Stripe(stripeSecretKey);
+  const line_items = [];
+
+  line_items.push({
+    price_data: {
+      currency: "cad",
+      product_data: {
+        name: `${addOnStamp.title} (Renewal)`,
+      },
+      unit_amount: Math.round(Number(addOnStamp.price) * 100), // convert into cent
+    },
+    quantity: 1,
+  });
+
+  // Add Tax in (%)
+  if (taxStatus === "on") {
+    line_items.push({
+      price_data: {
+        currency: "cad",
+        product_data: {
+          name: `${taxTitle} (${taxCost}%)`,
+        },
+        unit_amount: Math.round(((Number(addOnStamp.price) * taxCost) / 100) * 100), // convert into cent
+      },
+      quantity: 1,
+    });
+  }
+
+  const session = await stripe.checkout.sessions.create({
+    line_items,
+    mode: "payment",
+    metadata: {
+      enrollId: id,
+      duration: addOnStamp.duration,
+    },
+    success_url: `${process.env.BACKEND_URL}/renew-custom-stamp/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}`,
+    cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
+  });
+
+  return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
+});
+
+/**
+ * Success Renew Custom Stamp
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const successRenewCustomStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
+  if (req.query.stripe_success_token === process.env.STRIPE_SUCCESS_TOKEN && req?.query?.session_id) {
+    const stripeMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
+    const { stripeSecretKey } = stripeMetadata?.stripe || {};
+
+    if (!stripeSecretKey) throw "Something went wrong in Stripe settings!";
+    const stripe = new Stripe(stripeSecretKey);
+
+    const payment: IEnrollPayment = await stripe.checkout.sessions.retrieve(String(req.query.session_id), {
+      expand: ["payment_intent.payment_method"],
+    });
+
+    if (payment.payment_intent.status === "succeeded") {
+      await Promise.all([
+        EnrollSubscription.findByIdAndUpdate(payment.metadata.enrollId, {
+          validityFrom: moment(),
+          validityTo: moment().add(payment.metadata.duration, "days"),
+          status: true,
+        }),
+        Payment.create({
+          retailerId: req.query._id,
+          enrollSubscriptionId: [payment.metadata.enrollId],
+          paymentId: payment.id,
+          paymentIntentId: payment.payment_intent.id,
+          paymentStatus: payment.payment_intent.status,
+          amountTotal: payment.amount_total,
+        }),
+      ]);
+
+      return res.redirect(`${process.env.FRONTEND_URL}/payment/complete`);
+    } else {
+      throw "Something went wrong in payment!";
+    }
+  } else {
+    throw "Something went wrong in payment!";
+  }
 });
 
 /**
