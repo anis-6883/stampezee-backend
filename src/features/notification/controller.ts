@@ -97,13 +97,18 @@ export const createNotificationBasedOnLocation = asyncHandler(async (req: IApiRe
     },
     {
       $project: {
-        _id: 0,
         deviceToken: 1,
       },
     },
   ]);
 
-  const tokens = deviceTokens.map((token) => token.deviceToken);
+  const tokens: string[] = [];
+  const ids: string[] = [];
+
+  deviceTokens.forEach(({ _id, deviceToken }) => {
+    tokens.push(deviceToken);
+    ids.push(_id);
+  });
 
   notification.sendNotification({
     title,
@@ -116,6 +121,7 @@ export const createNotificationBasedOnLocation = asyncHandler(async (req: IApiRe
   await Notification.create({
     title,
     description,
+    sentTo: ids,
     image: notificationObj.image,
     address: {
       loc: { type: "Point", coordinates: [longitude, latitude] },

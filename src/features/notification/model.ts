@@ -10,6 +10,10 @@ const schema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    sentTo: {
+      type: [String],
+      default: [],
+    },
     image: { type: String, default: "" },
     type: {
       type: String,
