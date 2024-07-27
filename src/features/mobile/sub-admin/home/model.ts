@@ -34,11 +34,8 @@ const schema = new mongoose.Schema(
       default: false,
     },
     stamp: {
-      noOfStampsToCollect: Number,
-      minPurchaseAmount: Number,
-      rewardType: String,
-      promotionReward: Number,
-      discountReward: Number,
+      type: String,
+      default: null,
     },
   },
   {

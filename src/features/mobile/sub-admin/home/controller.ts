@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
+import zlib from "zlib";
 import { uploadFileToS3Bucket } from "../../../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, formatErrorMsg, makePaginateForMobile } from "../../../../helpers";
 import { IApiRequest, INumberObject } from "../../../../types";
@@ -122,7 +123,7 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
     number,
     customerId: stampIsCollected[0].customerId,
     subAdminId: req?.user?._id,
-    stamp: {},
+    stamp: "",
   };
   const response: Object = {
     message: "Scan was successful",
@@ -137,14 +138,16 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
     await CollectStamp.updateOne({ _id: collectStampId }, { eligibleForReward: true });
   }
   if (stampIsCollected[0].totalStampTaken >= stampData.noOfStampsToCollect) {
-    const { noOfStampsToCollect, minPurchaseAmount, rewardType, promotionReward, discountReward } = stampData;
-    orderBody.stamp = {
-      noOfStampsToCollect,
-      minPurchaseAmount,
-      rewardType,
-      promotionReward,
-      discountReward,
-    };
+    const { rewardType, promotionReward, discountReward } = stampData;
+    const dataString = JSON.stringify(stampData);
+    orderBody.stamp = zlib.deflateSync(dataString).toString("base64");
+    // orderBody.stamp = {
+    //   noOfStampsToCollect,
+    //   minPurchaseAmount,
+    //   rewardType,
+    //   promotionReward,
+    //   discountReward,
+    // };
     orderBody.rewardCollected = true;
     response.totalStampCollected = stampIsCollected[0].totalStampTaken;
     await CollectStamp.updateOne({ _id: collectStampId }, { eligibleForReward: false, rewardCollected: true });
