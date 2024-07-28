@@ -9,48 +9,37 @@ export const fetchDashboardSuperAdmin = asyncHandler(async (req: IApiRequest, re
   const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   const endOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
 
-  const [totalCustomer, totalRetailer, newCustomerThisMonth, newRetailerThisMonth, totalStamps, newStampsThisMonth] =
-    await Promise.all([
-      Customer.countDocuments({ isVerified: true }),
-      Retailer.countDocuments({ isVerified: true, softDeleted: { $ne: true } }),
-      Customer.countDocuments({
-        isVerified: true,
-        createdAt: {
-          $gte: startOfMonth,
-          $lt: endOfMonth,
-        },
-      }),
-      Retailer.countDocuments({
-        isVerified: true,
-        softDeleted: { $ne: true },
-        createdAt: {
-          $gte: startOfMonth,
-          $lt: endOfMonth,
-        },
-      }),
-      Stamp.countDocuments({
-        softDeleted: { $ne: true },
-      }),
-      Stamp.countDocuments({
-        softDeleted: { $ne: true },
-        createdAt: {
-          $gte: startOfMonth,
-          $lt: endOfMonth,
-        },
-      }),
-    ]);
+  const [
+    totalVerifiedRetailer,
+    totalVerifiedCustomer,
+    totalStamps,
+    newCustomerThisMonth,
+    newRetailerThisMonth,
+    newStampsThisMonth,
+  ] = await Promise.all([
+    Retailer.countDocuments({ isVerified: true, softDeleted: false }),
+    Customer.countDocuments({ isVerified: true }),
+    Stamp.countDocuments({ softDeleted: false }),
+    Customer.countDocuments({ isVerified: true, createdAt: { $gte: startOfMonth, $lt: endOfMonth } }),
+    Retailer.countDocuments({
+      isVerified: true,
+      softDeleted: false,
+      createdAt: { $gte: startOfMonth, $lt: endOfMonth },
+    }),
+    Stamp.countDocuments({ softDeleted: false, createdAt: { $gte: startOfMonth, $lt: endOfMonth } }),
+  ]);
 
-  const totalUser = totalCustomer + totalRetailer;
+  const totalUser = totalVerifiedCustomer + totalVerifiedRetailer;
 
   const signup = {
-    retailer: ((totalRetailer / totalUser) * 100).toFixed(2),
-    customer: ((totalCustomer / totalUser) * 100).toFixed(2),
+    retailer: ((totalVerifiedRetailer / totalUser) * 100).toFixed(2),
+    customer: ((totalVerifiedCustomer / totalUser) * 100).toFixed(2),
   };
 
   const data = {
     totalUser,
-    totalCustomer,
-    totalRetailer,
+    totalVerifiedCustomer,
+    totalVerifiedRetailer,
     newCustomerThisMonth,
     newRetailerThisMonth,
     totalStamps,
