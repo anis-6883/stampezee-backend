@@ -44,6 +44,11 @@ const schema = new mongoose.Schema(
   }
 );
 
+schema.index({ collectStampId: 1, number: 1 });
+schema.index({ customerId: 1 });
+schema.index({ subAdminId: 1 });
+schema.index({ rewardCollected: 1 });
+
 const OrderStamp = mongoose.model("OrderStamp", schema);
 
 export default OrderStamp;

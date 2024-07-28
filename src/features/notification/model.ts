@@ -52,6 +52,10 @@ const schema = new mongoose.Schema(
 );
 
 schema.index({ "address.loc": "2dsphere" });
+schema.index({ retailerId: 1 });
+schema.index({ sentTo: 1 });
+schema.index({ createdAt: -1 });
+schema.index({ type: 1 });
 
 const Notification = mongoose.model("Notification", schema);
 
