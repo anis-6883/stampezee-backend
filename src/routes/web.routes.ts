@@ -3,6 +3,7 @@ import { ROLE } from "../configs/constants";
 import billingRoutes from "../features/billing/route";
 import branchRoutes from "../features/branch/route";
 import customerRoutes from "../features/customer/routes/retailer";
+import dashboardRoutes from "../features/dashboard/routes/retailer";
 import subscriptionRoutes from "../features/enroll-subscription/route";
 import { getAllFaqsForWeb } from "../features/faq/controller";
 import notificationRoutes from "../features/notification/routes/retailer";
@@ -31,6 +32,7 @@ router.use("/retailer", retailerAuthRoutes);
 
 // Retailer Panel Feature Routes
 router.use(authAndPermissionCheck(ROLE.RETAILER));
+router.use("/retailer/dashboard", dashboardRoutes);
 router.use("/retailer/stamp", stampRoutes);
 router.use("/retailer/branch", branchRoutes);
 router.use("/retailer/sub-admin", subAdminRoutes);

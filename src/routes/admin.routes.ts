@@ -3,6 +3,7 @@ import { ROLE } from "../configs/constants";
 import categoryRoutes from "../features/category/route";
 import couponRoutes from "../features/coupon/route";
 import manageCustomerRoutes from "../features/customer/routes/super-admin";
+import dashboardRoutes from "../features/dashboard/routes/super-admin";
 import faqRoutes from "../features/faq/route";
 import notificationRoutes from "../features/notification/routes/super-admin";
 import paymentRoutes from "../features/payment/route";
@@ -20,6 +21,7 @@ const router = express.Router();
 router.use("/super-admin", superAdminAuthRoutes);
 
 router.use(authAndPermissionCheck(ROLE.SUPER_ADMIN));
+router.use("/super-admin/dashboard", dashboardRoutes);
 router.use("/super-admin/faq", faqRoutes);
 router.use("/super-admin/sort", sortingRoutes);
 router.use("/super-admin/coupon", couponRoutes);

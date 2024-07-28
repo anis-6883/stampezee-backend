@@ -5,8 +5,7 @@ import Stamp from "../stamp/model";
 import Customer from "../user/customer/model";
 import Retailer from "../user/retailer/model";
 
-export const fetchDashboardRetailer = asyncHandler(async (req: IApiRequest, res: Response) => {
-  // Get the start and end of the current month
+export const fetchDashboardSuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
   const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   const endOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
   const [totalCustomer, totalRetailer, newCustomerThisMonth, newRetailerThisMonth, totalStamps, newStampsThisMonth] =
@@ -39,15 +38,22 @@ export const fetchDashboardRetailer = asyncHandler(async (req: IApiRequest, res:
         },
       }),
     ]);
+  const totalUser = totalCustomer + totalRetailer;
+
+  const signup = {
+    retailer: ((totalRetailer / totalUser) * 100).toFixed(2),
+    customer: ((totalCustomer / totalUser) * 100).toFixed(2),
+  };
   const data = {
-    totalUser: totalCustomer + totalRetailer,
+    totalUser,
     totalCustomer,
     totalRetailer,
     newCustomerThisMonth,
     newRetailerThisMonth,
     totalStamps,
     newStampsThisMonth,
+    signup: signup,
   };
 
-  return apiResponse(res, 200, true, "Notificationes fetched successfully!", data);
+  return apiResponse(res, 200, true, "Dashboard fetched successfully!", data);
 });

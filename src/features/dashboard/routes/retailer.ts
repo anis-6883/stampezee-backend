@@ -1,11 +1,11 @@
 import express from "express";
 import multer from "multer";
-import { fetchDashboardRetailer } from "../controller";
+import { fetchDashboardSuperAdmin } from "../controller";
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 const router = express.Router();
 
-router.get("/dashboard", fetchDashboardRetailer);
+router.get("/calc", fetchDashboardSuperAdmin);
 
 export default router;
