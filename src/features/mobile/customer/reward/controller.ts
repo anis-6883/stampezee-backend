@@ -58,6 +58,9 @@ export const getAllReward = asyncHandler(async (req: IApiRequest, res: Response)
             {
               $project: {
                 _id: 1,
+                title: 1,
+                description: 1,
+                rules: 1,
                 image: "$stampImage.image",
                 noOfStampsToCollect: 1,
                 minPurchaseAmount: 1,
