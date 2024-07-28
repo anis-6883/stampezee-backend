@@ -166,7 +166,7 @@ export const subAdminForgetPassword = asyncHandler(async (req: IApiRequest, res:
 
   await SubAdmin.findByIdAndUpdate(subAdmin._id, { otp, otpExpiry });
 
-  const token = generateSignature({ email: subAdmin.email, role: ROLE.SUB_ADMIN }, "15m"); // 15 min
+  const token = generateSignature({ email: subAdmin.email, role: ROLE.SUB_ADMIN, ott: true }, "15m"); // 15 min
 
   // Send Otp to Email
   sendVerificationEmail(subAdmin.email, otp, "mobile");

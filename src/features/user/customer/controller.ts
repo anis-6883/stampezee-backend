@@ -46,7 +46,7 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
     throw "This customer already exists!";
   }
 
-  const token = generateSignature({ email: customerBody.email, role: ROLE.CUSTOMER }, "15m"); // 15 min
+  const token = generateSignature({ email: customerBody.email, role: ROLE.CUSTOMER, ott: true }, "15m"); // 15 min
 
   sendVerificationEmail(customerBody.email, customerBody.otp, "mobile");
 
@@ -230,7 +230,7 @@ export const customerForgetPassword = asyncHandler(async (req: IApiRequest, res:
 
   await Customer.findByIdAndUpdate(customer._id, { otp, otpExpiry });
 
-  const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER }, "15m"); // 15 min
+  const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER, ott: true }, "15m"); // 15 min
 
   // Send Otp to Email
   sendVerificationEmail(customer.email, otp, "mobile");

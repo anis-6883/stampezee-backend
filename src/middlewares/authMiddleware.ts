@@ -10,7 +10,7 @@ import { apiResponse } from "../helpers";
 import { IApiRequest, IJWTQuery } from "../types";
 
 export const authAndPermissionCheck =
-  (role: string, checkPermission: boolean = true, findUser: boolean = true) =>
+  (role: string, checkPermission: boolean = true, findUser: boolean = true, ott: boolean = false) =>
   async (req: IApiRequest, res: Response, next: NextFunction): Promise<any> => {
     try {
       const token =
@@ -20,7 +20,7 @@ export const authAndPermissionCheck =
       const decoded: any = jwt.verify(token, process.env.APP_SECRET!);
       let model: Model<any>;
 
-      if (checkPermission && role !== decoded.role) {
+      if (checkPermission && (role !== decoded.role || ott !== decoded.ott)) {
         return apiResponse(res, 403, false, "You are not authorized to perform this action!");
       }
 
@@ -34,22 +34,25 @@ export const authAndPermissionCheck =
             model = Retailer;
             break;
           case ROLE.SUB_ADMIN:
-            query.token = token;
+            if (!ott) {
+              query.token = token;
+            }
             model = SubAdmin;
             break;
           case ROLE.CUSTOMER:
-            query.token = token;
+            if (!ott) {
+              query.token = token;
+            }
             model = Customer;
             break;
           default:
             return apiResponse(res, 401, false, "Unauthorized!");
         }
-
-        const user: any = await model.findOne(query);
-        if (!user) return apiResponse(res, 401, false, "Unauthorized Request!");
-        req.user = user._doc;
       }
 
+      const user: any = await model.findOne(query);
+      if (!user) return apiResponse(res, 401, false, "Unauthorized Request!");
+      req.user = user._doc;
       req.token = token;
       req.role = decoded.role;
       return next();

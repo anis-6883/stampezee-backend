@@ -21,14 +21,15 @@ router.post("/login", customerLogin);
 router.post("/register", customerRegistration);
 router.post("/forget-password", customerForgetPassword);
 
-router.use(authAndPermissionCheck(ROLE.CUSTOMER));
+router.get("/profile", authAndPermissionCheck(ROLE.CUSTOMER), customerProfile);
+router.put("/profile", authAndPermissionCheck(ROLE.CUSTOMER), updateCustomerProfile);
+router.put("/update-location-token", authAndPermissionCheck(ROLE.CUSTOMER), updateLocationDeviceToken);
+
+router.use(authAndPermissionCheck(ROLE.CUSTOMER, true, true, true));
 router.get("/resend-otp", customerResendOtp);
 router.get("/resend-forget-password-otp", customerForgetPasswordResendOtp);
 router.post("/forget-password-otp-verify", customerForgetPasswordOtpVerify);
 router.post("/change-forget-password", customerChangeForgetPassword);
 router.post("/otp-verify", customerOtpVerify);
-router.get("/profile", customerProfile);
-router.put("/profile", updateCustomerProfile);
-router.put("/update-location-token", updateLocationDeviceToken);
 
 export default router;

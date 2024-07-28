@@ -52,7 +52,7 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
     });
   }
 
-  const tempToken = generateSignature({ email: retailerBody.email, role: ROLE.RETAILER }, "15m"); // 15 min
+  const tempToken = generateSignature({ email: retailerBody.email, role: ROLE.RETAILER, ott: true }, "15m"); // 15 min
 
   sendVerificationEmail(retailerBody.email, retailerBody.otp);
 
@@ -322,7 +322,7 @@ export const retailerForgetPassword = asyncHandler(async (req: IApiRequest, res:
 
   await Retailer.findByIdAndUpdate(retailer._id, { otp, otpExpiry });
 
-  const tempToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "15m"); // 15 min
+  const tempToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER, ott: true }, "15m"); // 15 min
 
   // Send Otp to Email
   sendVerificationEmail(retailer.email, otp);

@@ -26,14 +26,15 @@ router.post("/logout", retailerLogout);
 router.post("/register", retailerRegistration);
 router.post("/forget-password", retailerForgetPassword);
 
-router.use(authAndPermissionCheck(ROLE.RETAILER));
+router.get("/profile", authAndPermissionCheck(ROLE.RETAILER), retailerProfile);
+router.put("/profile", authAndPermissionCheck(ROLE.RETAILER), upload.single("image"), updateRetailerProfile);
+router.post("/change-password", authAndPermissionCheck(ROLE.RETAILER), retailerChangePassword);
+
+router.use(authAndPermissionCheck(ROLE.RETAILER, true, true, true));
 router.post("/otp-verify", retailerOtpVerify);
 router.post("/resend-otp", retailerResendOtp);
 router.post("/forget-password-otp-verify", retailerForgetPasswordOtpVerify);
 router.post("/change-forget-password", retailerChangeForgetPassword);
-router.post("/change-password", retailerChangePassword);
 router.post("/resend-forget-password-otp", retailerForgetPasswordResendOtp);
-router.get("/profile", retailerProfile);
-router.put("/profile", upload.single("image"), updateRetailerProfile);
 
 export default router;

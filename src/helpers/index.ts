@@ -155,6 +155,9 @@ export const generatePassword = async (password: string, salt: string) => {
 };
 
 export const generateSignature = (payload: any, expiresIn: number | string) => {
+  if (!payload.ott) {
+    payload.ott = false;
+  }
   return jwt.sign(payload, APP_SECRET, { expiresIn });
 };
 
