@@ -16,7 +16,7 @@ import { notificationBasedOnLocationSchema, notificationSchema } from "./validat
  */
 export const sendNotification = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await notificationSchema.validateAsync(req.body);
-  const { title, description, imageType, image, address, radius } = result;
+  const { title, description, imageType, image } = result;
   const settings = await Settings.findOne().select("notification");
 
   let notificationObj = { title, description, image };
@@ -52,7 +52,6 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
     description,
     image: notificationObj.image,
     retailerId: req?.user?._id,
-    radius,
   });
 
   return apiResponse(res, 200, true, "Notification created successfully!");

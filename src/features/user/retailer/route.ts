@@ -30,11 +30,22 @@ router.get("/profile", authAndPermissionCheck(ROLE.RETAILER), retailerProfile);
 router.put("/profile", authAndPermissionCheck(ROLE.RETAILER), upload.single("image"), updateRetailerProfile);
 router.post("/change-password", authAndPermissionCheck(ROLE.RETAILER), retailerChangePassword);
 
-router.use(authAndPermissionCheck(ROLE.RETAILER, true, true, true));
-router.post("/otp-verify", retailerOtpVerify);
-router.post("/resend-otp", retailerResendOtp);
-router.post("/forget-password-otp-verify", retailerForgetPasswordOtpVerify);
-router.post("/change-forget-password", retailerChangeForgetPassword);
-router.post("/resend-forget-password-otp", retailerForgetPasswordResendOtp);
+router.post("/otp-verify", authAndPermissionCheck(ROLE.RETAILER, true, true, true), retailerOtpVerify);
+router.post("/resend-otp", authAndPermissionCheck(ROLE.RETAILER, true, true, true), retailerResendOtp);
+router.post(
+  "/forget-password-otp-verify",
+  authAndPermissionCheck(ROLE.RETAILER, true, true, true),
+  retailerForgetPasswordOtpVerify
+);
+router.post(
+  "/change-forget-password",
+  authAndPermissionCheck(ROLE.RETAILER, true, true, true),
+  retailerChangeForgetPassword
+);
+router.post(
+  "/resend-forget-password-otp",
+  authAndPermissionCheck(ROLE.RETAILER, true, true, true),
+  retailerForgetPasswordResendOtp
+);
 
 export default router;

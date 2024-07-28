@@ -82,7 +82,7 @@ class NotificationClass {
         console.error("=> Error Sending Notification", err);
       }
     } else {
-      throw new Error("Either tokens or topic must be provided.");
+      console.error("Either tokens or topic must be provided.");
     }
   }
 }
