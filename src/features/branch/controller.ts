@@ -56,7 +56,7 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
   const retailerAddonIds = retailerTotalBranch
     .filter((branch) => branch.source === "addon")
     .map((branch) => branch.enrollSubscriptionId.toString());
-  const addonIds = addons.map((branch) => branch._id.toString());
+  const addonIds = addons.map((enroll) => enroll._id.toString());
   const unUsedIds = addonIds.filter((item) => !retailerAddonIds.includes(item));
 
   const subscriptionBranchSlot = retailerTotalBranch.filter(
@@ -121,7 +121,7 @@ export const getAllBranches = asyncHandler(async (req: IApiRequest, res: Respons
       },
       {
         $sort: {
-          createdAt: -1,
+          disabledBySystem: 1,
         },
       },
       {
@@ -250,6 +250,56 @@ export const activateSystemDisabledBranch = asyncHandler(async (req: IApiRequest
   if (!updateBranch) throw "Branch not found!";
 
   return apiResponse(res, 200, true, "Branch activated successfully!");
+});
+
+/**
+ * Convert to Ad-on Branch
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const convertToAddonBranch = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { id } = req.params;
+
+  // Check Addon Enrollment
+  const [addons, retailerTotalBranch] = await Promise.all([
+    EnrollSubscription.find({
+      retailerId: req.user._id,
+      "planSnapshot.type": "addon",
+      "planSnapshot.slug": PACKAGES.BRANCH,
+      paymentStatus: "completed",
+      validityTo: { $gt: new Date() },
+      status: true,
+    }),
+    Branch.find({ retailerId: req.user._id, softDeleted: false }),
+  ]);
+
+  const retailerAddonIds = retailerTotalBranch
+    .filter((branch) => branch.source === "addon")
+    .map((branch) => branch.enrollSubscriptionId.toString());
+  const addonIds = addons.map((enroll) => enroll._id.toString());
+  const unUsedIds = addonIds.filter((item) => !retailerAddonIds.includes(item));
+
+  if (unUsedIds.length <= 0) {
+    throw "You have to purchase another add-on to convert!";
+  }
+
+  const branch = await Branch.findOneAndUpdate(
+    { _id: id },
+    {
+      enrollSubscriptionId: unUsedIds[0],
+      source: "addon",
+      disabledBySystem: false,
+      status: true,
+    },
+    {
+      new: true,
+    }
+  );
+
+  if (!branch) return apiResponse(res, 404, false, "Branch not found!");
+
+  return apiResponse(res, 200, true, "Branch source convert to add-on successfully!");
 });
 
 /**
