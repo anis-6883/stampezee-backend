@@ -80,10 +80,15 @@ export const getAllReward = asyncHandler(async (req: IApiRequest, res: Response)
           as: "branch",
           pipeline: [
             {
-              $project: {
-                name: 1,
-                address: 1,
+              $lookup: {
+                from: "retailers",
+                localField: "retailerId",
+                foreignField: "_id",
+                as: "retailer",
               },
+            },
+            {
+              $unwind: "$retailer",
             },
           ],
         },
@@ -94,7 +99,12 @@ export const getAllReward = asyncHandler(async (req: IApiRequest, res: Response)
       {
         $project: {
           stamp: 1,
-          branch: 1,
+          "branch._id": "$branch._id",
+          "branch.name": "$branch.name",
+          "branch.address": "$branch.address.name",
+          "retailer._id": "$branch.retailer._id",
+          "retailer.storeName": "$branch.retailer.storeName",
+          "retailer.image": "$branch.retailer.image",
         },
       },
     ]),
