@@ -3,6 +3,7 @@ import {
   activateSystemDisabledBranch,
   branchRenew,
   confirmDeleteBranch,
+  convertToAddonBranch,
   createBranch,
   getAllBranches,
   getAllDeletedBranches,
@@ -17,6 +18,7 @@ const router = express.Router();
 router.post("/", createBranch);
 router.get("/all", getAllBranches);
 router.get("/deleted", getAllDeletedBranches);
+router.put("/convert-to-addon/:id", convertToAddonBranch);
 router.put("/renew/:id", branchRenew);
 router.put("/activate/:id", activateSystemDisabledBranch);
 router.put("/status/:id", updateBranchStatus);
