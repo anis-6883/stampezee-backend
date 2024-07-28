@@ -6,7 +6,6 @@ export const notificationSchema = Joi.object({
   description: requiredStringField("description"),
   imageType: stringField("imageType"),
   image: stringField("image"),
-  address: requiredStringField("address"),
 });
 
 export const notificationBasedOnLocationSchema = Joi.object({
