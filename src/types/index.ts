@@ -27,6 +27,7 @@ export interface IUser {
   firstName: string;
   lastName: string;
   branchId?: string;
+  retailerId?: string;
   email: string;
   password: string;
   image: string;

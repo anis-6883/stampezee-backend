@@ -120,6 +120,7 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
 
   let orderBody: Object = {
     collectStampId,
+    retailerId: req?.user?.retailerId,
     number,
     customerId: stampIsCollected[0].customerId,
     subAdminId: req?.user?._id,
@@ -141,13 +142,6 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
     const { rewardType, promotionReward, discountReward } = stampData;
     const dataString = JSON.stringify(stampData);
     orderBody.stamp = zlib.deflateSync(dataString).toString("base64");
-    // orderBody.stamp = {
-    //   noOfStampsToCollect,
-    //   minPurchaseAmount,
-    //   rewardType,
-    //   promotionReward,
-    //   discountReward,
-    // };
     orderBody.rewardCollected = true;
     response.totalStampCollected = stampIsCollected[0].totalStampTaken;
     await CollectStamp.updateOne({ _id: collectStampId }, { eligibleForReward: false, rewardCollected: true });
