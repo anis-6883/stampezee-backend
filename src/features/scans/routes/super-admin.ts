@@ -1,11 +1,11 @@
 import express from "express";
 import multer from "multer";
-import { stampScanDetails } from "./controller";
+import { stampScanDetailsForSuperAdmin } from "../controller";
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 const router = express.Router();
 
-router.get("/details", stampScanDetails);
+router.get("/details", stampScanDetailsForSuperAdmin);
 
 export default router;
