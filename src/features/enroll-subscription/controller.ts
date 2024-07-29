@@ -92,7 +92,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     abortEarly: false,
   });
 
-  const { slugs, code }: { slugs: string[]; code: string } = result;
+  const { slugs, code, branchIds }: { slugs: string[]; branchIds: string[]; code: string } = result;
 
   if ((slugs.includes(PACKAGES.TRIAL) && slugs.length > 1) || (slugs.includes(PACKAGES.TRIAL) && code)) {
     throw "You can't take additional packages or coupon in free trial!";
@@ -278,10 +278,21 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       if (changeMode < 0) {
         const downgradeBranchLimit = pickPlan?.allowTotalBranch;
         const branches = await Branch.find({ retailerId: req.user._id, source: "subscription", softDeleted: false });
-        const activeBranch = branches.filter((branch) => branch.status).length;
+        const disabledBySystemBranch = branches.filter((branch) => !branch.disabledBySystem).length;
 
-        if (branches.length > downgradeBranchLimit && activeBranch > downgradeBranchLimit) {
-          throw `You have to inactive ${activeBranch - downgradeBranchLimit} subscription branch/s before downgrade!`;
+        if (branches.length > downgradeBranchLimit && disabledBySystemBranch > downgradeBranchLimit) {
+          if (!branchIds) throw "branchIds field is required!";
+
+          if (branchIds && branchIds.length !== disabledBySystemBranch - downgradeBranchLimit) {
+            throw `You have to inactive ${disabledBySystemBranch - downgradeBranchLimit} subscription branch/s before downgrade!`;
+          }
+
+          if (branchIds && branchIds.length >= disabledBySystemBranch - downgradeBranchLimit) {
+            await Branch.updateMany(
+              { retailerId: req.user._id, _id: { $in: branchIds } },
+              { disabledBySystem: true, status: false }
+            );
+          }
         }
 
         for (const subscription of subscriptions) {
@@ -323,10 +334,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           }
 
           const updateQueries: any = [
-            Branch.updateMany(
-              { retailerId: req.user._id, source: "subscription", status: false },
-              { disabledBySystem: true }
-            ),
             Branch.updateMany({ retailerId: req.user._id, source: "subscription" }, { enrollSubscriptionId }),
             EnrollSubscription.updateOne({ _id: enrolled._id }, { status: false }),
           ];
@@ -350,7 +357,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             totalBranch: pickPlan?.allowTotalBranch,
           });
         }
-        // Decision 2: Payment & Downgrade or Not Now
+        // Decision 2: Payment & Downgrade or Not Now - (Add More)
         else if (totalAmount > 0) {
           let togetherPaymentAmount = 0;
           const planCurrentPrice = parseFloat(Number(pickPlan.price - balanceAmount).toFixed(2)); // This amount can be negative!
@@ -451,10 +458,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           });
 
           await Promise.all([
-            Branch.updateMany(
-              { retailerId: req.user._id, source: "subscription", status: false },
-              { disabledBySystem: true }
-            ),
             Branch.updateMany(
               { retailerId: req.user._id, source: "subscription" },
               { enrollSubscriptionId: enrollSubscription._id }
