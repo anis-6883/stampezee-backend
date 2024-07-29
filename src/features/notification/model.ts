@@ -14,7 +14,7 @@ const schema = new mongoose.Schema(
       type: [String],
       default: [],
     },
-    image: { type: String, default: "" },
+    image: { type: String, default: null },
     type: {
       type: String,
       enum: ["all", "location"],
