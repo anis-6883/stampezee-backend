@@ -1,15 +1,17 @@
 import { Response } from "express";
+import { PACKAGES } from "../../configs/constants";
 import notification from "../../configs/fcm";
 import { uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
+import EnrollSubscription from "../enroll-subscription/model";
 import Settings from "../settings/model";
 import Customer from "../user/customer/model";
 import Notification from "./model";
 import { notificationBasedOnLocationSchema, notificationSchema } from "./validation";
 
 /**
- * Create A Notification
+ * Send A Notification to All Customers
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -17,9 +19,43 @@ import { notificationBasedOnLocationSchema, notificationSchema } from "./validat
 export const sendNotification = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await notificationSchema.validateAsync(req.body);
   const { title, description, imageType, image } = result;
-  const settings = await Settings.findOne().select("notification");
-
   let notificationObj = { title, description, image };
+
+  // Check Subscription & Addon Enrollment
+  const [subscription, addons, totalNotification, settings] = await Promise.all([
+    EnrollSubscription.findOne({
+      retailerId: req.user._id,
+      "planSnapshot.type": "subscription",
+      paymentStatus: { $in: ["completed", "trial"] },
+      validityTo: { $gt: new Date() },
+      status: true,
+    }),
+    EnrollSubscription.find({
+      retailerId: req.user._id,
+      "planSnapshot.type": "addon",
+      "planSnapshot.slug": PACKAGES.PUSH_NOTIFICATION_USER,
+      paymentStatus: "completed",
+      validityTo: { $gt: new Date() },
+      status: true,
+    }),
+    Notification.countDocuments({ retailerId: req.user._id, type: "all" }),
+    Settings.findOne().select("notification"),
+  ]);
+
+  if (!subscription) {
+    throw "No one is allowed to send a notification without a plan!";
+  }
+
+  let allowTotalNotification = 0;
+
+  for (const addon of addons) {
+    allowTotalNotification += addon.planSnapshot?.limit;
+  }
+
+  if (totalNotification >= allowTotalNotification) {
+    throw "Your notification limit is over!";
+  }
+
   // File Validation
   if (req.file) {
     const { status, message } = fileValidation(req.file, undefined, ["image/jpeg", "image/png", "image/jpg"]);
@@ -30,12 +66,13 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
 
   // Upload File to S3 Bucket
   if (req.file) {
-    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "category");
+    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "notification");
     if (status) {
       notificationObj.image = key;
     }
   }
-  if (imageType == "url") {
+
+  if (imageType == "url" && image) {
     notificationObj.image = image;
   }
 
@@ -54,14 +91,54 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
     retailerId: req?.user?._id,
   });
 
-  return apiResponse(res, 200, true, "Notification created successfully!");
+  return apiResponse(res, 200, true, "Notification sent successfully!");
 });
 
+/**
+ * Send Location Based Notification to All Customers
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
 export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await notificationBasedOnLocationSchema.validateAsync(req.body);
   const { title, description, imageType, image, address, radius, longitude, latitude } = result;
-
   let notificationObj = { title, description, image };
+
+  // Check Subscription & Addon Enrollment
+  const [subscription, addons, totalNotification] = await Promise.all([
+    EnrollSubscription.findOne({
+      retailerId: req.user._id,
+      "planSnapshot.type": "subscription",
+      paymentStatus: { $in: ["completed", "trial"] },
+      validityTo: { $gt: new Date() },
+      status: true,
+    }),
+    EnrollSubscription.find({
+      retailerId: req.user._id,
+      "planSnapshot.type": "addon",
+      "planSnapshot.slug": PACKAGES.PUSH_NOTIFICATION_LOCATION,
+      paymentStatus: "completed",
+      validityTo: { $gt: new Date() },
+      status: true,
+    }),
+    Notification.countDocuments({ retailerId: req.user._id, type: "location" }),
+  ]);
+
+  if (!subscription) {
+    throw "No one is allowed to send a notification without a plan!";
+  }
+
+  let allowTotalNotification = 0;
+
+  for (const addon of addons) {
+    allowTotalNotification += addon.planSnapshot?.limit;
+  }
+
+  if (totalNotification >= allowTotalNotification) {
+    throw "Your notification limit is over!";
+  }
+
   // File Validation
   if (req.file) {
     const { status, message } = fileValidation(req.file, undefined, ["image/jpeg", "image/png", "image/jpg"]);
@@ -72,16 +149,19 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
 
   // Upload File to S3 Bucket
   if (req.file) {
-    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "category");
+    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "notification");
     if (status) {
       notificationObj.image = key;
     }
   }
-  if (imageType == "url") {
+
+  if (imageType == "url" && image) {
     notificationObj.image = image;
   }
+
   const earthRadiusInMiles = 3959;
   const radiusInMiles = radius ** 0.621371;
+
   const deviceTokens = await Customer.aggregate([
     {
       $match: {
@@ -131,10 +211,11 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
     radius,
   });
 
-  return apiResponse(res, 200, true, "Notification created successfully!");
+  return apiResponse(res, 200, true, "Location based notification sent successfully!");
 });
+
 /**
- * Get All Single Notificationes
+ * Get All Single Notifications
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -151,7 +232,7 @@ export const getAllNotificationsForRetailer = asyncHandler(async (req: IApiReque
     query.$or = [{ title: { $regex: search, $options: "i" } }, { description: { $regex: search, $options: "i" } }];
   }
 
-  const [docs, total] = await Promise.all([
+  const [docs, total, addons, totalNotification] = await Promise.all([
     Notification.aggregate([
       {
         $match: query,
@@ -175,11 +256,29 @@ export const getAllNotificationsForRetailer = asyncHandler(async (req: IApiReque
       },
     ]),
     Notification.find(query).countDocuments(),
+    EnrollSubscription.find({
+      retailerId: req.user._id,
+      "planSnapshot.type": "addon",
+      "planSnapshot.slug": type === "location" ? PACKAGES.PUSH_NOTIFICATION_LOCATION : PACKAGES.PUSH_NOTIFICATION_USER,
+      paymentStatus: "completed",
+      validityTo: { $gt: new Date() },
+      status: true,
+    }),
+    Notification.countDocuments({ retailerId: req.user._id, type }),
   ]);
 
-  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
+  const data: any = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  return apiResponse(res, 200, true, "Notificationes fetched successfully!", data);
+  let allowTotalNotification = 0;
+
+  for (const addon of addons) {
+    allowTotalNotification += addon.planSnapshot?.limit;
+  }
+
+  data.notificationLimit =
+    allowTotalNotification - totalNotification < 0 ? 0 : allowTotalNotification - totalNotification;
+
+  return apiResponse(res, 200, true, "Notification fetched successfully!", data);
 });
 
 export const getAllNotificationsForSuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
