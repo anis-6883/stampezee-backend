@@ -334,7 +334,7 @@ export const updateLocationDeviceToken = asyncHandler(async (req: IApiRequest, r
 export const deleteAccount = asyncHandler(async (req: IApiRequest, res: Response) => {
   const userResponse = await Customer.findOneAndUpdate(
     { _id: req?.user?._id },
-    { accessToken: "", deletionRequest: true, deviceToken: "" }
+    { token: null, deletionRequest: true, deviceToken: null }
   ).select("_id");
   if (userResponse) {
     return apiResponse(res, 200, true, "Customer has been deleted successfully");
