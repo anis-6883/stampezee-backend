@@ -8,7 +8,7 @@ import subscriptionRoutes from "../features/enroll-subscription/route";
 import { getAllFaqsForWeb } from "../features/faq/controller";
 import notificationRoutes from "../features/notification/routes/retailer";
 import refundRoutes from "../features/refund/routes/retailer";
-import scansRoutes from "../features/scans/route";
+import scansRoutes from "../features/scans/routes/retailer";
 import { getCommonSettings, getSecretSettings } from "../features/settings/controller";
 import stampImageRoutes from "../features/stamp-image/route";
 import stampRoutes from "../features/stamp/route";

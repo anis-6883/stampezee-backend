@@ -89,6 +89,10 @@ const schema = new mongoose.Schema(
       trim: true,
       default: null,
     },
+    deletionRequest: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

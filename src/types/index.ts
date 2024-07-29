@@ -79,3 +79,17 @@ export interface IJWTQuery {
   email: string;
   token?: string;
 }
+
+export interface IJWTQuery {
+  email: string;
+  token?: string;
+}
+
+export interface IRetailerScanQuery {
+  retailerId: mongoose.Types.ObjectId;
+  customerId?: object;
+}
+
+export interface ISuperAdminScanQuery {
+  $or?: object[];
+}
