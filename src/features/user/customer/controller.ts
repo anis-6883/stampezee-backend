@@ -141,7 +141,7 @@ export const customerLogin = asyncHandler(async (req: Request, res: Response) =>
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
   const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER }, "30 days");
-  await Customer.updateMany({ email: customer.email }, { token });
+  await Customer.updateMany({ email: customer.email }, { token, deletionRequest: false });
 
   // Remove Sensitive Data
   const data = exclude(customer._doc, [
@@ -323,4 +323,22 @@ export const updateLocationDeviceToken = asyncHandler(async (req: IApiRequest, r
   await Customer.findOneAndUpdate({ _id: id }, finalQuery, { new: true });
 
   return apiResponse(res, 200, true, "Customer location & token updated successfully!");
+});
+
+/**
+ * Request delete account for Customer
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const deleteAccount = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const userResponse = await Customer.findOneAndUpdate(
+    { _id: req?.user?._id },
+    { accessToken: "", deletionRequest: true, deviceToken: "" }
+  ).select("_id");
+  if (userResponse) {
+    return apiResponse(res, 200, true, "Customer has been deleted successfully");
+  } else {
+    throw "Something went wrong.";
+  }
 });
