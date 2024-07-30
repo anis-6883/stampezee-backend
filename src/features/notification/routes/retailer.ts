@@ -6,8 +6,8 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 const router = express.Router();
 
+router.get("/all", getAllNotificationsForRetailer);
 router.post("/all", upload.single("image"), sendNotification);
 router.post("/location", upload.single("image"), sendNotificationBasedOnLocation);
-router.get("/all", getAllNotificationsForRetailer);
 
 export default router;
