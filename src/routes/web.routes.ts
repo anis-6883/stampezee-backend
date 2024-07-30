@@ -2,10 +2,12 @@ import express from "express";
 import { ROLE } from "../configs/constants";
 import billingRoutes from "../features/billing/route";
 import branchRoutes from "../features/branch/route";
+import { submitContact } from "../features/contact/controller";
 import customerRoutes from "../features/customer/routes/retailer";
 import dashboardRoutes from "../features/dashboard/routes/retailer";
 import subscriptionRoutes from "../features/enroll-subscription/route";
 import { getAllFaqsForWeb } from "../features/faq/controller";
+import { subsscribeNewsletter } from "../features/newsletter/controller";
 import notificationRoutes from "../features/notification/routes/retailer";
 import refundRoutes from "../features/refund/routes/retailer";
 import scansRoutes from "../features/scans/routes/retailer";
@@ -21,6 +23,8 @@ const router = express.Router();
 
 // Common Routes
 router.get("/faqs", getAllFaqsForWeb);
+router.post("/newsletter/join", subsscribeNewsletter);
+router.post("/contact/submit", submitContact);
 router.get("/get-common-settings", getCommonSettings);
 router.get("/get-secret-settings", authAndPermissionCheck("", false, false), getSecretSettings);
 router.get("/refresh-token", authAndPermissionCheck("", false), refreshAccessToken);
