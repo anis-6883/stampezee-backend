@@ -159,7 +159,10 @@ export const getAllSubAdmins = asyncHandler(async (req: IApiRequest, res: Respon
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getBranches = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const branches = await Branch.find({ retailerId: req.user._id, softDeleted: { $eq: false } }, { name: 1 }).sort({
+  const branches = await Branch.find(
+    { retailerId: req.user._id, softDeleted: false, disabledBySystem: false },
+    { name: 1 }
+  ).sort({
     createdAt: "desc",
   });
   return apiResponse(res, 200, true, "Branches fetched successfully!", branches);
