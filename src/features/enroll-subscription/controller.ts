@@ -198,7 +198,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     const enrollIdDuration: { [key: string]: number } = {};
     const line_items: ILineItem[] = [];
     let totalAmount = 0;
-    let unitAmount = 0;
 
     if (pickPlan && enrolled) {
       const changeMode = checkPlanChange(
@@ -213,68 +212,93 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         enrolled.planSnapshot.price
       );
 
-      console.log("Change Mode: ", changeMode > 0 ? "Upgrade" : "Downgrade");
-
-      // Plan Upgrade
+      ////////////////////////////////
+      //////// Plan Upgrade /////////
+      ///////////////////////////////
       if (changeMode > 0) {
         for (const subscription of subscriptions) {
-          let planCurrentPrice = 0;
-          let enrollStatus = "upgrade";
-
-          if ([PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug)) {
-            planCurrentPrice = parseFloat(Number(subscription.price - balanceAmount).toFixed(2));
-            enrollStatus = "upgrade";
-          } else {
-            planCurrentPrice = parseFloat(Number(subscription.price).toFixed(2));
-            enrollStatus = "purchase";
-          }
-
-          const enrollSubscription: any = await EnrollSubscription.create({
-            retailerId: req.user._id,
-            planSnapshot: subscription,
-            couponSnapshot: coupon,
-            taxSnapshot: {
-              taxTitle: taxStatus === "on" ? taxTitle : null,
-              taxCost: taxStatus === "on" ? taxCost : null,
-            },
-            balanceInfo: {
-              currentBalance: balanceAmount,
-              planCurrentPrice,
-            },
-            planChangeCost,
-            paymentStatus: "pending",
-            enrollStatus,
-            status: false,
-          });
-
           if (subscription.type === "subscription") {
-            planEnrollmentId = enrollSubscription._id;
-          }
+            let finalPrice = subscription.price - balanceAmount;
 
-          enrollIdDuration[enrollSubscription._id] = subscription.duration;
+            // If add Coupon, it will attach only in plan!
+            if (coupon) {
+              if (finalPrice < coupon.minPurchaseAmount) {
+                throw `Min. ${coupon.minPurchaseAmount}CAD required to apply coupon!`;
+              }
 
-          if ([PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug)) {
-            totalAmount += Number(subscription.price - balanceAmount);
-            unitAmount = Math.round(Number(subscription.price - balanceAmount) * 100);
-          } else {
-            totalAmount += Number(subscription.price);
-            unitAmount = Math.round(Number(subscription.price) * 100);
-          }
+              if (coupon.discountType === "percentage") {
+                finalPrice -= Number((subscription.price * coupon.discount) / 100);
+              } else {
+                finalPrice -= coupon.discount;
+              }
+            }
 
-          line_items.push({
-            price_data: {
-              currency: "cad",
-              product_data: {
-                name: subscription.title,
+            const enrollSubscription: any = await EnrollSubscription.create({
+              retailerId: req.user._id,
+              planSnapshot: subscription,
+              couponSnapshot: coupon ?? null,
+              taxSnapshot: {
+                taxTitle: taxStatus === "on" ? taxTitle : null,
+                taxCost: taxStatus === "on" ? taxCost : null,
               },
-              unit_amount: unitAmount,
-            },
-            quantity: 1,
-          });
+              balanceInfo: {
+                currentBalance: balanceAmount,
+                planCurrentPrice: finalPrice,
+              },
+              planChangeCost,
+              paymentStatus: "pending",
+              enrollStatus: "upgrade",
+              status: false,
+            });
+
+            totalAmount += Number(subscription.price - balanceAmount);
+            enrollIdDuration[enrollSubscription._id] = subscription.duration;
+            planEnrollmentId = enrollSubscription._id;
+            const couponPackageName = `${subscription.title} (-${coupon?.discount}${coupon?.discountType === "percentage" ? "%" : "CAD"})`;
+
+            line_items.push({
+              price_data: {
+                currency: "cad",
+                product_data: {
+                  name: coupon ? couponPackageName : subscription.title,
+                },
+                unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent,
+              },
+              quantity: 1,
+            });
+          } else {
+            const enrollSubscription: any = await EnrollSubscription.create({
+              retailerId: req.user._id,
+              planSnapshot: subscription,
+              taxSnapshot: {
+                taxTitle: taxStatus === "on" ? taxTitle : null,
+                taxCost: taxStatus === "on" ? taxCost : null,
+              },
+              paymentStatus: "pending",
+              enrollStatus: "purchase",
+              status: false,
+            });
+
+            enrollIdDuration[enrollSubscription._id] = subscription.duration;
+            totalAmount += Number(subscription.price);
+
+            line_items.push({
+              price_data: {
+                currency: "cad",
+                product_data: {
+                  name: subscription.title,
+                },
+                unit_amount: Math.round(Number(subscription.price) * 100), // convert into cent
+              },
+              quantity: 1,
+            });
+          }
         }
       }
 
-      // Plan Downgrade
+      ////////////////////////////////
+      //////// Plan Downgrade ///////
+      ///////////////////////////////
       if (changeMode < 0) {
         const downgradeBranchLimit = pickPlan?.allowTotalBranch;
         const branches = await Branch.find({ retailerId: req.user._id, source: "subscription", softDeleted: false });
@@ -296,7 +320,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         }
 
         for (const subscription of subscriptions) {
-          if ([PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug)) {
+          if (subscription.type === "subscription") {
             totalAmount += Number(subscription.price - balanceAmount);
           } else {
             totalAmount += Number(subscription.price); // Add-on
@@ -309,27 +333,50 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           let enrollSubscriptionId;
 
           for (const subscription of subscriptions) {
-            const enrollSubscription = await EnrollSubscription.create({
-              retailerId: req.user._id,
-              planSnapshot: subscription,
-              paymentStatus: "completed",
-              enrollStatus: subscription.type === "addon" ? "purchase" : "downgrade",
-              validityFrom: moment(),
-              validityTo: moment().add(subscription.duration, "days"),
-              balanceInfo: {
-                currentBalance: balanceAmount,
-                planCurrentPrice:
-                  subscription.type === "addon" ? subscription.price : subscription.price - balanceAmount,
-              },
-              refundAmount:
-                subscription.type === "addon" ? 0 : parseFloat(Math.abs(totalAmount + planChangeCost).toFixed(2)),
-              status: true,
-              planChangeCost,
-            });
-
             if (subscription.type === "subscription") {
+              // If add Coupon, it will attach only in plan!
+              if (coupon) {
+                if (subscription.price < coupon.minPurchaseAmount) {
+                  throw `Min. ${coupon.minPurchaseAmount}CAD required to apply coupon!`;
+                }
+
+                if (coupon.discountType === "percentage") {
+                  totalAmount -= Number((subscription.price * coupon.discount) / 100);
+                } else {
+                  totalAmount -= coupon.discount;
+                }
+              }
+
+              const enrollSubscription = await EnrollSubscription.create({
+                retailerId: req.user._id,
+                planSnapshot: subscription,
+                paymentStatus: "completed",
+                enrollStatus: "downgrade",
+                validityFrom: moment(),
+                validityTo: moment().add(subscription.duration, "days"),
+                balanceInfo: {
+                  currentBalance: balanceAmount,
+                  planCurrentPrice: coupon
+                    ? subscription.price - Number((subscription.price * coupon.discount) / 100)
+                    : subscription.price,
+                },
+                refundAmount: Math.abs(totalAmount) - planChangeCost,
+                status: true,
+                planChangeCost,
+              });
+
               enrollSubscriptionId = enrollSubscription._id;
               planEnrollmentId = enrollSubscription._id;
+            } else {
+              await EnrollSubscription.create({
+                retailerId: req.user._id,
+                planSnapshot: subscription,
+                paymentStatus: "completed",
+                enrollStatus: "purchase",
+                validityFrom: moment(),
+                validityTo: moment().add(subscription.duration, "days"),
+                status: true,
+              });
             }
           }
 
@@ -363,10 +410,14 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           const planCurrentPrice = parseFloat(Number(pickPlan.price - balanceAmount).toFixed(2)); // This amount can be negative!
 
           for (const subscription of subscriptions) {
-            if ([PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug)) {
+            if (subscription.type === "subscription") {
               // Decision: Stripe Entry or Not
               if (planCurrentPrice < 0) {
-                const enrollSubscription = await EnrollSubscription.create({
+                if (coupon) {
+                  togetherPaymentAmount -= Number((subscription.price * coupon.discount) / 100);
+                }
+
+                const enrollSubscription: any = await EnrollSubscription.create({
                   retailerId: req.user._id,
                   planSnapshot: pickPlan,
                   paymentStatus: "completed",
@@ -375,13 +426,32 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                   validityTo: moment().add(pickPlan.duration, "days"),
                   balanceInfo: {
                     currentBalance: balanceAmount,
-                    planCurrentPrice: totalAmount,
+                    planCurrentPrice: coupon
+                      ? subscription.price - Number((subscription.price * coupon.discount) / 100)
+                      : subscription.price,
                   },
-                  status: true,
+                  status: false,
                 });
 
                 planEnrollmentId = enrollSubscription._id;
+                enrollIdDuration[enrollSubscription._id] = subscription.duration;
               } else {
+                let finalPrice = planCurrentPrice;
+                // If add Coupon, it will attach only in plan!
+                if (coupon) {
+                  if (planCurrentPrice < coupon.minPurchaseAmount) {
+                    throw `Min. ${coupon.minPurchaseAmount}CAD required to apply coupon!`;
+                  }
+
+                  if (coupon.discountType === "percentage") {
+                    finalPrice = Number(subscription.price - (subscription.price * coupon.discount) / 100);
+                    togetherPaymentAmount -= finalPrice;
+                  } else {
+                    finalPrice = subscription.price - coupon.discount;
+                    togetherPaymentAmount -= finalPrice;
+                  }
+                }
+
                 const enrollSubscription: any = await EnrollSubscription.create({
                   retailerId: req.user._id,
                   planSnapshot: subscription,
@@ -389,6 +459,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                   taxSnapshot: {
                     taxTitle: taxStatus === "on" ? taxTitle : null,
                     taxCost: taxStatus === "on" ? taxCost : null,
+                  },
+                  balanceInfo: {
+                    currentBalance: balanceAmount,
+                    planCurrentPrice: finalPrice, // coupon discount any apply in plan
                   },
                   paymentStatus: "pending",
                   enrollStatus: "downgrade",
@@ -398,14 +472,13 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                 planEnrollmentId = enrollSubscription._id;
                 enrollIdDuration[enrollSubscription._id] = subscription.duration;
 
-                togetherPaymentAmount += planCurrentPrice;
+                togetherPaymentAmount += pickPlan.price;
               }
             } else {
               // Take Ad-ons with downgrade
               const enrollSubscription: any = await EnrollSubscription.create({
                 retailerId: req.user._id,
                 planSnapshot: subscription,
-                couponSnapshot: coupon,
                 taxSnapshot: {
                   taxTitle: taxStatus === "on" ? taxTitle : null,
                   taxCost: taxStatus === "on" ? taxCost : null,
@@ -453,7 +526,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             validityTo: moment().add(pickPlan.duration, "days"),
             balanceInfo: {
               currentBalance: balanceAmount,
-              planCurrentPrice: 0,
+              planCurrentPrice: coupon
+                ? pickPlan.price - Number((pickPlan.price * coupon.discount) / 100)
+                : pickPlan.price,
             },
           });
 
@@ -483,37 +558,85 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         quantity: 1,
       });
     } else {
+      ///////////////////////////////////
+      //////// New Subscription /////////
+      ///////////////////////////////////
       for (const subscription of subscriptions) {
-        const enrollSubscription: any = await EnrollSubscription.create({
-          retailerId: req.user._id,
-          planSnapshot: subscription,
-          couponSnapshot: coupon,
-          taxSnapshot: {
-            taxTitle: taxStatus === "on" ? taxTitle : null,
-            taxCost: taxStatus === "on" ? taxCost : null,
-          },
-          paymentStatus: "pending",
-          enrollStatus: "purchase",
-          status: false,
-        });
-
         if (subscription.type === "subscription") {
-          planEnrollmentId = enrollSubscription._id;
-        }
+          let finalPrice = subscription.price;
 
-        enrollIdDuration[enrollSubscription._id] = subscription.duration;
-        totalAmount += Number(subscription.price);
+          // If add Coupon, it will attach only in plan!
+          if (coupon) {
+            if (subscription.price < coupon.minPurchaseAmount) {
+              throw `Min. ${coupon.minPurchaseAmount}CAD required to apply coupon!`;
+            }
 
-        line_items.push({
-          price_data: {
-            currency: "cad",
-            product_data: {
-              name: subscription.title,
+            if (coupon.discountType === "percentage") {
+              finalPrice = Number(subscription.price - (subscription.price * coupon.discount) / 100);
+            } else {
+              finalPrice = subscription.price - coupon.discount;
+            }
+          }
+
+          const enrollSubscription: any = await EnrollSubscription.create({
+            retailerId: req.user._id,
+            planSnapshot: subscription,
+            couponSnapshot: coupon ?? null,
+            taxSnapshot: {
+              taxTitle: taxStatus === "on" ? taxTitle : null,
+              taxCost: taxStatus === "on" ? taxCost : null,
             },
-            unit_amount: Math.round(Number(subscription.price) * 100), // convert into cent
-          },
-          quantity: 1,
-        });
+            balanceInfo: {
+              planCurrentPrice: finalPrice,
+            },
+            paymentStatus: "pending",
+            enrollStatus: "purchase",
+            status: false,
+          });
+
+          planEnrollmentId = enrollSubscription._id;
+          enrollIdDuration[enrollSubscription._id] = subscription.duration;
+          totalAmount += Number(subscription.price);
+
+          const couponPackageName = `${subscription.title} (-${coupon?.discount}${coupon?.discountType === "percentage" ? "%" : "CAD"})`;
+
+          line_items.push({
+            price_data: {
+              currency: "cad",
+              product_data: {
+                name: coupon ? couponPackageName : subscription.title,
+              },
+              unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent
+            },
+            quantity: 1,
+          });
+        } else {
+          const enrollSubscription: any = await EnrollSubscription.create({
+            retailerId: req.user._id,
+            planSnapshot: subscription,
+            taxSnapshot: {
+              taxTitle: taxStatus === "on" ? taxTitle : null,
+              taxCost: taxStatus === "on" ? taxCost : null,
+            },
+            paymentStatus: "pending",
+            enrollStatus: "purchase",
+            status: false,
+          });
+
+          enrollIdDuration[enrollSubscription._id] = subscription.duration;
+          totalAmount += Number(subscription.price);
+
+          line_items.push({
+            price_data: {
+              currency: "cad",
+              product_data: {
+                name: subscription.title,
+              },
+              unit_amount: Math.round(Number(subscription.price) * 100), // convert into cent
+            },
+            quantity: 1,
+          });
+        }
       }
     }
 
@@ -531,38 +654,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       });
     }
 
-    const discounts: any[] = [];
-
-    // Attach coupon in the checkout if it has
-    if (coupon) {
-      let stripeCoupon = null;
-
-      if (totalAmount + (Number(totalAmount) * taxCost) / 100 < coupon.minPurchaseAmount) {
-        throw `Min. ${coupon.minPurchaseAmount}CAD required to apply coupon!`;
-      }
-
-      if (coupon.discountType === "percentage") {
-        stripeCoupon = await stripe.coupons.create({
-          percent_off: coupon.discount,
-          duration: "once",
-        });
-      } else {
-        stripeCoupon = await stripe.coupons.create({
-          amount_off: coupon.discount * 100, // convert into cent
-          duration: "once",
-          currency: "cad",
-        });
-      }
-
-      discounts.push({
-        coupon: stripeCoupon.id,
-      });
-    }
-
     const session = await stripe.checkout.sessions.create({
       line_items,
       mode: "payment",
-      discounts,
+      // discounts,
       metadata: enrollIdDuration,
       success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}&takeFreeTrial=${req.user.takeFreeTrial}&pickPlan=${!!pickPlan}&enrolled=${!!enrolled}&planEnrollmentId=${planEnrollmentId}`,
       cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
