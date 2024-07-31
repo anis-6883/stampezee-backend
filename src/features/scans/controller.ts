@@ -144,6 +144,7 @@ export const stampScanDetailsForRetailer = asyncHandler(async (req: IApiRequest,
               $project: {
                 _id: 0,
                 fullName: 1,
+                email: 1,
                 image: 1,
                 dialCode: 1,
                 phone: 1,

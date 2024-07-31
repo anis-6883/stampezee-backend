@@ -182,14 +182,16 @@ export const updateCategoryStatus = asyncHandler(async (req: IApiRequest, res: R
 export const softDeleteCategory = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
-  const category = await Category.findOneAndUpdate(
+  const category = await Category.findById(id);
+  if (!category) return apiResponse(res, 404, false, "Category not found!");
+
+  await Category.findOneAndUpdate(
     { _id: id },
     {
+      name: `deleted-${new Date().toISOString()}-${category.name}`,
       softDeleted: true,
     }
   );
-
-  if (!category) return apiResponse(res, 404, false, "Category not found!");
 
   await Sorting.updateOne({ title: "category" }, { $pull: { sortedData: id } });
 
