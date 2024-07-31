@@ -15,6 +15,11 @@ const schema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    email: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     dialCode: {
       type: String,
       trim: true,
