@@ -193,25 +193,25 @@ export const uploadInvoice = asyncHandler(async (req: IApiRequest, res: Response
   if (orderIsAvailable.length < 1) throw "Invalid Order";
   if (orderIsAvailable[0].subAdmin.length < 1) return apiResponse(res, 401, false, "Unauthorized Request!");
 
-  if (!req?.file) {
-    return apiResponse(res, 400, false, "Invalid Request!", { image: "image file is required!" });
+  const updatedBody: any = { amount };
+  if (req?.file) {
+    const { status, message } = fileValidation(req.file, undefined, ["image/jpeg", "image/png", "image/jpg"]);
+    if (!status) {
+      return apiResponse(res, 400, false, "Invalid Request!", { image: message });
+    }
+  }
+  if (req?.file) {
+    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "invoice_image");
+    if (status) {
+      updatedBody.invoice = key;
+    }
   }
 
-  const { status, message } = fileValidation(req.file, undefined, ["image/jpeg", "image/png", "image/jpg"]);
-  if (!status) {
-    return apiResponse(res, 400, false, "Invalid Request!", { image: message });
-  }
-
-  uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "stamp_image")
-    .then(async ({ status: s3Status, key }) => {
-      if (!s3Status) throw new Error("File upload failed");
-      await OrderStamp.findByIdAndUpdate({ _id: orderStampId }, { invoice: key, amount });
-    })
-    .catch((err) => {
-      console.error("Something went wrong while uploading invoice image:", err);
-    });
-
-  return apiResponse(res, 200, true, "Stamp invoice updated successfully");
+  const updateOrder: any = await OrderStamp.findByIdAndUpdate({ _id: orderStampId }, updatedBody, { new: true });
+  return apiResponse(res, 200, true, "Stamp invoice updated successfully", {
+    invoice: updateOrder.invoice,
+    amount: updateOrder.amount,
+  });
 });
 
 export const scanHistory = asyncHandler(async (req: IApiRequest, res: Response) => {
