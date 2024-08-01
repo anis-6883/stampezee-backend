@@ -54,7 +54,7 @@ export const createSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
   const [branch, existingSubAdmin, engagedSubAdmin] = await Promise.all([
     Branch.findOne({ _id: createBody.branchId, retailerId: createBody.retailerId }),
     SubAdmin.findOne({ email: createBody.email }),
-    SubAdmin.findOne({ email: createBody.email, branchId: createBody.branchId }),
+    SubAdmin.findOne({ branchId: createBody.branchId }),
   ]);
 
   if (!branch) throw "Branch not found!";
@@ -196,8 +196,13 @@ export const updateSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
   const { softDeleted, password, ...updatedBody } = result;
 
   if (updatedBody.branchId) {
-    const branch = await Branch.findOne({ _id: updatedBody.branchId, retailerId: req.user._id });
+    const [branch, alreadyAssign] = await Promise.all([
+      Branch.findOne({ _id: updatedBody.branchId, retailerId: req.user._id }),
+      SubAdmin.findOne({ branchId: updatedBody.branchId }),
+    ]);
+
     if (!branch) throw "Branch not found!";
+    if (alreadyAssign) throw "Already assign in given branch!";
   }
 
   const existingSubAdmin = await SubAdmin.findOne({ email: updatedBody.email, _id: { $ne: id } });
