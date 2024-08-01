@@ -69,6 +69,8 @@ export const getCommonSettings = asyncHandler(async (req: Request, res: Response
       "stripe.taxTitle": 1,
       "stripe.taxCost": 1,
       "stripe.taxStatus": 1,
+      "page.terms": 1,
+      "page.policy": 1,
     }
   );
 
