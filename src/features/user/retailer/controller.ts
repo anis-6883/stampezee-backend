@@ -186,6 +186,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   data.expiresIn = new Date().setTime(new Date().getTime() + ALARM_EXPIRE_TIME);
   data.role = ROLE.RETAILER;
   data.plan = subscription?.planSnapshot?.slug ?? null;
+  data.planPayment = subscription?.balanceInfo?.planCurrentPrice ?? null;
   data.planStartAt = subscription?.validityFrom ?? null;
   data.planValidAt = subscription?.validityTo ?? null;
   data.totalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addonBranches;
@@ -259,6 +260,7 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
 
   data.role = ROLE.RETAILER;
   data.plan = subscription?.planSnapshot?.slug ?? null;
+  data.planPayment = subscription?.balanceInfo?.planCurrentPrice ?? null;
   data.planStartAt = subscription?.validityFrom ?? null;
   data.planValidAt = subscription?.validityTo ?? null;
   data.totalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addonBranches;
