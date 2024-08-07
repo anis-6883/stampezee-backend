@@ -773,3 +773,59 @@ export const successEnrollSubscription = asyncHandler(async (req: Request, res: 
     throw "Something went wrong in payment!";
   }
 });
+
+/**
+ * Test Enroll Subscription
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const testEnrollSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
+  // Get payment metadata
+  const paymentMetadata = await Settings.findOne(
+    {},
+    {
+      "stripe.planChangeCost": 1,
+      "stripe.refundableThreshold": 1,
+      "stripe.taxTitle": 1,
+      "stripe.taxCost": 1,
+      "stripe.taxStatus": 1,
+      "stripe.stripeSecretKey": 1,
+    }
+  );
+
+  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+
+  const { stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } = paymentMetadata.stripe;
+  const stripe = new Stripe(stripeSecretKey);
+
+  const customer = await stripe.customers.create({
+    name: "Jenny Rosen",
+    email: "jennyrosen@example.com",
+  });
+
+  // const subscription = await stripe.subscriptions.create({
+  //   customer: customer.id,
+  //   items: [
+  //     {
+  //       price_data: {
+  //         currency: "cad",
+  //         product: "prod_QcI94v10aW1Eei",
+  //         unit_amount: 5 * 100,
+  //         recurring: {
+  //           interval: "month",
+  //         },
+  //       },
+  //     },
+  //   ],
+  //   payment_settings: {
+  //     payment_method_types: ["card"],
+  //     save_default_payment_method: "on_subscription",
+  //   },
+  //   expand: ["latest_invoice.payment_intent"],
+  // });
+
+  // console.log({ subscription });
+
+  return apiResponse(res, 200, true, "Send to Payment Page!");
+});

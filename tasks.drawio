@@ -1,0 +1,33 @@
+<mxfile host="65bd71144e">
+    <diagram id="HFn9QjN9yAcOKt7tSNPU" name="Page-1">
+        <mxGraphModel dx="1071" dy="570" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="4" value="&lt;h1&gt;Existing Tasks:&lt;/h1&gt;&lt;p&gt;&lt;/p&gt;&lt;ol style=&quot;font-size: 16px;&quot;&gt;&lt;li&gt;Subscription Based Payment&lt;/li&gt;&lt;li&gt;Auto Country Select in Registration&lt;/li&gt;&lt;li&gt;Change Toast Messsage in Some Pages&lt;/li&gt;&lt;li&gt;Date Range Update (Dual Calender) or Lifetime&lt;/li&gt;&lt;li&gt;&lt;font color=&quot;#ff3333&quot;&gt;Add-on in Stamp&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font color=&quot;#ffffff&quot;&gt;Retailer Dashboard&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font color=&quot;#ffffff&quot;&gt;Stamp Publish or Draft&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font color=&quot;#ffffff&quot;&gt;Add Brancd Logo in Retailer Registration&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font color=&quot;#ffffff&quot;&gt;Add Refresh Token&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font color=&quot;#ffffff&quot;&gt;Image Resize Function&lt;/font&gt;&lt;/li&gt;&lt;/ol&gt;&lt;p&gt;&lt;/p&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="40" width="560" height="380" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="1DqcwQg0odX4exrZwgAj" name="Stripe Payment Step">
+        <mxGraphModel dx="1071" dy="570" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="RLNzk9oUjucNwURi9MIc-1" value="&lt;font style=&quot;font-size: 14px;&quot;&gt;Create &lt;br&gt;Subscription Product&amp;nbsp;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="530" y="20" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="RLNzk9oUjucNwURi9MIc-3" value="&lt;span style=&quot;font-size: 14px;&quot;&gt;Tax&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="30" y="170" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="RLNzk9oUjucNwURi9MIc-4" value="&lt;span style=&quot;font-size: 14px;&quot;&gt;Coupon&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="30" y="240" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="5e215zD2mz_aJPSDv66l-1" value="&lt;span style=&quot;font-size: 14px;&quot;&gt;Manage Webhooks&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="530" y="100" width="120" height="60" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
