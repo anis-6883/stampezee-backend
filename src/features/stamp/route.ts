@@ -6,6 +6,7 @@ import {
   getAllStamps,
   getBranchCategoryImageList,
   getSingleStamp,
+  publishStamp,
   softDeleteStamp,
   updateStamp,
 } from "./controller";
@@ -17,6 +18,7 @@ router.get("/all", getAllStamps);
 router.get("/branch-category-image-list", getBranchCategoryImageList);
 router.get("/deleted", getAllDeletedStamps);
 router.get("/:id", getSingleStamp);
+router.put("/publish/:id", publishStamp);
 router.put("/:id", updateStamp);
 router.delete("/:id", softDeleteStamp);
 router.delete("/confirm/:id", confirmDeleteStamp);

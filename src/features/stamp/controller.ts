@@ -279,11 +279,11 @@ export const updateStamp = asyncHandler(async (req: IApiRequest, res: Response) 
   });
 
   const { id } = req.params;
-  const { branchId, categoryId, stampImageId, softDeleted, ...updatedBody } = result;
+  const { branchId, categoryId, stampImageId, hasValidity, softDeleted, ...updatedBody } = result;
 
   const stamp = await Stamp.findOne({ _id: id });
-  if (stamp.isPublished) throw "The published stamp cannot be edited!";
   if (!stamp) throw "Stamp not found!";
+  if (stamp.isPublished) throw "The published stamp cannot be edited!";
 
   if (branchId) {
     const branch = await Branch.findOne({ _id: branchId, retailerId: req.user._id });
@@ -324,6 +324,30 @@ export const updateStamp = asyncHandler(async (req: IApiRequest, res: Response) 
   const updatedData: any = await Stamp.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
 
   return apiResponse(res, 200, true, "Stamp updated successfully!", updatedData);
+});
+
+/**
+ * Update A Single Stamp
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const publishStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { id } = req.params;
+
+  const stamp = await Stamp.findOne({ _id: id });
+  if (!stamp) throw "Stamp not found!";
+  if (stamp.isPublished) throw "The stamp is already published";
+
+  const settings = await Settings.findOne(null, { "general.timezone": 1 });
+
+  if (!settings?.general?.timezone) {
+    throw "Setup TimeZone First!";
+  }
+
+  const updatedData: any = await Stamp.findOneAndUpdate({ _id: id }, { isPublished: true }, { new: true });
+
+  return apiResponse(res, 200, true, "Stamp published successfully!", updatedData);
 });
 
 /**
