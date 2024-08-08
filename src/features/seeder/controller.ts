@@ -104,7 +104,9 @@ export const createStamps = asyncHandler(async (req: Request, res: Response) => 
           promotionReward: randInt > 5 ? "1 Mojo Drink 500ml Free" : "",
           discountReward: randInt > 5 ? 0 : randInt,
           startedAt: moment(),
-          expiredAt: moment().add(5, "days"),
+          expiredAt: moment().add(30, "days"),
+          isPublished: true,
+          hasValidity: false,
         });
       }
     }

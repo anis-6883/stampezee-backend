@@ -799,33 +799,117 @@ export const testEnrollSubscription = asyncHandler(async (req: IApiRequest, res:
   const { stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } = paymentMetadata.stripe;
   const stripe = new Stripe(stripeSecretKey);
 
-  const customer = await stripe.customers.create({
-    name: "Jenny Rosen",
-    email: "jennyrosen@example.com",
+  const coupon = await stripe.coupons.create({
+    name: "Bangladesh 2.0",
+    duration: "once",
+    percent_off: 10,
   });
 
-  // const subscription = await stripe.subscriptions.create({
-  //   customer: customer.id,
-  //   items: [
-  //     {
-  //       price_data: {
-  //         currency: "cad",
-  //         product: "prod_QcI94v10aW1Eei",
-  //         unit_amount: 5 * 100,
-  //         recurring: {
-  //           interval: "month",
-  //         },
-  //       },
-  //     },
-  //   ],
-  //   payment_settings: {
-  //     payment_method_types: ["card"],
-  //     save_default_payment_method: "on_subscription",
-  //   },
-  //   expand: ["latest_invoice.payment_intent"],
-  // });
+  const session = await stripe.checkout.sessions.create({
+    line_items: [
+      {
+        price: "price_1PlOXDJVIk5LKvIEkTdrlobS",
+        quantity: 1,
+      },
+      // {
+      //   price: product2.default_price + "",
+      //   quantity: 1,
+      // },
+      // {
+      //   price_data: {
+      //     currency: "cad",
+      //     product_data: {
+      //       name: `${taxTitle} (${taxCost}%)`,
+      //     },
+      //     unit_amount: Math.round(((Number(5 + 15) * taxCost) / 100) * 100), // convert into cent
+      //   },
+      //   quantity: 1,
+      // },
+    ],
+    discounts: [
+      {
+        coupon: coupon.id,
+      },
+    ],
+    mode: "subscription",
+    success_url: `${process.env.FRONTEND_URL}`,
+    cancel_url: `${process.env.FRONTEND_URL}`,
+    customer_email: "anisuzzaman.rootdevs@gmail.com",
+  });
 
-  // console.log({ subscription });
+  return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
+});
 
-  return apiResponse(res, 200, true, "Send to Payment Page!");
+/**
+ * Test Webhook
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const testWebhook = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const sig = req.headers["stripe-signature"];
+
+  let event;
+
+  // Get payment metadata
+  const paymentMetadata = await Settings.findOne(
+    {},
+    {
+      "stripe.planChangeCost": 1,
+      "stripe.refundableThreshold": 1,
+      "stripe.taxTitle": 1,
+      "stripe.taxCost": 1,
+      "stripe.taxStatus": 1,
+      "stripe.stripeSecretKey": 1,
+    }
+  );
+
+  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+
+  const { stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } = paymentMetadata.stripe;
+  const stripe = new Stripe(stripeSecretKey);
+
+  console.log({ "req.body": req.body });
+  console.log({ sig: sig });
+  console.log({ STRIPE_WEBHOOK_SECRET_KEY: process.env.STRIPE_WEBHOOK_SECRET_KEY });
+
+  try {
+    event = stripe.webhooks.constructEvent(JSON.stringify(req.body), sig, process.env.STRIPE_WEBHOOK_SECRET_KEY);
+  } catch (err) {
+    console.log({ err });
+    // return res.status(400).send(`Webhook Error: ${err.message}`);
+    return apiResponse(res, 400, false, err);
+  }
+
+  // Handle the event
+  switch (event.type) {
+    //Event when the subscription started
+    case "checkout.session.completed":
+      console.log("New Subscription started!");
+      console.log(event.data);
+      break;
+
+    // Event when the payment is successful (every subscription interval)
+    case "invoice.paid":
+      console.log("Invoice paid");
+      console.log(event.data);
+      break;
+
+    // Event when the payment failed due to card problems or insufficient funds (every subscription interval)
+    case "invoice.payment_failed":
+      console.log("Invoice payment failed!");
+      console.log(event.data);
+      break;
+
+    // Event when subscription is updated
+    case "customer.subscription.updated":
+      console.log("Subscription updated!");
+      console.log(event.data);
+      break;
+
+    default:
+      console.log(`Unhandled event type ${event.type}`);
+  }
+
+  return apiResponse(res, 200, true, "Hit in Webhook!");
 });
