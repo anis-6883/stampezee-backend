@@ -48,6 +48,16 @@ const discountReward = Joi.alternatives().conditional("rewardType", {
   }),
 });
 
+const hasValidity = Joi.boolean().required().messages({
+  "any.required": "hasValidity is required!",
+  "boolean.base": "hasValidity must be a boolean value!",
+});
+
+const isPublished = Joi.boolean().required().messages({
+  "any.required": "isPublished is required!",
+  "boolean.base": "isPublished must be a boolean value!",
+});
+
 const startedAt = Joi.date().messages({
   "date.base": "startedAt must be date!",
 });
@@ -71,12 +81,25 @@ export const stampSchema = Joi.object({
     "any.required": "rewardType is required!",
   }),
   promotionReward,
+  hasValidity,
+  isPublished,
   discountReward,
-  startedAt: startedAt.required().messages({
-    "any.required": "startedAt is required!",
+  startedAt: Joi.date().when("hasValidity", {
+    is: true,
+    then: Joi.required().messages({
+      "date.base": "startedAt must be a date!",
+      "any.required": "startedAt is required!",
+    }),
+    otherwise: Joi.optional(),
   }),
-  expiredAt: expiredAt.required().messages({
-    "any.required": "expiredAt is required!",
+  expiredAt: Joi.date().when("hasValidity", {
+    is: true,
+    then: Joi.date().greater(Joi.ref("startedAt")).required().messages({
+      "date.base": "expiredAt must be a date!",
+      "date.greater": "expiredAt must be greater than startedAt!",
+      "any.required": "expiredAt is required!",
+    }),
+    otherwise: Joi.optional(),
   }),
 });
 

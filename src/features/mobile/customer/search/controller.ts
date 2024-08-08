@@ -56,6 +56,7 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
   const query2: any = {
     startedAt: { $lte: new Date() },
     expiredAt: { $gte: new Date() },
+    isPublished: true,
     status: true,
     softDeleted: false,
     _id: { $nin: stampIds },

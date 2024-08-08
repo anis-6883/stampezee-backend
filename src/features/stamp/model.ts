@@ -50,6 +50,14 @@ const schema = new mongoose.Schema(
       enum: ["promotion", "discount"],
       required: true,
     },
+    hasValidity: {
+      type: Boolean,
+      required: true,
+    },
+    isPublished: {
+      type: Boolean,
+      required: true,
+    },
     promotionReward: {
       type: String,
       trim: true,
