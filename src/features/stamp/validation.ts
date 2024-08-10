@@ -110,3 +110,11 @@ export const updateStampSchema = Joi.object({
   expiredAt,
   rewardType,
 });
+
+export const stampStatusSchema = Joi.object({
+  status: Joi.boolean().required().messages({
+    "any.required": "status is required!",
+    "boolean.base": "status must be boolean!",
+    "boolean.empty": "status must not be empty!",
+  }),
+});
