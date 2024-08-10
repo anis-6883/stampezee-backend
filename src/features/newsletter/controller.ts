@@ -10,7 +10,7 @@ import { newsletterSchema } from "./validation";
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const subsscribeNewsletter = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const subscribeNewsletter = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { email } = await newsletterSchema.validateAsync(req.body);
   const forwardedIpsStr = req.headers["x-forwarded-for"] as string | undefined;
   const publicIP = req.headers["cf-connecting-ip"] || req.headers["x-real-ip"] || req.socket.remoteAddress || "";
