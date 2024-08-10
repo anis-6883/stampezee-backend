@@ -10,6 +10,8 @@ import {
   getRandomInteger,
 } from "../../../helpers";
 import { IApiRequest, IUser } from "../../../types";
+import CollectStamp from "../../mobile/customer/search/model";
+import OrderStamp from "../../mobile/sub-admin/home/model";
 import { sendVerificationEmail } from "../service";
 import {
   customerChangeForgetPasswordSchema,
@@ -176,6 +178,11 @@ export const customerProfile = asyncHandler(async (req: IApiRequest, res: Respon
     "verifiedAt",
     "createdAt",
     "updatedAt",
+  ]);
+
+  [data.totalStamps, data.totalReward] = await Promise.all([
+    CollectStamp.countDocuments({ customerId: req?.user?._id }),
+    OrderStamp.countDocuments({ customerId: req?.user?._id, rewardCollected: true }),
   ]);
 
   return apiResponse(res, 200, true, "Customer Profile", data);
