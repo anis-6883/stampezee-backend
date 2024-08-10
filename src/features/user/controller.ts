@@ -1,7 +1,7 @@
 import { Response } from "express";
-import { COOKIE_KEY } from "../../configs/constants";
 import { apiResponse, asyncHandler, generateSignature } from "../../helpers";
 import { IApiRequest } from "../../types";
+const ALARM_EXPIRE_TIME = 60 * 60 * 24 * 29 * 1000; // 29 Days
 
 /**
  * Refresh Access Token
@@ -10,14 +10,12 @@ import { IApiRequest } from "../../types";
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const refreshAccessToken = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const accessToken = generateSignature({ email: req.user.email, role: req.role }, "1d");
+  const accessToken = generateSignature({ email: req.user.email, role: req.role }, "30d");
+  const refreshToken = generateSignature({ email: req.user.email, role: req.role }, "60d");
 
-  res.cookie(COOKIE_KEY, accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
-    expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  return apiResponse(res, 200, true, "Access Token Regenerated!", {
+    accessToken,
+    refreshToken,
+    expiresIn: new Date().setTime(new Date().getTime() + ALARM_EXPIRE_TIME),
   });
-
-  return apiResponse(res, 200, true, "Access Token Regenerated!");
 });
