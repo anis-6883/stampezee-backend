@@ -13,8 +13,10 @@ export const getAllNotificationsForCustomer = asyncHandler(async (req: IApiReque
   const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
-  console.log({ id: req?.user?._id });
-  const query = { $or: [{ type: "all" }, { sentTo: { $in: [req?.user?._id.toString()] } }] };
+  const query = {
+    createdAt: { $gte: req?.user.createdAt },
+    $or: [{ type: "all" }, { sentTo: { $in: [req?.user?._id.toString()] } }],
+  };
 
   const [docs, total] = await Promise.all([
     Notification.aggregate([

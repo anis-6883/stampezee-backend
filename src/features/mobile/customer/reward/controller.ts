@@ -4,7 +4,7 @@ import { IApiRequest } from "../../../../types/index";
 import CollectStamp from "../search/model";
 
 /**
- * Get All Stamp Categories
+ * Get All Rewards
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
