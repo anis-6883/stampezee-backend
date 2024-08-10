@@ -218,7 +218,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       if (changeMode > 0) {
         for (const subscription of subscriptions) {
           if (subscription.type === "subscription") {
-            let finalPrice = subscription.price - balanceAmount;
+            let finalPrice = enrolled.balanceInfo.planCurrentPrice - balanceAmount;
 
             // If add Coupon, it will attach only in plan!
             if (coupon) {
@@ -251,7 +251,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               status: false,
             });
 
-            totalAmount += Number(subscription.price - balanceAmount);
+            totalAmount += finalPrice;
             enrollIdDuration[enrollSubscription._id] = subscription.duration;
             planEnrollmentId = enrollSubscription._id;
             const couponPackageName = `${subscription.title} (-${coupon?.discount}${coupon?.discountType === "percentage" ? "%" : "CAD"})`;
@@ -321,7 +321,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
         for (const subscription of subscriptions) {
           if (subscription.type === "subscription") {
-            totalAmount += Number(subscription.price - balanceAmount);
+            totalAmount += Number(enrolled.balanceInfo.planCurrentPrice - balanceAmount);
           } else {
             totalAmount += Number(subscription.price); // Add-on
           }
@@ -482,10 +482,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                 taxSnapshot: {
                   taxTitle: taxStatus === "on" ? taxTitle : null,
                   taxCost: taxStatus === "on" ? taxCost : null,
-                },
-                balanceInfo: {
-                  currentBalance: balanceAmount,
-                  planCurrentPrice: subscription.price,
                 },
                 planChangeCost,
                 paymentStatus: "pending",
