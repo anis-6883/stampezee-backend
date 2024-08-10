@@ -20,7 +20,7 @@ router.use("/customer/home-screen", authAndPermissionCheck(ROLE.CUSTOMER), homeS
 router.use("/customer/search-screen", authAndPermissionCheck(ROLE.CUSTOMER), searchScreenCustomerRoutes);
 router.use("/customer/reward-screen", authAndPermissionCheck(ROLE.CUSTOMER), rewardScreenCustomerRoutes);
 router.use("/customer/notification-screen", authAndPermissionCheck(ROLE.CUSTOMER), notificationScreenCustomerRoutes);
-router.use("/customer/profile-screen", authAndPermissionCheck(ROLE.CUSTOMER), profileScreenCustomerRoutes);
+router.use("/customer/profile-screen", profileScreenCustomerRoutes);
 
 //#################### SUB ADMIN #########################
 router.use("/sub-admin/home-screen", authAndPermissionCheck(ROLE.SUB_ADMIN), homeScreenSubAdminRoutes);
