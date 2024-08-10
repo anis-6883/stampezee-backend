@@ -41,6 +41,7 @@ export const createStampImage = asyncHandler(async (req: IApiRequest, res: Respo
       StampImage.find({
         userId: req.user._id,
         ref: "retailer",
+        softDeleted: false,
       }),
     ]);
 
@@ -49,7 +50,7 @@ export const createStampImage = asyncHandler(async (req: IApiRequest, res: Respo
     const unUsedIds = addonIds.filter((item) => !retailerAddonIds.includes(item));
 
     if (unUsedIds.length === 0) {
-      throw "Your stamp image limit is over!";
+      throw "Your stamp image limit is over. Take new Add-on!";
     }
 
     createBody.enrollSubscriptionId = unUsedIds[0];

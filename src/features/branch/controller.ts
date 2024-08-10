@@ -50,7 +50,7 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
   const branchWithoutSystemDisabled = retailerTotalBranch.filter((branch) => !branch.disabledBySystem).length;
 
   if (branchWithoutSystemDisabled >= allowTotalBranch) {
-    throw "Your branch limit is over!";
+    throw "Your branch limit is over. Take new Add-on!";
   }
 
   const retailerAddonIds = retailerTotalBranch
