@@ -348,8 +348,14 @@ export const recentScans = asyncHandler(async (req: IApiRequest, res: Response) 
         $unwind: "$collectedstamps",
       },
       {
+        $addFields: {
+          hasInvoice: { $cond: { if: { $eq: ["$invoice", null] }, then: false, else: true } },
+        },
+      },
+      {
         $project: {
           stamp: "$collectedstamps.stampDetails",
+          hasInvoice: 1,
           invoice: 1,
           amount: 1,
           createdAt: 1,
