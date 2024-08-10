@@ -7,6 +7,7 @@ import { IApiRequest } from "../../types";
 import Branch from "../branch/model";
 import EnrollSubscription from "../enroll-subscription/model";
 import SubAdmin from "../user/sub-admin/model";
+import { sendRegistrationMail } from "./service";
 import { subAdminSchema, subAdminSchema2, subAdminStatusSchema } from "./validation";
 
 /**
@@ -48,13 +49,13 @@ export const createSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
   const allowTotalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addons.length;
 
   if (retailerTotalSubAdmin.length >= allowTotalBranch) {
-    throw "Your sub-admin limit is over!";
+    throw "Your limit is over. Take Branch Add-on!";
   }
 
-  const [branch, existingSubAdmin, engagedSubAdmin] = await Promise.all([
+  const [branch, existingSubAdmin, engagedSubAdmin]: any = await Promise.all([
     Branch.findOne({ _id: createBody.branchId, retailerId: createBody.retailerId }),
     SubAdmin.findOne({ email: createBody.email }),
-    SubAdmin.findOne({ branchId: createBody.branchId }),
+    SubAdmin.findOne({ branchId: createBody.branchId, softDeleted: false }),
   ]);
 
   if (!branch) throw "Branch not found!";
@@ -72,17 +73,20 @@ export const createSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
   }
 
   createBody.password = await bcrypt.hash(password, 10);
+  const fullName = createBody?.lastName ? `${createBody.firstName} ${createBody.lastName}` : createBody.firstName;
 
   const subAdmin: any = await SubAdmin.create({
     ...createBody,
     image: imageKey,
-    fullName: createBody?.lastName ? `${createBody.firstName} ${createBody.lastName}` : createBody.firstName,
+    fullName,
   });
+
+  await sendRegistrationMail(createBody.email, fullName, password, req.user.storeName, branch.name);
 
   // Remove Sensitive Data
   const data = exclude(subAdmin._doc, ["password", "createdAt", "updatedAt"]);
 
-  return apiResponse(res, 201, true, "Sub Admin created successfully!", data);
+  return apiResponse(res, 201, true, "Sub Admin created successfully & sent mail!", data);
 });
 
 /**
@@ -198,7 +202,7 @@ export const updateSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
   if (updatedBody.branchId) {
     const [branch, alreadyAssign] = await Promise.all([
       Branch.findOne({ _id: updatedBody.branchId, retailerId: req.user._id }),
-      SubAdmin.findOne({ branchId: updatedBody.branchId }),
+      SubAdmin.findOne({ branchId: updatedBody.branchId, _id: { $ne: id } }),
     ]);
 
     if (!branch) throw "Branch not found!";

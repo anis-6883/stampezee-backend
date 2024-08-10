@@ -71,6 +71,7 @@ export const getCommonSettings = asyncHandler(async (req: Request, res: Response
       "stripe.taxStatus": 1,
       "page.terms": 1,
       "page.policy": 1,
+      "googleMap.googleMapsApiKey": 1,
     }
   );
 
