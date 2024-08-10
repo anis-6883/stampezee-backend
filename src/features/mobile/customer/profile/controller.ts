@@ -17,5 +17,5 @@ export const getSettings = asyncHandler(async (req: IApiRequest, res: Response) 
     faq: `${process.env.FRONTEND_URL}/faqs`,
     help: settings.general.contactEmail,
   };
-  return apiResponse(res, 200, true, "Eligible reward list fetched successfully!", data);
+  return apiResponse(res, 200, true, "Customer settings fetched successfully!", data);
 });
