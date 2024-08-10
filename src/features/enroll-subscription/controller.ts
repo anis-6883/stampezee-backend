@@ -209,7 +209,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       const balanceAmount = calculateBalanceAmount(
         enrolled.validityFrom,
         enrolled.validityTo,
-        enrolled.planSnapshot.price
+        enrolled.balanceInfo.planCurrentPrice
       );
 
       ////////////////////////////////
@@ -218,7 +218,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       if (changeMode > 0) {
         for (const subscription of subscriptions) {
           if (subscription.type === "subscription") {
-            let finalPrice = enrolled.balanceInfo.planCurrentPrice - balanceAmount;
+            let finalPrice = subscription.price - balanceAmount;
 
             // If add Coupon, it will attach only in plan!
             if (coupon) {
@@ -243,7 +243,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               },
               balanceInfo: {
                 currentBalance: balanceAmount,
-                planCurrentPrice: finalPrice,
+                planCurrentPrice: coupon
+                  ? subscription.price - Number((subscription.price * coupon.discount) / 100)
+                  : subscription.price,
               },
               planChangeCost,
               paymentStatus: "pending",
@@ -321,7 +323,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
         for (const subscription of subscriptions) {
           if (subscription.type === "subscription") {
-            totalAmount += Number(enrolled.balanceInfo.planCurrentPrice - balanceAmount);
+            totalAmount += Number(subscription.price - balanceAmount);
           } else {
             totalAmount += Number(subscription.price); // Add-on
           }
@@ -638,6 +640,14 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
     // Add Tax in (%)
     if (taxStatus === "on") {
+      if (coupon) {
+        if (coupon.discountType === "percentage") {
+          totalAmount += Number((pickPlan.price * coupon.discount) / 100);
+        } else {
+          totalAmount += coupon.discount;
+        }
+      }
+
       line_items.push({
         price_data: {
           currency: "cad",
