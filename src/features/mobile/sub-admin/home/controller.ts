@@ -369,3 +369,86 @@ export const recentScans = asyncHandler(async (req: IApiRequest, res: Response) 
 
   return apiResponse(res, 200, true, "Recent scans have fetched successfully!", docs, mobilePagination);
 });
+
+export const orderDetails = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const orderDetails = await OrderStamp.aggregate([
+    {
+      $match: {
+        _id: mongoose.Types.ObjectId.createFromHexString(req?.params?.id),
+        subAdminId: req.user._id,
+      },
+    },
+    {
+      $lookup: {
+        from: "collectstamps",
+        localField: "collectStampId",
+        foreignField: "_id",
+        as: "collectedstamps",
+        pipeline: [
+          {
+            $lookup: {
+              from: "stamps",
+              localField: "stampId",
+              foreignField: "_id",
+              as: "stampDetails",
+              pipeline: [
+                {
+                  $project: {
+                    title: 1,
+                    rules: 1,
+                    noOfStampsToCollect: 1,
+                    minPurchaseAmount: 1,
+                    rewardType: 1,
+                    promotionReward: 1,
+                    discountReward: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $unwind: "$stampDetails",
+          },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: "customers",
+        localField: "customerId",
+        foreignField: "_id",
+        as: "customer",
+        pipeline: [
+          {
+            $project: { fullName: 1, email: 1 },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: "$customer",
+    },
+    {
+      $unwind: "$collectedstamps",
+    },
+    {
+      $addFields: {
+        hasInvoice: { $cond: { if: { $eq: ["$invoice", null] }, then: false, else: true } },
+      },
+    },
+    {
+      $project: {
+        stamp: "$collectedstamps.stampDetails",
+        customer: 1,
+        hasInvoice: 1,
+        invoice: 1,
+        amount: 1,
+        rewardCollected: 1,
+        createdAt: 1,
+      },
+    },
+  ]);
+
+  if (orderDetails.length < 1) throw "Inavlid order";
+  return apiResponse(res, 200, true, "Order details have fetched successfully!", orderDetails[0]);
+});
