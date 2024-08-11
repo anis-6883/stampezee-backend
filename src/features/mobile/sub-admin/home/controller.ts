@@ -449,6 +449,13 @@ export const orderDetails = asyncHandler(async (req: IApiRequest, res: Response)
     },
   ]);
 
+  /**
+   * Following error throw when
+   * orderId is invalid
+   * this order doesn't belong to this subadmin
+   * customer account is hard deleted from db
+   * stamp is hard deleted
+   */
   if (orderDetails.length < 1) throw "Inavlid order";
   return apiResponse(res, 200, true, "Order details have fetched successfully!", orderDetails[0]);
 });
