@@ -278,6 +278,7 @@ export const softDeleteSubAdmin = asyncHandler(async (req: IApiRequest, res: Res
   await SubAdmin.findByIdAndUpdate(id, {
     email: `deleted-${new Date().toISOString()}-${subAdmin.email}`,
     softDeleted: true,
+    status: false,
   });
 
   return apiResponse(res, 200, true, "Sub Admin deleted successfully!");
