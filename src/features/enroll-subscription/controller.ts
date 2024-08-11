@@ -594,7 +594,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
           planEnrollmentId = enrollSubscription._id;
           enrollIdDuration[enrollSubscription._id] = subscription.duration;
-          totalAmount += Number(subscription.price);
+          totalAmount += finalPrice;
 
           const couponPackageName = `${subscription.title} (-${coupon?.discount}${coupon?.discountType === "percentage" ? "%" : "CAD"})`;
 
