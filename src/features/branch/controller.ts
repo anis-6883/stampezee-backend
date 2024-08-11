@@ -7,6 +7,7 @@ import { IApiRequest, IEnrollPayment } from "../../types";
 import EnrollSubscription from "../enroll-subscription/model";
 import Payment from "../payment/model";
 import Settings from "../settings/model";
+import Stamp from "../stamp/model";
 import Subscription from "../subscription/model";
 import SubAdmin from "../user/sub-admin/model";
 import Branch from "./model";
@@ -424,13 +425,11 @@ export const softDeleteBranch = asyncHandler(async (req: IApiRequest, res: Respo
   const branch = await Branch.findOneAndUpdate({ _id: id }, { softDeleted: true, status: false });
   if (!branch) return apiResponse(res, 404, false, "Branch not found!");
 
-  await SubAdmin.findOneAndUpdate(
-    { branchId: id },
-    {
-      status: false,
-      softDeleted: true,
-    }
-  );
+  // engaged sub-admin & stamp also deleted
+  await Promise.all([
+    SubAdmin.findOneAndUpdate({ branchId: id }, { status: false, softDeleted: true }),
+    Stamp.findOneAndUpdate({ branchId: id }, { status: false, softDeleted: true }),
+  ]);
 
   return apiResponse(res, 200, true, "Branch deleted successfully!");
 });
