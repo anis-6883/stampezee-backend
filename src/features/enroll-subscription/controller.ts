@@ -462,6 +462,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                     taxTitle: taxStatus === "on" ? taxTitle : null,
                     taxCost: taxStatus === "on" ? taxCost : null,
                   },
+                  planChangeCost,
                   balanceInfo: {
                     currentBalance: balanceAmount,
                     planCurrentPrice: finalPrice, // coupon discount any apply in plan
@@ -485,7 +486,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                   taxTitle: taxStatus === "on" ? taxTitle : null,
                   taxCost: taxStatus === "on" ? taxCost : null,
                 },
-                planChangeCost,
                 paymentStatus: "pending",
                 enrollStatus: "purchase",
                 status: false,
