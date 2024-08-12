@@ -51,7 +51,9 @@ export const authAndPermissionCheck =
       }
 
       const user: any = await model.findOne(query);
-      if (!user) return apiResponse(res, 401, false, "Unauthorized Request!");
+      if (!user || (decoded.role === ROLE.RETAILER && (user?.status === false || user?.softDeleted === true))) {
+        return apiResponse(res, 401, false, "Unauthorized Request!");
+      }
       req.user = user._doc;
       req.token = token;
       req.role = decoded.role;
