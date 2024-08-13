@@ -462,6 +462,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                     taxTitle: taxStatus === "on" ? taxTitle : null,
                     taxCost: taxStatus === "on" ? taxCost : null,
                   },
+                  planChangeCost,
                   balanceInfo: {
                     currentBalance: balanceAmount,
                     planCurrentPrice: finalPrice, // coupon discount any apply in plan
@@ -485,7 +486,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                   taxTitle: taxStatus === "on" ? taxTitle : null,
                   taxCost: taxStatus === "on" ? taxCost : null,
                 },
-                planChangeCost,
                 paymentStatus: "pending",
                 enrollStatus: "purchase",
                 status: false,
@@ -663,10 +663,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     const session = await stripe.checkout.sessions.create({
       line_items,
       mode: "payment",
-      // discounts,
       metadata: enrollIdDuration,
       success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}&takeFreeTrial=${req.user.takeFreeTrial}&pickPlan=${!!pickPlan}&enrolled=${!!enrolled}&planEnrollmentId=${planEnrollmentId}`,
       cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
+      customer_email: req?.user?.email,
     });
 
     // return res.redirect(session?.url);
