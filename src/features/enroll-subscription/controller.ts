@@ -779,3 +779,69 @@ export const successEnrollSubscription = asyncHandler(async (req: Request, res: 
     throw "Something went wrong in payment!";
   }
 });
+
+/**
+ * Test Enroll Subscription
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const testEnrollSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
+  // Get payment metadata
+  const paymentMetadata = await Settings.findOne(
+    {},
+    {
+      "stripe.planChangeCost": 1,
+      "stripe.refundableThreshold": 1,
+      "stripe.taxTitle": 1,
+      "stripe.taxCost": 1,
+      "stripe.taxStatus": 1,
+      "stripe.stripeSecretKey": 1,
+    }
+  );
+
+  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+
+  const { stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } = paymentMetadata.stripe;
+  const stripe = new Stripe(stripeSecretKey);
+
+  // const coupon = await stripe.coupons.create({
+  //   name: "Bangladesh 2.0",
+  //   duration: "once",
+  //   percent_off: 10,
+  // });
+
+  const session = await stripe.checkout.sessions.create({
+    line_items: [
+      {
+        price: "price_1PlOXDJVIk5LKvIEkTdrlobS",
+        quantity: 1,
+      },
+      // {
+      //   price: product2.default_price + "",
+      //   quantity: 1,
+      // },
+      // {
+      //   price_data: {
+      //     currency: "cad",
+      //     product_data: {
+      //       name: `${taxTitle} (${taxCost}%)`,
+      //     },
+      //     unit_amount: Math.round(((Number(5 + 15) * taxCost) / 100) * 100), // convert into cent
+      //   },
+      //   quantity: 1,
+      // },
+    ],
+    // discounts: [
+    //   {
+    //     coupon: coupon.id,
+    //   },
+    // ],
+    mode: "subscription",
+    success_url: `${process.env.FRONTEND_URL}`,
+    cancel_url: `${process.env.FRONTEND_URL}`,
+    customer_email: "anisuzzaman.rootdevs@gmail.com",
+  });
+
+  return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
+});
