@@ -53,8 +53,7 @@ const hasValidity = Joi.boolean().required().messages({
   "boolean.base": "hasValidity must be a boolean value!",
 });
 
-const isPublished = Joi.boolean().required().messages({
-  "any.required": "isPublished is required!",
+const isPublished = Joi.boolean().messages({
   "boolean.base": "isPublished must be a boolean value!",
 });
 
@@ -77,13 +76,15 @@ export const stampSchema = Joi.object({
   rules: stringField("description"),
   noOfStampsToCollect,
   minPurchaseAmount,
+  promotionReward,
+  hasValidity,
+  discountReward,
   rewardType: rewardType.required().messages({
     "any.required": "rewardType is required!",
   }),
-  promotionReward,
-  hasValidity,
-  isPublished,
-  discountReward,
+  isPublished: isPublished.required().messages({
+    "any.required": "isPublished is required!",
+  }),
   startedAt: Joi.date().when("hasValidity", {
     is: true,
     then: Joi.required().messages({
@@ -109,6 +110,7 @@ export const updateStampSchema = Joi.object({
   startedAt,
   expiredAt,
   rewardType,
+  isPublished,
 });
 
 export const stampStatusSchema = Joi.object({
