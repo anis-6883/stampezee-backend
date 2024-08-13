@@ -56,7 +56,7 @@ const schema = new mongoose.Schema(
     },
     isPublished: {
       type: Boolean,
-      required: true,
+      default: false,
     },
     promotionReward: {
       type: String,
