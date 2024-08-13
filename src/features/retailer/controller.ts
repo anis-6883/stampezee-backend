@@ -185,6 +185,7 @@ export const softDeleteRetailer = asyncHandler(async (req: IApiRequest, res: Res
   await Retailer.findByIdAndUpdate(id, {
     email: `deleted-${new Date().toISOString()}-${retailer.email}`,
     softDeleted: true,
+    status: false,
   });
 
   return apiResponse(res, 200, true, "Retailer deleted successfully!");

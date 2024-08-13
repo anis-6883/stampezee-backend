@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { requiredEmailField, requiredStringField, stringField, weakPasswordField } from "../../helpers";
+import { requiredEmailField, requiredStringField, requiredWeakPasswordField, stringField } from "../../helpers";
 
 const updateLongitude = Joi.when("address", {
   is: Joi.exist(),
@@ -25,7 +25,7 @@ const updateLatitude = Joi.when("address", {
 
 export const customerRegisterSchema = Joi.object({
   email: requiredEmailField,
-  password: weakPasswordField(6),
+  password: requiredWeakPasswordField(6),
   fullName: requiredStringField("fullName"),
   dialCode: requiredStringField("dialCode"),
   phone: requiredStringField("phone"),
@@ -41,7 +41,7 @@ export const customerUpdateProfile = Joi.object({
 
 export const retailerRegisterSchema = Joi.object({
   email: requiredEmailField,
-  password: weakPasswordField(8),
+  password: requiredWeakPasswordField(8),
   storeName: requiredStringField("storeName"),
   firstName: requiredStringField("firstName"),
   lastName: stringField("lastName"),
@@ -58,7 +58,7 @@ export const superAdminRegisterSchema = Joi.object({
   firstName: requiredStringField("firstName"),
   lastName: stringField("lastName"),
   email: requiredEmailField,
-  password: weakPasswordField(6),
+  password: requiredWeakPasswordField(6),
 });
 
 export const superAdminRegisterSchema2 = Joi.object({
@@ -92,7 +92,7 @@ export const forgetPasswordSchema = Joi.object({
 });
 
 export const retailerChangeForgetPasswordSchema = Joi.object({
-  password: weakPasswordField(8),
+  password: requiredWeakPasswordField(8),
   confirmPassword: Joi.any().equal(Joi.ref("password")).required().messages({
     "any.only": "passwords do not match!",
     "any.required": "confirmPassword is required!",
@@ -100,7 +100,7 @@ export const retailerChangeForgetPasswordSchema = Joi.object({
 });
 
 export const customerChangeForgetPasswordSchema = Joi.object({
-  password: weakPasswordField(6),
+  password: requiredWeakPasswordField(6),
   confirmPassword: Joi.any().equal(Joi.ref("password")).required().messages({
     "any.only": "passwords do not match!",
     "any.required": "confirmPassword is required!",
@@ -108,7 +108,7 @@ export const customerChangeForgetPasswordSchema = Joi.object({
 });
 
 export const subAdminChangeForgetPasswordSchema = Joi.object({
-  password: weakPasswordField(6),
+  password: requiredWeakPasswordField(6),
   confirmPassword: Joi.any().equal(Joi.ref("password")).required().messages({
     "any.only": "passwords do not match!",
     "any.required": "confirmPassword is required!",
