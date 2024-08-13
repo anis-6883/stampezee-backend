@@ -139,6 +139,8 @@ export const customerLogin = asyncHandler(async (req: Request, res: Response) =>
     return apiResponse(res, 401, false, "Please, complete your registration first!");
   }
 
+  if (!customer.status) return apiResponse(res, 401, false, "Your account has been blocked by admin!");
+
   const isPasswordValid = await bcrypt.compare(result.value.password, customer.password);
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
