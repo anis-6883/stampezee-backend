@@ -61,9 +61,9 @@ const startedAt = Joi.date().messages({
   "date.base": "startedAt must be date!",
 });
 
-const expiredAt = Joi.date().greater(Joi.ref("startedAt")).messages({
+const expiredAt = Joi.date().min(Joi.ref("startedAt")).messages({
   "date.base": "expiredAt must be date!",
-  "date.greater": "expiredAt must be greater than startedAt!",
+  "date.min": "expiredAt must be greater than or equal to startedAt!",
   "date.ref": "expiredAt must be greater than startedAt!",
 });
 
@@ -95,9 +95,9 @@ export const stampSchema = Joi.object({
   }),
   expiredAt: Joi.date().when("hasValidity", {
     is: true,
-    then: Joi.date().greater(Joi.ref("startedAt")).required().messages({
+    then: Joi.date().min(Joi.ref("startedAt")).required().messages({
       "date.base": "expiredAt must be a date!",
-      "date.greater": "expiredAt must be greater than startedAt!",
+      "date.min": "expiredAt must be greater than or equal to startedAt!",
       "any.required": "expiredAt is required!",
     }),
     otherwise: Joi.optional(),
