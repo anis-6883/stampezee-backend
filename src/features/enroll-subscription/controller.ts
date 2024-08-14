@@ -69,10 +69,11 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
 
   if (!coupon) throw "Provide invalid coupon code!";
 
-  const alreadyApplied = await EnrollSubscription.find({
+  const alreadyApplied = await EnrollSubscription.countDocuments({
     retailerId: req.user._id,
     "couponSnapshot._id": coupon._id,
-  }).countDocuments();
+    paymentStatus: "completed",
+  });
 
   if (alreadyApplied >= coupon.limit) {
     throw "Your coupon limit is over!";
