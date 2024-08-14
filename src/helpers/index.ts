@@ -121,7 +121,7 @@ export const lowercaseStringField = (fieldName: string) =>
       "string.empty": `${fieldName} must not be empty!`,
     });
 
-export const weakPasswordField = (length: number) =>
+export const requiredWeakPasswordField: any = (length: number) =>
   Joi.string()
     .required()
     .min(length)

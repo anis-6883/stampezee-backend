@@ -1,10 +1,10 @@
 import Joi from "joi";
-import { requiredEmailField, requiredStringField, stringField, weakPasswordField } from "../../helpers";
+import { requiredEmailField, requiredStringField, requiredWeakPasswordField, stringField } from "../../helpers";
 
 // Main schemas
 export const retailerSchema = Joi.object({
   email: requiredEmailField,
-  password: weakPasswordField(8),
+  password: requiredWeakPasswordField(8),
   storeName: requiredStringField("storeName"),
   firstName: requiredStringField("firstName"),
   lastName: stringField("lastName"),
