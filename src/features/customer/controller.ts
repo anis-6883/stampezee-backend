@@ -8,7 +8,7 @@ import { sendRegistrationMail } from "./service";
 import { customerSchema, customerStatusSchema, updateCustomerSchema } from "./validation";
 
 /**
- * Get All Customers
+ * Get All Customers for Super Admin
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -17,7 +17,7 @@ export const getAllCustomers = asyncHandler(async (req: IApiRequest, res: Respon
   const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
-  const query: any = {};
+  const query: any = { softDeleted: false };
 
   if (search) {
     const regex = new RegExp(`.*${search}.*`, "i"); // case insensitive search. For sensitive remove i

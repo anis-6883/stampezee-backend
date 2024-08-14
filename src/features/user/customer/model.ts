@@ -89,6 +89,10 @@ const schema = new mongoose.Schema(
       trim: true,
       default: null,
     },
+    softDeleted: {
+      type: Boolean,
+      default: false,
+    },
     deletionRequest: {
       type: Boolean,
       default: false,
