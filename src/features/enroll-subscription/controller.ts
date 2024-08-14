@@ -864,3 +864,71 @@ export const customerBillingPortal = asyncHandler(async (req: IApiRequest, res: 
 
   return apiResponse(res, 200, true, "Send to Payment Page!", { url: portalSession.url });
 });
+
+/**
+ * Test Webhook
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const testStripeWebhook = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const sig = req.headers["stripe-signature"];
+
+  let event;
+
+  // Get payment metadata
+  const paymentMetadata = await Settings.findOne(
+    {},
+    {
+      "stripe.planChangeCost": 1,
+      "stripe.refundableThreshold": 1,
+      "stripe.taxTitle": 1,
+      "stripe.taxCost": 1,
+      "stripe.taxStatus": 1,
+      "stripe.stripeSecretKey": 1,
+    }
+  );
+
+  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+
+  const { stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } = paymentMetadata.stripe;
+  const stripe = new Stripe(stripeSecretKey);
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET_KEY);
+  } catch (err) {
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle the event
+  switch (event.type) {
+    //Event when the subscription started
+    case "checkout.session.completed":
+      console.log("New Subscription started!");
+      console.log(event.data);
+      break;
+
+    // Event when the payment is successful (every subscription interval)
+    case "invoice.paid":
+      console.log("Invoice paid");
+      console.log(event.data);
+      break;
+
+    // Event when the payment failed due to card problems or insufficient funds (every subscription interval)
+    case "invoice.payment_failed":
+      console.log("Invoice payment failed!");
+      console.log(event.data);
+      break;
+
+    // Event when subscription is updated
+    case "customer.subscription.updated":
+      console.log("Subscription updated!");
+      console.log(event.data);
+      break;
+
+    default:
+      console.log(`Unhandled event type ${event.type}`);
+  }
+
+  return apiResponse(res, 200, true, "Send to Payment Page!");
+});

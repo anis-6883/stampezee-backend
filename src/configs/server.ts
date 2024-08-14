@@ -5,7 +5,7 @@ import express from "express";
 import helmet from "helmet";
 import logger from "morgan";
 import { successRenewBranch } from "../features/branch/controller";
-import { successEnrollSubscription } from "../features/enroll-subscription/controller";
+import { successEnrollSubscription, testStripeWebhook } from "../features/enroll-subscription/controller";
 import seederRoutes from "../features/seeder/route";
 import { successRenewCustomStamp } from "../features/stamp-image/controller";
 import errorMiddleware from "../middlewares/errorMiddleware";
@@ -25,6 +25,7 @@ app.use(logger("dev"));
 app.use(cookieParser());
 app.use(express.static("public"));
 app.use(cors(config[env].corsOptions));
+app.post("/stripe/webhook", express.raw({ type: "application/json" }), testStripeWebhook);
 app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: true, limit: "100kb" }));
 
