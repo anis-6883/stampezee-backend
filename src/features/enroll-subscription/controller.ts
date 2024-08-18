@@ -805,6 +805,16 @@ export const testEnrollSubscription = asyncHandler(async (req: IApiRequest, res:
   const { stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } = paymentMetadata.stripe;
   const stripe = new Stripe(stripeSecretKey);
 
+  const stripeCoupon = await stripe.coupons.create({
+    name: `New Year Off`,
+    percent_off: 10,
+    duration: "once",
+    currency: "cad",
+    applies_to: {
+      products: ["prod_QcdozwoAKCURYf"],
+    },
+  });
+
   const session = await stripe.checkout.sessions.create({
     line_items: [
       {
@@ -816,11 +826,11 @@ export const testEnrollSubscription = asyncHandler(async (req: IApiRequest, res:
         quantity: 1,
       },
     ],
-    // discounts: [
-    //   {
-    //     coupon: "NbEftNzc",
-    //   },
-    // ],
+    discounts: [
+      {
+        coupon: stripeCoupon.id,
+      },
+    ],
     mode: "subscription",
     success_url: `${process.env.FRONTEND_URL}`,
     cancel_url: `${process.env.FRONTEND_URL}`,
