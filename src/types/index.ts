@@ -57,7 +57,8 @@ export interface IApiRequest extends Request {
 }
 
 export interface ILineItem {
-  price_data: { unit_amount: number; currency: string; product_data: { name: string } };
+  price?: string;
+  price_data?: { unit_amount: number; currency: string; product_data: { name: string } };
   quantity: number;
 }
 

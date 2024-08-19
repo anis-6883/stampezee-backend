@@ -562,20 +562,20 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       ///////////////////////////////////
       for (const subscription of subscriptions) {
         if (subscription.type === "subscription") {
-          let finalPrice = subscription.price;
+          let finalPrice = taxStatus === "on" ? subscription.taxPrice : subscription.originalPrice;
 
           // If add Coupon, it will attach only in plan!
-          if (coupon) {
-            if (subscription.price < coupon.minPurchaseAmount) {
-              throw `Min. ${coupon.minPurchaseAmount}CAD required to apply coupon!`;
-            }
+          // if (coupon) {
+          //   if (subscription.price < coupon.minPurchaseAmount) {
+          //     throw `Min. ${coupon.minPurchaseAmount}CAD required to apply coupon!`;
+          //   }
 
-            if (coupon.discountType === "percentage") {
-              finalPrice = Number(subscription.price - (subscription.price * coupon.discount) / 100);
-            } else {
-              finalPrice = subscription.price - coupon.discount;
-            }
-          }
+          //   if (coupon.discountType === "percentage") {
+          //     finalPrice = Number(subscription.price - (subscription.price * coupon.discount) / 100);
+          //   } else {
+          //     finalPrice = subscription.price - coupon.discount;
+          //   }
+          // }
 
           const enrollSubscription: any = await EnrollSubscription.create({
             retailerId: req.user._id,
@@ -600,16 +600,24 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           const couponPackageName = `${subscription.title} (-${coupon?.discount}${coupon?.discountType === "percentage" ? "%" : "CAD"})`;
 
           line_items.push({
-            price_data: {
-              currency: "cad",
-              product_data: {
-                name: coupon ? couponPackageName : subscription.title,
-              },
-              unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent
-            },
+            // price_data: {
+            //   currency: "cad",
+            //   product_data: {
+            //     name: coupon
+            //       ? couponPackageName
+            //       : taxStatus === "on"
+            //         ? `${subscription.title} (including TAX)`
+            //         : subscription.title,
+            //   },
+            //   unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent
+            // },
+
+            price: taxStatus === "on" ? subscription.taxPriceId : subscription.originalPriceId,
             quantity: 1,
           });
         } else {
+          let finalPrice = taxStatus === "on" ? subscription.taxPrice : subscription.originalPrice;
+
           const enrollSubscription: any = await EnrollSubscription.create({
             retailerId: req.user._id,
             planSnapshot: subscription,
@@ -617,13 +625,16 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               taxTitle: taxStatus === "on" ? taxTitle : null,
               taxCost: taxStatus === "on" ? taxCost : null,
             },
+            balanceInfo: {
+              planCurrentPrice: finalPrice,
+            },
             paymentStatus: "pending",
             enrollStatus: "purchase",
             status: false,
           });
 
           enrollIdDuration[enrollSubscription._id] = subscription.duration;
-          totalAmount += Number(subscription.price);
+          totalAmount += finalPrice;
 
           line_items.push({
             price_data: {
@@ -631,7 +642,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               product_data: {
                 name: subscription.title,
               },
-              unit_amount: Math.round(Number(subscription.price) * 100), // convert into cent
+              unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent
             },
             quantity: 1,
           });
@@ -661,19 +672,19 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     //   });
     // }
 
-    // const session = await stripe.checkout.sessions.create({
-    //   line_items,
-    //   mode: "subscription",
-    //   metadata: enrollIdDuration,
-    //   success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}&takeFreeTrial=${req.user.takeFreeTrial}&pickPlan=${!!pickPlan}&enrolled=${!!enrolled}&planEnrollmentId=${planEnrollmentId}`,
-    //   cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
-    //   customer_email: req?.user?.email,
-    // });
+    const session = await stripe.checkout.sessions.create({
+      line_items,
+      mode: "subscription",
+      metadata: enrollIdDuration,
+      success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}&takeFreeTrial=${req.user.takeFreeTrial}&pickPlan=${!!pickPlan}&enrolled=${!!enrolled}&planEnrollmentId=${planEnrollmentId}`,
+      cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
+      customer_email: req?.user?.email,
+    });
 
     // return res.redirect(session?.url);
 
-    // return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
-    return apiResponse(res, 200, true, "Send to Payment Page!");
+    return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
+    // return apiResponse(res, 200, true, "Send to Payment Page!");
   }
 
   throw "Only one subscription and no duplicate addons are allowed!";
