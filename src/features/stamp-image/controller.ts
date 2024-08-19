@@ -296,43 +296,43 @@ export const customStampRenew = asyncHandler(async (req: IApiRequest, res: Respo
   const stripe = new Stripe(stripeSecretKey);
   const line_items = [];
 
-  line_items.push({
-    price_data: {
-      currency: "cad",
-      product_data: {
-        name: `${addOnStamp.title} (Renewal)`,
-      },
-      unit_amount: Math.round(Number(addOnStamp.price) * 100), // convert into cent
-    },
-    quantity: 1,
-  });
+  // line_items.push({
+  //   price_data: {
+  //     currency: "cad",
+  //     product_data: {
+  //       name: `${addOnStamp.title} (Renewal)`,
+  //     },
+  //     unit_amount: Math.round(Number(addOnStamp.price) * 100), // convert into cent
+  //   },
+  //   quantity: 1,
+  // });
 
   // Add Tax in (%)
-  if (taxStatus === "on") {
-    line_items.push({
-      price_data: {
-        currency: "cad",
-        product_data: {
-          name: `${taxTitle} (${taxCost}%)`,
-        },
-        unit_amount: Math.round(((Number(addOnStamp.price) * taxCost) / 100) * 100), // convert into cent
-      },
-      quantity: 1,
-    });
-  }
+  // if (taxStatus === "on") {
+  //   line_items.push({
+  //     price_data: {
+  //       currency: "cad",
+  //       product_data: {
+  //         name: `${taxTitle} (${taxCost}%)`,
+  //       },
+  //       unit_amount: Math.round(((Number(addOnStamp.price) * taxCost) / 100) * 100), // convert into cent
+  //     },
+  //     quantity: 1,
+  //   });
+  // }
 
-  const session = await stripe.checkout.sessions.create({
-    line_items,
-    mode: "payment",
-    metadata: {
-      enrollId: id,
-      duration: addOnStamp.duration,
-    },
-    success_url: `${process.env.BACKEND_URL}/renew-custom-stamp/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}`,
-    cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
-  });
+  // const session = await stripe.checkout.sessions.create({
+  //   line_items,
+  //   mode: "payment",
+  //   metadata: {
+  //     enrollId: id,
+  //     duration: addOnStamp.duration,
+  //   },
+  //   success_url: `${process.env.BACKEND_URL}/renew-custom-stamp/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}`,
+  //   cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
+  // });
 
-  return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
+  return apiResponse(res, 200, true, "Send to Payment Page!");
 });
 
 /**

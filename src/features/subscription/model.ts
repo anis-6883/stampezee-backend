@@ -16,7 +16,27 @@ const schema = new mongoose.Schema(
     descriptions: {
       type: [String],
     },
-    price: {
+    productId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    originalPriceId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    originalPrice: {
+      type: Number,
+      required: true,
+      trim: true,
+    },
+    taxPriceId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    taxPrice: {
       type: Number,
       required: true,
       trim: true,
@@ -42,6 +62,11 @@ const schema = new mongoose.Schema(
       default: null,
     },
     allowTotalTeamMember: {
+      type: Number,
+      trim: true,
+      default: null,
+    },
+    allowTotalStamp: {
       type: Number,
       trim: true,
       default: null,

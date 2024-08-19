@@ -96,8 +96,8 @@ export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Res
   const { id } = req.params;
   const { softDeleted, image, ...updatedBody } = result;
 
-  const subscription = await Subscription.findOne({ _id: id });
-  if (!subscription) return apiResponse(res, 404, false, "Subscription not found!");
+  const subscription = await Subscription.findOne({ slug: result.slug, _id: { $ne: id } });
+  if (subscription) throw "Slug must be unique!";
 
   // File Validation
   if (req.file) {
@@ -119,6 +119,7 @@ export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Res
   }
 
   const updatedData: any = await Subscription.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
+  if (!updatedData) return apiResponse(res, 404, false, "Subscription not found!");
 
   return apiResponse(res, 200, true, "Subscription updated successfully!", updatedData);
 });

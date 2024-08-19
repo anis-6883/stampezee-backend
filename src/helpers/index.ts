@@ -95,11 +95,22 @@ export const numberField = (fieldName: string) =>
   });
 
 export const requiredNumberField = (fieldName: string) =>
-  Joi.number().messages({
-    "any.required": `${fieldName} is required!`,
-    "number.base": `${fieldName} must be number!`,
-    "number.empty": `${fieldName} must not be empty!`,
-  });
+  Joi.number()
+    .required()
+    .messages({
+      "any.required": `${fieldName} is required!`,
+      "number.base": `${fieldName} must be number!`,
+      "number.empty": `${fieldName} must not be empty!`,
+    });
+
+export const requiredBooleanField = (fieldName: string) =>
+  Joi.boolean()
+    .required()
+    .messages({
+      "any.required": `${fieldName} is required!`,
+      "boolean.base": `${fieldName} be boolean!`,
+      "boolean.empty": `${fieldName} must not be empty!`,
+    });
 
 export const requiredLowercaseStringField = (fieldName: string) =>
   Joi.string()

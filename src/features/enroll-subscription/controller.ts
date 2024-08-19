@@ -639,40 +639,41 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       }
     }
 
-    // Add Tax in (%)
-    if (taxStatus === "on") {
-      if (coupon) {
-        if (coupon.discountType === "percentage") {
-          totalAmount += Number((pickPlan.price * coupon.discount) / 100);
-        } else {
-          totalAmount += coupon.discount;
-        }
-      }
+    // // Add Tax in (%)
+    // if (taxStatus === "on") {
+    //   if (coupon) {
+    //     if (coupon.discountType === "percentage") {
+    //       totalAmount += Number((pickPlan.price * coupon.discount) / 100);
+    //     } else {
+    //       totalAmount += coupon.discount;
+    //     }
+    //   }
 
-      line_items.push({
-        price_data: {
-          currency: "cad",
-          product_data: {
-            name: `${taxTitle} (${taxCost}%)`,
-          },
-          unit_amount: Math.round(((Number(totalAmount) * taxCost) / 100) * 100), // convert into cent
-        },
-        quantity: 1,
-      });
-    }
+    //   line_items.push({
+    //     price_data: {
+    //       currency: "cad",
+    //       product_data: {
+    //         name: `${taxTitle} (${taxCost}%)`,
+    //       },
+    //       unit_amount: Math.round(((Number(totalAmount) * taxCost) / 100) * 100), // convert into cent
+    //     },
+    //     quantity: 1,
+    //   });
+    // }
 
-    const session = await stripe.checkout.sessions.create({
-      line_items,
-      mode: "payment",
-      metadata: enrollIdDuration,
-      success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}&takeFreeTrial=${req.user.takeFreeTrial}&pickPlan=${!!pickPlan}&enrolled=${!!enrolled}&planEnrollmentId=${planEnrollmentId}`,
-      cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
-      customer_email: req?.user?.email,
-    });
+    // const session = await stripe.checkout.sessions.create({
+    //   line_items,
+    //   mode: "subscription",
+    //   metadata: enrollIdDuration,
+    //   success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}&takeFreeTrial=${req.user.takeFreeTrial}&pickPlan=${!!pickPlan}&enrolled=${!!enrolled}&planEnrollmentId=${planEnrollmentId}`,
+    //   cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
+    //   customer_email: req?.user?.email,
+    // });
 
     // return res.redirect(session?.url);
 
-    return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
+    // return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
+    return apiResponse(res, 200, true, "Send to Payment Page!");
   }
 
   throw "Only one subscription and no duplicate addons are allowed!";
