@@ -38,7 +38,7 @@ const schema = new mongoose.Schema(
         message: "At least one description is required!",
       },
     },
-    price: {
+    prices: {
       type: [priceSchema],
       validate: {
         validator: (value: [string]) => Array.isArray(value) && value.length > 0,
