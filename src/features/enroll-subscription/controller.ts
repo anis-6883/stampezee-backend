@@ -600,19 +600,20 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           const couponPackageName = `${subscription.title} (-${coupon?.discount}${coupon?.discountType === "percentage" ? "%" : "CAD"})`;
 
           line_items.push({
-            // price_data: {
-            //   currency: "cad",
-            //   product_data: {
-            //     name: coupon
-            //       ? couponPackageName
-            //       : taxStatus === "on"
-            //         ? `${subscription.title} (including TAX)`
-            //         : subscription.title,
-            //   },
-            //   unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent
-            // },
-
-            price: taxStatus === "on" ? subscription.taxPriceId : subscription.originalPriceId,
+            price_data: {
+              currency: "cad",
+              product_data: {
+                name: coupon
+                  ? couponPackageName
+                  : taxStatus === "on"
+                    ? `${subscription.title} (including TAX)`
+                    : subscription.title,
+              },
+              unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent
+              recurring: {
+                interval: "month",
+              },
+            },
             quantity: 1,
           });
         } else {
@@ -643,6 +644,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                 name: subscription.title,
               },
               unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent
+              recurring: {
+                interval: "month",
+              },
             },
             quantity: 1,
           });

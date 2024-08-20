@@ -24,24 +24,38 @@ const descriptions = Joi.array()
       "string.empty": "descriptions must not be empty!",
     })
   )
-  .required()
   .messages({
     "array.base": "descriptions must be array!",
-    "any.required": "descriptions is required!",
     "array.includesRequiredUnknowns": "At least one description is required!",
+  });
+
+const price = Joi.array()
+  .items(
+    Joi.object({
+      country: requiredStringField("country"),
+      currency: requiredStringField("currency"),
+      amount: requiredNumberField("amount"),
+    }).messages({
+      "object.base": "price must be object!",
+    })
+  )
+  .messages({
+    "array.base": "price must be array!",
+    "any.required": "price is required!",
+    "array.includesRequiredUnknowns": "At least one price is required!",
   });
 
 export const subscriptionSchema = Joi.object({
   title: requiredStringField("title"),
-  productId: requiredStringField("productId"),
   slug: requiredStringField("slug"),
-  originalPriceId: requiredStringField("originalPriceId"),
-  originalPrice: requiredNumberField("originalPrice"),
-  taxPriceId: requiredStringField("taxPriceId"),
-  taxPrice: requiredNumberField("taxPrice"),
   type,
   duration,
-  descriptions,
+  descriptions: descriptions.required().messages({
+    "any.required": "descriptions is required!",
+  }),
+  price: price.required().messages({
+    "any.required": "price is required!",
+  }),
   allowTotalBranch: Joi.alternatives().conditional("type", {
     is: "subscription",
     then: requiredNumberField("allowTotalBranch"),
@@ -66,14 +80,10 @@ export const subscriptionSchema = Joi.object({
 
 export const updateSubscriptionSchema = Joi.object({
   title: stringField("title"),
-  productId: stringField("productId"),
   slug: stringField("slug"),
-  originalPriceId: stringField("originalPriceId"),
-  originalPrice: numberField("originalPrice"),
-  taxPriceId: stringField("taxPriceId"),
-  taxPrice: numberField("taxPrice"),
   type,
   duration,
+  price,
   descriptions,
   allowTotalBranch: numberField("limit"),
   allowTotalTeamMember: numberField("limit"),

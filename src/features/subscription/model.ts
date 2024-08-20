@@ -1,5 +1,23 @@
 import mongoose from "mongoose";
 
+const priceSchema = new mongoose.Schema({
+  country: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  currency: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  amount: {
+    type: Number,
+    required: true,
+    trim: true,
+  },
+});
+
 const schema = new mongoose.Schema(
   {
     title: {
@@ -15,31 +33,17 @@ const schema = new mongoose.Schema(
     },
     descriptions: {
       type: [String],
+      validate: {
+        validator: (value: [string]) => Array.isArray(value) && value.length > 0,
+        message: "At least one description is required!",
+      },
     },
-    productId: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    originalPriceId: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    originalPrice: {
-      type: Number,
-      required: true,
-      trim: true,
-    },
-    taxPriceId: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    taxPrice: {
-      type: Number,
-      required: true,
-      trim: true,
+    price: {
+      type: [priceSchema],
+      validate: {
+        validator: (value: [string]) => Array.isArray(value) && value.length > 0,
+        message: "At least one price is required!",
+      },
     },
     duration: {
       type: Number,
