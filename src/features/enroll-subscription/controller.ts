@@ -562,7 +562,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       ///////////////////////////////////
       for (const subscription of subscriptions) {
         if (subscription.type === "subscription") {
-          let finalPrice = taxStatus === "on" ? subscription.taxPrice : subscription.originalPrice;
+          // 1. Get the currency
+          // 2. Pick the amount or default one if not found
+
+          // let finalPrice = taxStatus === "on" ? subscription.taxPrice : subscription.originalPrice;
 
           // If add Coupon, it will attach only in plan!
           // if (coupon) {
@@ -585,9 +588,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               taxTitle: taxStatus === "on" ? taxTitle : null,
               taxCost: taxStatus === "on" ? taxCost : null,
             },
-            balanceInfo: {
-              planCurrentPrice: finalPrice,
-            },
+            // balanceInfo: {
+            //   planCurrentPrice: finalPrice,
+            // },
             paymentStatus: "pending",
             enrollStatus: "purchase",
             status: false,
@@ -595,7 +598,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
           planEnrollmentId = enrollSubscription._id;
           enrollIdDuration[enrollSubscription._id] = subscription.duration;
-          totalAmount += finalPrice;
+          // totalAmount += finalPrice;
 
           const couponPackageName = `${subscription.title} (-${coupon?.discount}${coupon?.discountType === "percentage" ? "%" : "CAD"})`;
 
@@ -609,7 +612,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                     ? `${subscription.title} (including TAX)`
                     : subscription.title,
               },
-              unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent
+              unit_amount: Math.round(Number(0) * 100), // convert into cent
               recurring: {
                 interval: "month",
               },

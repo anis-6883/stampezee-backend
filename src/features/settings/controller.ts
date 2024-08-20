@@ -26,7 +26,9 @@ export const getSettings = asyncHandler(async (req: Request, res: Response) => {
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const updateSettings = asyncHandler(async (req: Request, res: Response) => {
-  const result = await settingsSchema.validateAsync(req.body);
+  const result = await settingsSchema.validateAsync(req.body, {
+    abortEarly: false,
+  });
 
   const { general, notification, pages, s3Bucket, stripe, googleMap } = result;
 

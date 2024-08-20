@@ -42,6 +42,7 @@ const stripe = new mongoose.Schema({
   taxTitle: { type: String, default: "", trim: true },
   taxCost: { type: Number, default: 1 },
   taxStatus: { type: String, enum: ["on", "off"], default: "on" },
+  allowCurrencies: { type: [String], default: [] },
 });
 
 const googleMap = new mongoose.Schema({

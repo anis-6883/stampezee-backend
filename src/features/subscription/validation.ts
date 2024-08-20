@@ -85,9 +85,9 @@ export const updateSubscriptionSchema = Joi.object({
   duration,
   prices,
   descriptions,
-  allowTotalBranch: numberField("limit"),
-  allowTotalTeamMember: numberField("limit"),
-  allowTotalStamp: numberField("limit"),
+  allowTotalBranch: numberField("allowTotalBranch"),
+  allowTotalTeamMember: numberField("allowTotalTeamMember"),
+  allowTotalStamp: numberField("allowTotalStamp"),
   limit: numberField("limit"),
 });
 
