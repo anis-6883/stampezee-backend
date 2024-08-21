@@ -153,7 +153,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
   const stripe = new Stripe(stripeSecretKey);
 
-  if (!allowCurrencies.includes(currency)) throw "Provided currency is not allowed!";
+  const isAllowCurrency = allowCurrencies.find((allowCurrency) => allowCurrency.currency === currency);
+  if (!isAllowCurrency) throw "Provided currency is not allowed!";
 
   // Check & Get Coupon
   let coupon = null;

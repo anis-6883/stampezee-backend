@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { numberField, stringField } from "../../helpers/index";
+import { numberField, requiredStringField, stringField } from "../../helpers/index";
 
 export const settingsSchema = Joi.object({
   general: Joi.object({
@@ -49,9 +49,14 @@ export const settingsSchema = Joi.object({
     taxStatus: stringField("taxStatus"),
     allowCurrencies: Joi.array()
       .items(
-        Joi.string().required().messages({
-          "string.empty": "allowCurrencies must not be empty!",
+        Joi.object({
+          country: requiredStringField("country"),
+          currency: requiredStringField("currency"),
         })
+          .required()
+          .messages({
+            "object.base": "allowCurrencies item must be object!",
+          })
       )
       .messages({
         "array.base": "allowCurrencies must be array!",

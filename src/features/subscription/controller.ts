@@ -2,6 +2,7 @@ import { Response } from "express";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
+import Settings from "../settings/model";
 import Subscription from "./model";
 import { subscriptionSchema, subscriptionStatusSchema, updateSubscriptionSchema } from "./validation";
 
@@ -96,9 +97,16 @@ export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Res
   const { id } = req.params;
   const { softDeleted, image, ...updatedBody } = result;
 
-  console.log({ prices: updatedBody.prices });
+  const [setting, subscription] = await Promise.all([
+    Settings.findOne({}, { "stripe.allowCurrencies": 1 }),
+    Subscription.findOne({ slug: result.slug, _id: { $ne: id } }),
+  ]);
 
-  const subscription = await Subscription.findOne({ slug: result.slug, _id: { $ne: id } });
+  const allowCurrencies: any = setting?.stripe?.allowCurrencies || [];
+  const prices = updatedBody.prices.map((price: any) => price.currency);
+  const missingPrices = allowCurrencies.filter((item: any) => !prices.includes(item.currency)) || [];
+
+  if (missingPrices.length > 0) throw `Missing currency price: ${missingPrices.join(", ")}`;
   if (subscription) throw "Slug must be unique!";
 
   // File Validation

@@ -35,6 +35,11 @@ const s3Bucket = new mongoose.Schema({
   awsBucketName: { type: String, default: "", trim: true },
 });
 
+const currencySchema = new mongoose.Schema({
+  country: { type: String, required: true, trim: true },
+  currency: { type: String, required: true, trim: true },
+});
+
 const stripe = new mongoose.Schema({
   stripeSecretKey: { type: String, default: "", trim: true },
   planChangeCost: { type: Number, default: 1 },
@@ -42,7 +47,7 @@ const stripe = new mongoose.Schema({
   taxTitle: { type: String, default: "", trim: true },
   taxCost: { type: Number, default: 1 },
   taxStatus: { type: String, enum: ["on", "off"], default: "on" },
-  allowCurrencies: { type: [String], default: [] },
+  allowCurrencies: { type: [currencySchema], default: [] },
 });
 
 const googleMap = new mongoose.Schema({
