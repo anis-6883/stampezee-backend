@@ -19,8 +19,17 @@ export const createSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
   result.superAdminId = req.user._id;
 
-  const existingSubscription = await Subscription.findOne({ slug: result.slug });
-  if (existingSubscription) return apiResponse(res, 400, false, "This subscription already exists!");
+  const [setting, existingSubscription] = await Promise.all([
+    Settings.findOne({}, { "stripe.allowCurrencies": 1 }),
+    Subscription.findOne({ slug: result.slug }),
+  ]);
+
+  const allowCurrencies: any = setting?.stripe?.allowCurrencies || [];
+  const prices = result.prices.map((price: any) => price.currency);
+  const missingPrices = allowCurrencies.filter((item: any) => !prices.includes(item.currency)) || [];
+
+  if (missingPrices.length > 0) throw `Missing currency price: ${missingPrices.join(", ")}`;
+  if (existingSubscription) throw "This subscription already exists!";
 
   let imageKey = null;
 
@@ -40,7 +49,7 @@ export const createSubscription = asyncHandler(async (req: IApiRequest, res: Res
     }
   }
 
-  const subscription: any = await Subscription.create({
+  const subscription = await Subscription.create({
     ...result,
     image: imageKey,
   });

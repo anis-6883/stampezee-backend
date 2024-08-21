@@ -603,9 +603,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               taxTitle: taxStatus === "on" ? taxTitle : null,
               taxCost: taxStatus === "on" ? taxCost : null,
             },
-            // balanceInfo: {
-            //   planCurrentPrice: finalPrice,
-            // },
+            balanceInfo: {
+              planCurrentPrice: finalPrice,
+              currency: finalCurrency,
+            },
             paymentStatus: "pending",
             enrollStatus: "purchase",
             status: false,
@@ -613,19 +614,15 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
           planEnrollmentId = enrollSubscription._id;
           enrollIdDuration[enrollSubscription._id] = subscription.duration;
-          // totalAmount += finalPrice;
+          totalAmount += finalPrice;
 
-          const couponPackageName = `${subscription.title} (-${coupon?.discount}${coupon?.discountType === "percentage" ? "%" : "CAD"})`;
+          // const couponPackageName = `${subscription.title} (-${coupon?.discount}${coupon?.discountType === "percentage" ? "%" : "CAD"})`;
 
           line_items.push({
             price_data: {
-              currency: "cad",
+              currency: finalCurrency.toLowerCase(),
               product_data: {
-                name: coupon
-                  ? couponPackageName
-                  : taxStatus === "on"
-                    ? `${subscription.title} (including TAX)`
-                    : subscription.title,
+                name: `${subscription.title} Plan`,
               },
               unit_amount: Math.round(Number(0) * 100), // convert into cent
               recurring: {
