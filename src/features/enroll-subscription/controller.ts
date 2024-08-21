@@ -10,7 +10,7 @@ import {
   checkDuplicates,
   checkPlanChange,
 } from "../../helpers";
-import { IApiRequest, IEnrollPayment, ILineItem } from "../../types";
+import { IApiRequest, IEnrollPayment, IEnrollSubscriptionBody, ILineItem } from "../../types";
 import Branch from "../branch/model";
 import Coupon from "../coupon/model";
 import Payment from "../payment/model";
@@ -93,7 +93,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     abortEarly: false,
   });
 
-  const { slugs, code, branchIds }: { slugs: string[]; branchIds: string[]; code: string } = result;
+  const { slugs, code, branchIds, currency }: IEnrollSubscriptionBody = result;
 
   if ((slugs.includes(PACKAGES.TRIAL) && slugs.length > 1) || (slugs.includes(PACKAGES.TRIAL) && code)) {
     throw "You can't take additional packages or coupon in free trial!";
@@ -142,13 +142,18 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       "stripe.taxCost": 1,
       "stripe.taxStatus": 1,
       "stripe.stripeSecretKey": 1,
+      "stripe.allowCurrencies": 1,
     }
   );
 
   if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
 
-  const { stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } = paymentMetadata.stripe;
+  const { allowCurrencies, stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } =
+    paymentMetadata.stripe ?? {};
+
   const stripe = new Stripe(stripeSecretKey);
+
+  if (!allowCurrencies.includes(currency)) throw "Provided currency is not allowed!";
 
   // Check & Get Coupon
   let coupon = null;
@@ -199,6 +204,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     const enrollIdDuration: { [key: string]: number } = {};
     const line_items: ILineItem[] = [];
     let totalAmount = 0;
+    let finalCurrency = currency;
 
     if (pickPlan && enrolled) {
       const changeMode = checkPlanChange(
@@ -562,10 +568,18 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       ///////////////////////////////////
       for (const subscription of subscriptions) {
         if (subscription.type === "subscription") {
-          // 1. Get the currency
-          // 2. Pick the amount or default one if not found
+          let finalPrice = 0;
 
-          // let finalPrice = taxStatus === "on" ? subscription.taxPrice : subscription.originalPrice;
+          const pickPrice =
+            subscription.prices.find((price: any) => price.currency === currency) ||
+            subscription.prices.find((price: any) => price.currency === "USD");
+
+          if (!pickPrice) throw new Error("Need to set default price!");
+
+          finalPrice = pickPrice.amount;
+          finalCurrency = pickPrice.currency;
+
+          console.log({ pickPrice });
 
           // If add Coupon, it will attach only in plan!
           // if (coupon) {
@@ -655,6 +669,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           });
         }
       }
+    }
+
+    if (currency) {
+      return apiResponse(res, 200, true, "Testing...");
     }
 
     // // Add Tax in (%)

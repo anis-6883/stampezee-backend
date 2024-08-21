@@ -7,6 +7,12 @@ export interface IEnrollPayment {
   payment_intent: any;
   amount_total: number;
 }
+export interface IEnrollSubscriptionBody {
+  slugs: string[];
+  branchIds: string[];
+  code: string;
+  currency: string;
+}
 
 export interface IConfig {
   [key: string]: {

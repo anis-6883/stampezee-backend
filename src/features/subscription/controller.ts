@@ -96,6 +96,8 @@ export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Res
   const { id } = req.params;
   const { softDeleted, image, ...updatedBody } = result;
 
+  console.log({ prices: updatedBody.prices });
+
   const subscription = await Subscription.findOne({ slug: result.slug, _id: { $ne: id } });
   if (subscription) throw "Slug must be unique!";
 

@@ -30,6 +30,7 @@ export const enrollSubscriptionSchema = Joi.object({
       "array.base": "slugs must be array!",
       "array.includesRequiredUnknowns": "At least one slug is required!",
     }),
+  currency: requiredStringField("currency"),
   code: stringField("code"),
   branchIds: Joi.array().messages({
     "array.base": "branchIds must be array!",

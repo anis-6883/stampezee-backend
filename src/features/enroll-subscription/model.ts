@@ -1,5 +1,23 @@
 import mongoose from "mongoose";
 
+const priceSchema = new mongoose.Schema({
+  country: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  currency: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  amount: {
+    type: Number,
+    required: true,
+    trim: true,
+  },
+});
+
 const subscriptionSchema = new mongoose.Schema({
   title: {
     type: String,
@@ -14,10 +32,8 @@ const subscriptionSchema = new mongoose.Schema({
   descriptions: {
     type: [String],
   },
-  price: {
-    type: Number,
-    required: true,
-    trim: true,
+  prices: {
+    type: [priceSchema],
   },
   duration: {
     type: Number,
@@ -40,6 +56,11 @@ const subscriptionSchema = new mongoose.Schema({
     default: null,
   },
   allowTotalTeamMember: {
+    type: Number,
+    trim: true,
+    default: null,
+  },
+  allowTotalStamp: {
     type: Number,
     trim: true,
     default: null,
