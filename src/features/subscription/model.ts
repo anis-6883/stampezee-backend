@@ -1,23 +1,5 @@
 import mongoose from "mongoose";
 
-const priceSchema = new mongoose.Schema({
-  country: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  currency: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  amount: {
-    type: Number,
-    required: true,
-    trim: true,
-  },
-});
-
 const schema = new mongoose.Schema(
   {
     title: {
@@ -38,12 +20,10 @@ const schema = new mongoose.Schema(
         message: "At least one description is required!",
       },
     },
-    prices: {
-      type: [priceSchema],
-      validate: {
-        validator: (value: [string]) => Array.isArray(value) && value.length > 0,
-        message: "At least one price is required!",
-      },
+    price: {
+      type: Number,
+      trim: true,
+      required: true,
     },
     duration: {
       type: Number,

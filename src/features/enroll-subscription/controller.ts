@@ -148,13 +148,13 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
   if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
 
-  const { allowCurrencies, stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } =
+  const { stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } =
     paymentMetadata.stripe ?? {};
 
   const stripe = new Stripe(stripeSecretKey);
 
-  const isAllowCurrency = allowCurrencies.find((allowCurrency) => allowCurrency.currency === currency);
-  if (!isAllowCurrency) throw "Provided currency is not allowed!";
+  // const isAllowCurrency = allowCurrencies.find((allowCurrency) => allowCurrency.currency === currency);
+  // if (!isAllowCurrency) throw "Provided currency is not allowed!";
 
   // Check & Get Coupon
   let coupon = null;
@@ -620,11 +620,11 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
           line_items.push({
             price_data: {
-              currency: finalCurrency.toLowerCase(),
+              currency: "eur", // finalCurrency.toLowerCase()
               product_data: {
                 name: `${subscription.title} Plan`,
               },
-              unit_amount: Math.round(Number(0) * 100), // convert into cent
+              unit_amount: Math.round(Number(0.9) * 100), // convert into cent
               recurring: {
                 interval: "month",
               },
@@ -669,9 +669,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       }
     }
 
-    if (currency) {
-      return apiResponse(res, 200, true, "Testing...");
-    }
+    // if (currency) {
+    //   return apiResponse(res, 200, true, "Testing...");
+    // }
 
     // // Add Tax in (%)
     // if (taxStatus === "on") {

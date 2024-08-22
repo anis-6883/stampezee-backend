@@ -24,11 +24,13 @@ export const createSubscription = asyncHandler(async (req: IApiRequest, res: Res
     Subscription.findOne({ slug: result.slug }),
   ]);
 
-  const allowCurrencies: any = setting?.stripe?.allowCurrencies || [];
-  const prices = result.prices.map((price: any) => price.currency);
-  const missingPrices = allowCurrencies.filter((item: any) => !prices.includes(item.currency)) || [];
+  // const allowCurrencies: any = setting?.stripe?.allowCurrencies || [];
+  // const prices = result.prices.map((price: any) => price.currency);
+  // const missingPrices = allowCurrencies.filter((item: any) => !prices.includes(item.currency)) || [];
 
-  if (missingPrices.length > 0) throw `Missing currency price: ${missingPrices.join(", ")}`;
+  // if (missingPrices.length > 0) {
+  //   throw `Missing currency price: ${missingPrices.map((item: any) => item.currency).join(", ")}`;
+  // }
   if (existingSubscription) throw "This subscription already exists!";
 
   let imageKey = null;
@@ -111,11 +113,14 @@ export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Res
     Subscription.findOne({ slug: result.slug, _id: { $ne: id } }),
   ]);
 
-  const allowCurrencies: any = setting?.stripe?.allowCurrencies || [];
-  const prices = updatedBody.prices.map((price: any) => price.currency);
-  const missingPrices = allowCurrencies.filter((item: any) => !prices.includes(item.currency)) || [];
+  // const allowCurrencies: any = setting?.stripe?.allowCurrencies || [];
+  // const prices = updatedBody.prices.map((price: any) => price.currency);
+  // const missingPrices = allowCurrencies.filter((item: any) => !prices.includes(item.currency)) || [];
 
-  if (missingPrices.length > 0) throw `Missing currency price: ${missingPrices.join(", ")}`;
+  // if (missingPrices.length > 0) {
+  //   throw `Missing currency price: ${missingPrices.map((item: any) => item.currency).join(", ")}`;
+  // }
+
   if (subscription) throw "Slug must be unique!";
 
   // File Validation
@@ -209,7 +214,7 @@ export const getAllDeletedSubscription = asyncHandler(async (req: IApiRequest, r
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  return apiResponse(res, 200, true, "Deleted subscSubscriptions fetched successfully!", data);
+  return apiResponse(res, 200, true, "Deleted subscriptions fetched successfully!", data);
 });
 
 /**

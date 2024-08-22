@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { numberField, requiredStringField, stringField } from "../../helpers/index";
+import { numberField, stringField } from "../../helpers/index";
 
 export const settingsSchema = Joi.object({
   general: Joi.object({
@@ -47,21 +47,6 @@ export const settingsSchema = Joi.object({
     taxTitle: stringField("taxTitle"),
     taxCost: numberField("taxCost"),
     taxStatus: stringField("taxStatus"),
-    allowCurrencies: Joi.array()
-      .items(
-        Joi.object({
-          country: requiredStringField("country"),
-          currency: requiredStringField("currency"),
-        })
-          .required()
-          .messages({
-            "object.base": "allowCurrencies item must be object!",
-          })
-      )
-      .messages({
-        "array.base": "allowCurrencies must be array!",
-        "array.includesRequiredUnknowns": "At least one currency is required!",
-      }),
   }).messages({
     "object.base": "s3Bucket must be object!",
   }),

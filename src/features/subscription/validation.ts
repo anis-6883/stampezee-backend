@@ -29,22 +29,6 @@ const descriptions = Joi.array()
     "array.includesRequiredUnknowns": "At least one description is required!",
   });
 
-const prices = Joi.array()
-  .items(
-    Joi.object({
-      country: requiredStringField("country"),
-      currency: requiredStringField("currency"),
-      amount: requiredNumberField("amount"),
-    }).messages({
-      "object.base": "price must be object!",
-    })
-  )
-  .messages({
-    "array.base": "price must be array!",
-    "any.required": "price is required!",
-    "array.includesRequiredUnknowns": "At least one price is required!",
-  });
-
 export const subscriptionSchema = Joi.object({
   title: requiredStringField("title"),
   slug: requiredStringField("slug"),
@@ -53,9 +37,7 @@ export const subscriptionSchema = Joi.object({
   descriptions: descriptions.required().messages({
     "any.required": "descriptions is required!",
   }),
-  prices: prices.required().messages({
-    "any.required": "prices is required!",
-  }),
+  price: requiredNumberField("price"),
   allowTotalBranch: Joi.alternatives().conditional("type", {
     is: "subscription",
     then: requiredNumberField("allowTotalBranch"),
@@ -83,7 +65,7 @@ export const updateSubscriptionSchema = Joi.object({
   slug: stringField("slug"),
   type,
   duration,
-  prices,
+  price: numberField("price"),
   descriptions,
   allowTotalBranch: numberField("allowTotalBranch"),
   allowTotalTeamMember: numberField("allowTotalTeamMember"),
