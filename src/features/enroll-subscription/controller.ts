@@ -13,6 +13,7 @@ import {
 import { IApiRequest, IEnrollPayment, IEnrollSubscriptionBody, ILineItem } from "../../types";
 import Branch from "../branch/model";
 import Coupon from "../coupon/model";
+import CurrencyExchange from "../currency-exchange/model";
 import Payment from "../payment/model";
 import Refund from "../refund/model";
 import Settings from "../settings/model";
@@ -132,29 +133,33 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     throw "Free trial already taken!";
   }
 
-  // Get payment metadata
-  const paymentMetadata = await Settings.findOne(
-    {},
-    {
-      "stripe.planChangeCost": 1,
-      "stripe.refundableThreshold": 1,
-      "stripe.taxTitle": 1,
-      "stripe.taxCost": 1,
-      "stripe.taxStatus": 1,
-      "stripe.stripeSecretKey": 1,
-      "stripe.allowCurrencies": 1,
-    }
-  );
+  // Get Payment Metadata & Allowed Currencies
+  const [paymentMetadata, allowCurrencies] = await Promise.all([
+    Settings.findOne(
+      {},
+      {
+        "stripe.planChangeCost": 1,
+        "stripe.refundableThreshold": 1,
+        "stripe.taxTitle": 1,
+        "stripe.taxCost": 1,
+        "stripe.taxStatus": 1,
+        "stripe.stripeSecretKey": 1,
+        "stripe.defaultCurrency": 1,
+      }
+    ),
+    CurrencyExchange.find({ status: true }),
+  ]);
+
+  const { defaultCurrency, stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } =
+    paymentMetadata.stripe ?? {};
+  const selectCurrency = allowCurrencies.find((curr) => curr.name === currency);
+  const baseCurrency = allowCurrencies.find((curr) => curr.name === defaultCurrency.currency);
 
   if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
-
-  const { stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } =
-    paymentMetadata.stripe ?? {};
+  if (!selectCurrency) throw "Provided currency is not allowed!";
+  if (!baseCurrency) throw "Base currency is not active!";
 
   const stripe = new Stripe(stripeSecretKey);
-
-  // const isAllowCurrency = allowCurrencies.find((allowCurrency) => allowCurrency.currency === currency);
-  // if (!isAllowCurrency) throw "Provided currency is not allowed!";
 
   // Check & Get Coupon
   let coupon = null;
@@ -205,7 +210,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     const enrollIdDuration: { [key: string]: number } = {};
     const line_items: ILineItem[] = [];
     let totalAmount = 0;
-    let finalCurrency = currency;
 
     if (pickPlan && enrolled) {
       const changeMode = checkPlanChange(
@@ -571,16 +575,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         if (subscription.type === "subscription") {
           let finalPrice = 0;
 
-          const pickPrice =
-            subscription.prices.find((price: any) => price.currency === currency) ||
-            subscription.prices.find((price: any) => price.currency === "USD");
-
-          if (!pickPrice) throw new Error("Need to set default price!");
-
-          finalPrice = pickPrice.amount;
-          finalCurrency = pickPrice.currency;
-
-          console.log({ pickPrice });
+          finalPrice = Number(
+            ((selectCurrency.exchangeRate / baseCurrency.exchangeRate) * subscription.price).toFixed(2)
+          );
 
           // If add Coupon, it will attach only in plan!
           // if (coupon) {
@@ -595,6 +592,18 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           //   }
           // }
 
+          // const product = await stripe.products.create({
+          //   name: "Gold Plan",
+          //   default_price_data: {
+          //     currency: currency.toLowerCase(),
+          //     unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent
+          //     recurring: {
+          //       interval: "month",
+          //     },
+          //   },
+          // });
+          // console.log({ product });
+
           const enrollSubscription: any = await EnrollSubscription.create({
             retailerId: req.user._id,
             planSnapshot: subscription,
@@ -605,7 +614,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             },
             balanceInfo: {
               planCurrentPrice: finalPrice,
-              currency: finalCurrency,
+              currency,
             },
             paymentStatus: "pending",
             enrollStatus: "purchase",
@@ -620,11 +629,11 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
           line_items.push({
             price_data: {
-              currency: "eur", // finalCurrency.toLowerCase()
+              currency: currency.toLowerCase(),
               product_data: {
                 name: `${subscription.title} Plan`,
               },
-              unit_amount: Math.round(Number(0.9) * 100), // convert into cent
+              unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent
               recurring: {
                 interval: "month",
               },
@@ -632,7 +641,12 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             quantity: 1,
           });
         } else {
-          let finalPrice = taxStatus === "on" ? subscription.taxPrice : subscription.originalPrice;
+          let finalPrice = 0;
+          finalPrice = Number(
+            ((selectCurrency.exchangeRate / baseCurrency.exchangeRate) * subscription.price).toFixed(2)
+          );
+
+          // Add Coupon is Pending...
 
           const enrollSubscription: any = await EnrollSubscription.create({
             retailerId: req.user._id,
@@ -643,6 +657,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             },
             balanceInfo: {
               planCurrentPrice: finalPrice,
+              currency,
             },
             paymentStatus: "pending",
             enrollStatus: "purchase",
@@ -654,9 +669,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
           line_items.push({
             price_data: {
-              currency: "cad",
+              currency: currency.toLowerCase(),
               product_data: {
-                name: subscription.title,
+                name: `${subscription.title} Add-On`,
               },
               unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent
               recurring: {
@@ -668,10 +683,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         }
       }
     }
-
-    // if (currency) {
-    //   return apiResponse(res, 200, true, "Testing...");
-    // }
 
     // // Add Tax in (%)
     // if (taxStatus === "on") {
