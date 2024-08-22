@@ -47,7 +47,10 @@ export const settingsSchema = Joi.object({
     taxTitle: stringField("taxTitle"),
     taxCost: numberField("taxCost"),
     taxStatus: stringField("taxStatus"),
-    defaultCurrency: stringField("defaultCurrency"),
+    defaultCurrency: Joi.object({
+      country: stringField("country"),
+      currency: stringField("currency"),
+    }),
   }).messages({
     "object.base": "s3Bucket must be object!",
   }),
