@@ -172,6 +172,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       softDeleted: false,
     });
 
+    if (!coupon) throw "Provide invalid coupon code!";
+
     const alreadyApplied = await EnrollSubscription.find({
       retailerId: req.user._id,
       "couponSnapshot._id": coupon._id,
@@ -179,7 +181,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     }).countDocuments();
 
     if (alreadyApplied >= coupon.limit) throw "Your coupon limit is over!";
-    if (!coupon) throw "Provide invalid coupon code!";
   }
 
   // Plan Enroll ID - Need for updating branch expiration
@@ -209,6 +210,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
     const enrollIdDuration: { [key: string]: number } = {};
     const line_items: ILineItem[] = [];
+    const coupons: { coupon: string }[] = [];
     let totalAmount = 0;
 
     if (pickPlan && enrolled) {
@@ -579,74 +581,121 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             ((selectCurrency.exchangeRate / baseCurrency.exchangeRate) * subscription.price).toFixed(2)
           );
 
+          if (taxStatus === "on") {
+            finalPrice += (finalPrice * taxCost) / 100;
+          }
+
           // If add Coupon, it will attach only in plan!
-          // if (coupon) {
-          //   if (subscription.price < coupon.minPurchaseAmount) {
-          //     throw `Min. ${coupon.minPurchaseAmount}CAD required to apply coupon!`;
-          //   }
+          if (coupon) {
+            if (subscription.price < coupon.minPurchaseAmount) {
+              throw `Min. ${coupon.minPurchaseAmount}CAD required to apply coupon!`;
+            }
 
-          //   if (coupon.discountType === "percentage") {
-          //     finalPrice = Number(subscription.price - (subscription.price * coupon.discount) / 100);
-          //   } else {
-          //     finalPrice = subscription.price - coupon.discount;
-          //   }
-          // }
-
-          // const product = await stripe.products.create({
-          //   name: "Gold Plan",
-          //   default_price_data: {
-          //     currency: currency.toLowerCase(),
-          //     unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent
-          //     recurring: {
-          //       interval: "month",
-          //     },
-          //   },
-          // });
-          // console.log({ product });
-
-          const enrollSubscription: any = await EnrollSubscription.create({
-            retailerId: req.user._id,
-            planSnapshot: subscription,
-            couponSnapshot: coupon ?? null,
-            taxSnapshot: {
-              taxTitle: taxStatus === "on" ? taxTitle : null,
-              taxCost: taxStatus === "on" ? taxCost : null,
-            },
-            balanceInfo: {
-              planCurrentPrice: finalPrice,
-              currency,
-            },
-            paymentStatus: "pending",
-            enrollStatus: "purchase",
-            status: false,
-          });
-
-          planEnrollmentId = enrollSubscription._id;
-          enrollIdDuration[enrollSubscription._id] = subscription.duration;
-          totalAmount += finalPrice;
-
-          // const couponPackageName = `${subscription.title} (-${coupon?.discount}${coupon?.discountType === "percentage" ? "%" : "CAD"})`;
-
-          line_items.push({
-            price_data: {
-              currency: currency.toLowerCase(),
-              product_data: {
-                name: `${subscription.title} Plan`,
+            // Create Plan
+            const product = await stripe.products.create({
+              name: `${subscription.title} Plan`,
+              ...(taxStatus === "on" && { description: `${subscription.title} Plan (including VAT ${taxCost}%)` }),
+              default_price_data: {
+                currency: currency.toLowerCase(),
+                unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent
+                recurring: {
+                  interval: "month",
+                },
               },
-              unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent
-              recurring: {
-                interval: "month",
+            });
+
+            // Attach Coupon with Plan
+            const applyCoupon = await stripe.coupons.create({
+              name: coupon.title,
+              ...(coupon.discountType === "percentage"
+                ? { percent_off: coupon.discount }
+                : { amount_off: coupon.discount }),
+              duration: "once",
+              applies_to: {
+                products: [product.id],
               },
-            },
-            quantity: 1,
-          });
+            });
+
+            coupons.push({
+              coupon: applyCoupon.id,
+            });
+
+            const enrollSubscription: any = await EnrollSubscription.create({
+              retailerId: req.user._id,
+              planSnapshot: subscription,
+              couponSnapshot: coupon ?? null,
+              taxSnapshot: {
+                taxTitle: taxStatus === "on" ? taxTitle : null,
+                taxCost: taxStatus === "on" ? taxCost : null,
+              },
+              balanceInfo: {
+                planCurrentPrice: finalPrice,
+                currency,
+              },
+              paymentStatus: "pending",
+              enrollStatus: "purchase",
+              status: false,
+            });
+
+            planEnrollmentId = enrollSubscription._id;
+            enrollIdDuration[enrollSubscription._id] = subscription.duration;
+            totalAmount += finalPrice;
+
+            line_items.push({
+              price: product.default_price,
+              quantity: 1,
+            });
+          } else {
+            // Without Coupon
+            const enrollSubscription: any = await EnrollSubscription.create({
+              retailerId: req.user._id,
+              planSnapshot: subscription,
+              couponSnapshot: coupon ?? null,
+              taxSnapshot: {
+                taxTitle: taxStatus === "on" ? taxTitle : null,
+                taxCost: taxStatus === "on" ? taxCost : null,
+              },
+              balanceInfo: {
+                planCurrentPrice: finalPrice,
+                currency,
+              },
+              paymentStatus: "pending",
+              enrollStatus: "purchase",
+              status: false,
+            });
+
+            planEnrollmentId = enrollSubscription._id;
+            enrollIdDuration[enrollSubscription._id] = subscription.duration;
+            totalAmount += finalPrice;
+
+            line_items.push({
+              price_data: {
+                currency: currency.toLowerCase(),
+                product_data: {
+                  name: `${subscription.title} Plan`,
+                  ...(taxStatus === "on" && {
+                    description: `${subscription.title} Plan (including VAT ${taxCost}%)`,
+                  }),
+                },
+                unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent
+                recurring: {
+                  interval: "month",
+                },
+              },
+              quantity: 1,
+            });
+          }
         } else {
           let finalPrice = 0;
           finalPrice = Number(
             ((selectCurrency.exchangeRate / baseCurrency.exchangeRate) * subscription.price).toFixed(2)
           );
 
-          // Add Coupon is Pending...
+          if (taxStatus === "on") {
+            finalPrice += (finalPrice * taxCost) / 100;
+          }
+
+          //// If Coupon also applied for Add-On then, we have to create product like plan. ////
 
           const enrollSubscription: any = await EnrollSubscription.create({
             retailerId: req.user._id,
@@ -672,6 +721,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               currency: currency.toLowerCase(),
               product_data: {
                 name: `${subscription.title} Add-On`,
+                ...(taxStatus === "on" && {
+                  description: `${subscription.title} Add-On (including VAT ${taxCost}%)`,
+                }),
               },
               unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent
               recurring: {
@@ -684,41 +736,21 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       }
     }
 
-    // // Add Tax in (%)
-    // if (taxStatus === "on") {
-    //   if (coupon) {
-    //     if (coupon.discountType === "percentage") {
-    //       totalAmount += Number((pickPlan.price * coupon.discount) / 100);
-    //     } else {
-    //       totalAmount += coupon.discount;
-    //     }
-    //   }
-
-    //   line_items.push({
-    //     price_data: {
-    //       currency: "cad",
-    //       product_data: {
-    //         name: `${taxTitle} (${taxCost}%)`,
-    //       },
-    //       unit_amount: Math.round(((Number(totalAmount) * taxCost) / 100) * 100), // convert into cent
-    //     },
-    //     quantity: 1,
-    //   });
-    // }
+    // TODO 1: Coupon Calculation Right or Wrong
+    // TODO 2: DB Update with Webhook & Success Url
+    // TODO 3: Currency Exchange create api also works as update
 
     const session = await stripe.checkout.sessions.create({
       line_items,
       mode: "subscription",
       metadata: enrollIdDuration,
+      discounts: coupons,
       success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}&takeFreeTrial=${req.user.takeFreeTrial}&pickPlan=${!!pickPlan}&enrolled=${!!enrolled}&planEnrollmentId=${planEnrollmentId}`,
       cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
       customer_email: req?.user?.email,
     });
 
-    // return res.redirect(session?.url);
-
     return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
-    // return apiResponse(res, 200, true, "Send to Payment Page!");
   }
 
   throw "Only one subscription and no duplicate addons are allowed!";

@@ -63,11 +63,11 @@ export interface IApiRequest extends Request {
 }
 
 export interface ILineItem {
-  price?: string;
+  price?: string | any;
   price_data?: {
     unit_amount: number;
     currency: string;
-    product_data: { name: string };
+    product_data: { name: string; description?: string };
     recurring?: { interval: "day" | "week" | "month" | "year" };
   };
   quantity: number;
