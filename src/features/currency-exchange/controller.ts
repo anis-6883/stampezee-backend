@@ -20,9 +20,14 @@ export const createCurrencyExchange = asyncHandler(async (req: IApiRequest, res:
   createBody.superAdminId = req.user._id;
 
   const existingCurrencyExchange = await CurrencyExchange.findOne({ name: createBody.name });
-  if (existingCurrencyExchange) return apiResponse(res, 400, false, "This currency exchange already exists!");
 
-  await CurrencyExchange.create(createBody);
+  if (existingCurrencyExchange) {
+    await CurrencyExchange.findByIdAndUpdate(existingCurrencyExchange._id, {
+      exchangeRate: createBody.exchangeRate,
+    });
+  } else {
+    await CurrencyExchange.create(createBody);
+  }
 
   return apiResponse(res, 201, true, "Currency exchange created successfully!");
 });
