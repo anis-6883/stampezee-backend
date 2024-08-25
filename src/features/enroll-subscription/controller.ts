@@ -581,9 +581,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             ((selectCurrency.exchangeRate / baseCurrency.exchangeRate) * subscription.price).toFixed(2)
           );
 
-          if (taxStatus === "on") {
-            finalPrice += (finalPrice * taxCost) / 100;
-          }
+          // if (taxStatus === "on") {
+          //   finalPrice += (finalPrice * taxCost) / 100;
+          // }
 
           // If add Coupon, it will attach only in plan!
           if (coupon) {
@@ -691,9 +691,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             ((selectCurrency.exchangeRate / baseCurrency.exchangeRate) * subscription.price).toFixed(2)
           );
 
-          if (taxStatus === "on") {
-            finalPrice += (finalPrice * taxCost) / 100;
-          }
+          // if (taxStatus === "on") {
+          //   finalPrice += (finalPrice * taxCost) / 100;
+          // }
 
           //// If Coupon also applied for Add-On then, we have to create product like plan. ////
 
@@ -735,10 +735,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         }
       }
     }
-
-    // TODO 1: Coupon Calculation Right or Wrong
-    // TODO 2: DB Update with Webhook & Success Url
-    // TODO 3: Currency Exchange create api also works as update
 
     const session = await stripe.checkout.sessions.create({
       line_items,
@@ -884,15 +880,15 @@ export const testEnrollSubscription = asyncHandler(async (req: IApiRequest, res:
   const { stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } = paymentMetadata.stripe;
   const stripe = new Stripe(stripeSecretKey);
 
-  const stripeCoupon = await stripe.coupons.create({
-    name: `New Year Off`,
-    percent_off: 10,
-    duration: "once",
-    currency: "cad",
-    applies_to: {
-      products: ["prod_QcdozwoAKCURYf"],
-    },
-  });
+  // const stripeCoupon = await stripe.coupons.create({
+  //   name: `New Year Off`,
+  //   percent_off: 10,
+  //   duration: "once",
+  //   currency: "cad",
+  //   applies_to: {
+  //     products: ["prod_QcdozwoAKCURYf"],
+  //   },
+  // });
 
   const session = await stripe.checkout.sessions.create({
     line_items: [
@@ -905,15 +901,17 @@ export const testEnrollSubscription = asyncHandler(async (req: IApiRequest, res:
         quantity: 1,
       },
     ],
-    discounts: [
-      {
-        coupon: stripeCoupon.id,
-      },
-    ],
+    // discounts: [
+    //   {
+    //     coupon: stripeCoupon.id,
+    //   },
+    // ],
     mode: "subscription",
     success_url: `${process.env.FRONTEND_URL}`,
     cancel_url: `${process.env.FRONTEND_URL}`,
     customer_email: "anisuzzaman.rootdevs@gmail.com",
+    automatic_tax: { enabled: true },
+    billing_address_collection: "required",
   });
 
   return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
@@ -980,7 +978,7 @@ export const testStripeWebhook = asyncHandler(async (req: IApiRequest, res: Resp
 
   if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
 
-  const { stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } = paymentMetadata.stripe;
+  const { stripeSecretKey } = paymentMetadata.stripe;
   const stripe = new Stripe(stripeSecretKey);
 
   try {
@@ -1012,6 +1010,12 @@ export const testStripeWebhook = asyncHandler(async (req: IApiRequest, res: Resp
     // Event when subscription is updated
     case "customer.subscription.updated":
       console.log("Subscription updated!");
+      console.log(event.data);
+      break;
+
+    // Event when subscription is deleted
+    case "customer.subscription.deleted":
+      console.log("Subscription deleted!");
       console.log(event.data);
       break;
 
