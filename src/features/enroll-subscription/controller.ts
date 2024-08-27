@@ -10,7 +10,8 @@ import {
   checkDuplicates,
   checkPlanChange,
 } from "../../helpers";
-import { IApiRequest, IEnrollPayment, IEnrollSubscriptionBody, ILineItem } from "../../types";
+import { IApiRequest, IEnrollSubscriptionBody, ILineItem } from "../../types";
+import { IEnrollPayment } from "../../types/index";
 import Branch from "../branch/model";
 import Coupon from "../coupon/model";
 import CurrencyExchange from "../currency-exchange/model";
@@ -208,7 +209,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     //////// Decision -> (Upgrade or Downgrade) or New Subscription ////////
     ////////////////////////////////////////////////////////////////////////
 
-    const enrollIdDuration: { [key: string]: number } = {};
+    const enrollIdDuration: { [key: string]: number | string } = {};
     const line_items: ILineItem[] = [];
     const coupons: { coupon: string }[] = [];
     let totalAmount = 0;
@@ -581,6 +582,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             ((selectCurrency.exchangeRate / baseCurrency.exchangeRate) * subscription.price).toFixed(2)
           );
 
+          // Including tax is not possible to apply right now!
           // if (taxStatus === "on") {
           //   finalPrice += (finalPrice * taxCost) / 100;
           // }
@@ -637,7 +639,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               status: false,
             });
 
-            planEnrollmentId = enrollSubscription._id;
+            enrollIdDuration["planEnrollmentId"] = String(enrollSubscription._id);
             enrollIdDuration[enrollSubscription._id] = subscription.duration;
             totalAmount += finalPrice;
 
@@ -664,7 +666,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               status: false,
             });
 
-            planEnrollmentId = enrollSubscription._id;
+            enrollIdDuration["planEnrollmentId"] = String(enrollSubscription._id);
             enrollIdDuration[enrollSubscription._id] = subscription.duration;
             totalAmount += finalPrice;
 
@@ -739,9 +741,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     const session = await stripe.checkout.sessions.create({
       line_items,
       mode: "subscription",
-      metadata: enrollIdDuration,
+      metadata: enrollIdDuration, // Need for update info after complete payment
       discounts: coupons,
-      success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}&takeFreeTrial=${req.user.takeFreeTrial}&pickPlan=${!!pickPlan}&enrolled=${!!enrolled}&planEnrollmentId=${planEnrollmentId}`,
+      success_url: `${process.env.FRONTEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}`,
+      // success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}&takeFreeTrial=${req.user.takeFreeTrial}&pickPlan=${!!pickPlan}&enrolled=${!!enrolled}&planEnrollmentId=${planEnrollmentId}`,
       cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
       customer_email: req?.user?.email,
     });
@@ -960,22 +963,10 @@ export const customerBillingPortal = asyncHandler(async (req: IApiRequest, res: 
  */
 export const testStripeWebhook = asyncHandler(async (req: IApiRequest, res: Response) => {
   const sig = req.headers["stripe-signature"];
-
   let event;
 
-  // Get payment metadata
-  const paymentMetadata = await Settings.findOne(
-    {},
-    {
-      "stripe.planChangeCost": 1,
-      "stripe.refundableThreshold": 1,
-      "stripe.taxTitle": 1,
-      "stripe.taxCost": 1,
-      "stripe.taxStatus": 1,
-      "stripe.stripeSecretKey": 1,
-    }
-  );
-
+  // Get Stripe Secret Key
+  const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
   if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
 
   const { stripeSecretKey } = paymentMetadata.stripe;
@@ -992,31 +983,118 @@ export const testStripeWebhook = asyncHandler(async (req: IApiRequest, res: Resp
     //Event when the subscription started
     case "checkout.session.completed":
       console.log("New Subscription started!");
-      console.log(event.data);
+      console.log(event.data.object);
+
+      const [payment, invoice, retailer, freeTrailSubscription] = await Promise.all<[any, any, any, any]>([
+        stripe.checkout.sessions.retrieve(event.data.object.id),
+        stripe.invoices.retrieve(event.data.object.invoice as string, {
+          expand: ["payment_intent.payment_method"],
+        }),
+        Retailer.findOne({ email: event.data.object.customer_email }),
+        Subscription.findOne({ slug: "trial" }),
+      ]);
+
+      console.log({ payment, invoice });
+
+      // If a user takes a plan without taking the free trial, then the free trial isn't applicable anymore
+      if (!retailer.takeFreeTrial) {
+        Promise.all([
+          EnrollSubscription.create({
+            retailerId: retailer._id,
+            planSnapshot: freeTrailSubscription,
+            paymentStatus: "trial",
+            enrollStatus: "trial",
+            validityFrom: moment(),
+            validityTo: moment(),
+            status: false,
+          }),
+          Retailer.findByIdAndUpdate(retailer._id, { takeFreeTrial: true }),
+        ]);
+      }
+
+      let subscriptionIds = [];
+      let updateSubscriptions = [];
+
+      // Deactivate last previous active plan
+      await EnrollSubscription.updateOne(
+        {
+          retailerId: retailer._id,
+          "planSnapshot.type": "subscription",
+          paymentStatus: { $in: ["completed", "trial"] },
+          status: true,
+        },
+        { status: false }
+      );
+
+      if (invoice.payment_intent.status === "succeeded") {
+        for (let key in payment.metadata) {
+          if (key !== "planEnrollmentId") {
+            const now = moment();
+            const expireDate = moment().add(payment.metadata[key], "days");
+            subscriptionIds.push(key);
+
+            updateSubscriptions.push(
+              EnrollSubscription.findByIdAndUpdate(key, {
+                paymentStatus: "completed",
+                validityFrom: now,
+                validityTo: expireDate,
+                status: true,
+              })
+            );
+          }
+        }
+
+        // Store Payment Info
+        updateSubscriptions.push(
+          Payment.create({
+            retailerId: retailer._id,
+            enrollSubscriptionId: subscriptionIds,
+            paymentIntentId: invoice.payment_intent.id,
+            paymentStatus: invoice.payment_intent.status,
+            amountTotal: payment.amount_total,
+          })
+        );
+
+        // Update expiration for already created branch
+        if ("planEnrollmentId" in payment.metadata) {
+          updateSubscriptions.push(
+            Branch.updateMany(
+              {
+                retailerId: retailer._id,
+                source: "subscription",
+              },
+              { enrollSubscriptionId: payment.metadata["planEnrollmentId"] }
+            )
+          );
+        }
+
+        await Promise.all(updateSubscriptions);
+      }
+
       break;
 
     // Event when the payment is successful (every subscription interval)
     case "invoice.paid":
       console.log("Invoice paid");
-      console.log(event.data);
+      // console.log(event.data);
       break;
 
     // Event when the payment failed due to card problems or insufficient funds (every subscription interval)
     case "invoice.payment_failed":
       console.log("Invoice payment failed!");
-      console.log(event.data);
+      // console.log(event.data);
       break;
 
     // Event when subscription is updated
     case "customer.subscription.updated":
       console.log("Subscription updated!");
-      console.log(event.data);
+      // console.log(event.data);
       break;
 
     // Event when subscription is deleted
     case "customer.subscription.deleted":
       console.log("Subscription deleted!");
-      console.log(event.data);
+      // console.log(event.data);
       break;
 
     default:

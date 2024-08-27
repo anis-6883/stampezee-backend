@@ -15,10 +15,6 @@ const PaymentSchema = new mongoose.Schema(
       },
       required: true,
     },
-    paymentId: {
-      type: String,
-      required: true,
-    },
     paymentIntentId: {
       type: String,
       required: true,

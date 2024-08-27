@@ -1,23 +1,5 @@
 import mongoose from "mongoose";
 
-const priceSchema = new mongoose.Schema({
-  country: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  currency: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  amount: {
-    type: Number,
-    required: true,
-    trim: true,
-  },
-});
-
 const subscriptionSchema = new mongoose.Schema({
   title: {
     type: String,
@@ -31,9 +13,15 @@ const subscriptionSchema = new mongoose.Schema({
   },
   descriptions: {
     type: [String],
+    validate: {
+      validator: (value: [string]) => Array.isArray(value) && value.length > 0,
+      message: "At least one description is required!",
+    },
   },
-  prices: {
-    type: [priceSchema],
+  price: {
+    type: Number,
+    trim: true,
+    required: true,
   },
   duration: {
     type: Number,
@@ -132,6 +120,7 @@ const couponSchema = new mongoose.Schema({
   },
 });
 
+// Main Schema
 const enrollSubscriptionSchema = new mongoose.Schema(
   {
     retailerId: {
