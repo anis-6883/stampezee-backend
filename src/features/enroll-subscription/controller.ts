@@ -741,6 +741,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     const session = await stripe.checkout.sessions.create({
       line_items,
       mode: "subscription",
+      payment_method_types: ["card"],
       metadata: enrollIdDuration, // Need for update info after complete payment
       discounts: coupons,
       success_url: `${process.env.FRONTEND_URL}/payment/complete`,
@@ -977,18 +978,21 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
     //Event when the subscription started
     case "checkout.session.completed":
       console.log("New Subscription started!");
+      console.log(event.data);
       await checkoutSessionComplete(event.data.object, stripe);
       break;
 
     // Event when the payment is successful (every subscription interval)
-    case "invoice.paid":
-      console.log("Invoice paid");
-      // console.log(event.data);
-      break;
+    // case "invoice.paid":
+    //   console.log("Invoice paid");
+    //   // console.log(event.data);
+    //   break;
 
     case "invoice.payment_succeeded":
       console.log("Invoice Payment Succeeded");
       console.log(event.data);
+      // if (event.data.object.billing_reason === "subscription_create") {
+      // }
       break;
 
     // Event when the payment failed due to card problems or insufficient funds (every subscription interval)
