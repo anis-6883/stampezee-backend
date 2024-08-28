@@ -743,7 +743,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       mode: "subscription",
       metadata: enrollIdDuration, // Need for update info after complete payment
       discounts: coupons,
-      success_url: `${process.env.FRONTEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${process.env.FRONTEND_URL}/payment/complete`,
       // success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}&takeFreeTrial=${req.user.takeFreeTrial}&pickPlan=${!!pickPlan}&enrolled=${!!enrolled}&planEnrollmentId=${planEnrollmentId}`,
       cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
       customer_email: req?.user?.email,
@@ -961,122 +961,34 @@ export const customerBillingPortal = asyncHandler(async (req: IApiRequest, res: 
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const testStripeWebhook = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: Response) => {
   const sig = req.headers["stripe-signature"];
-  let event;
 
   // Get Stripe Secret Key
   const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
   if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
 
   const { stripeSecretKey } = paymentMetadata.stripe;
-  const stripe = new Stripe(stripeSecretKey);
-
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET_KEY);
-  } catch (err) {
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
+  const stripe = new Stripe(stripeSecretKey, { apiVersion: "2024-04-10", typescript: true });
+  const event: Stripe.Event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET_KEY);
 
   // Handle the event
   switch (event.type) {
     //Event when the subscription started
     case "checkout.session.completed":
       console.log("New Subscription started!");
-      console.log(event.data.object);
-
-      const [payment, invoice, retailer, freeTrailSubscription] = await Promise.all<[any, any, any, any]>([
-        stripe.checkout.sessions.retrieve(event.data.object.id),
-        stripe.invoices.retrieve(event.data.object.invoice as string, {
-          expand: ["payment_intent.payment_method"],
-        }),
-        Retailer.findOne({ email: event.data.object.customer_email }),
-        Subscription.findOne({ slug: "trial" }),
-      ]);
-
-      console.log({ payment, invoice });
-
-      // If a user takes a plan without taking the free trial, then the free trial isn't applicable anymore
-      if (!retailer.takeFreeTrial) {
-        Promise.all([
-          EnrollSubscription.create({
-            retailerId: retailer._id,
-            planSnapshot: freeTrailSubscription,
-            paymentStatus: "trial",
-            enrollStatus: "trial",
-            validityFrom: moment(),
-            validityTo: moment(),
-            status: false,
-          }),
-          Retailer.findByIdAndUpdate(retailer._id, { takeFreeTrial: true }),
-        ]);
-      }
-
-      let subscriptionIds = [];
-      let updateSubscriptions = [];
-
-      // Deactivate last previous active plan
-      await EnrollSubscription.updateOne(
-        {
-          retailerId: retailer._id,
-          "planSnapshot.type": "subscription",
-          paymentStatus: { $in: ["completed", "trial"] },
-          status: true,
-        },
-        { status: false }
-      );
-
-      if (invoice.payment_intent.status === "succeeded") {
-        for (let key in payment.metadata) {
-          if (key !== "planEnrollmentId") {
-            const now = moment();
-            const expireDate = moment().add(payment.metadata[key], "days");
-            subscriptionIds.push(key);
-
-            updateSubscriptions.push(
-              EnrollSubscription.findByIdAndUpdate(key, {
-                paymentStatus: "completed",
-                validityFrom: now,
-                validityTo: expireDate,
-                status: true,
-              })
-            );
-          }
-        }
-
-        // Store Payment Info
-        updateSubscriptions.push(
-          Payment.create({
-            retailerId: retailer._id,
-            enrollSubscriptionId: subscriptionIds,
-            paymentIntentId: invoice.payment_intent.id,
-            paymentStatus: invoice.payment_intent.status,
-            amountTotal: payment.amount_total,
-          })
-        );
-
-        // Update expiration for already created branch
-        if ("planEnrollmentId" in payment.metadata) {
-          updateSubscriptions.push(
-            Branch.updateMany(
-              {
-                retailerId: retailer._id,
-                source: "subscription",
-              },
-              { enrollSubscriptionId: payment.metadata["planEnrollmentId"] }
-            )
-          );
-        }
-
-        await Promise.all(updateSubscriptions);
-      }
-
+      await checkoutSessionComplete(event.data.object, stripe);
       break;
 
     // Event when the payment is successful (every subscription interval)
     case "invoice.paid":
       console.log("Invoice paid");
       // console.log(event.data);
+      break;
+
+    case "invoice.payment_succeeded":
+      console.log("Invoice Payment Succeeded");
+      console.log(event.data);
       break;
 
     // Event when the payment failed due to card problems or insufficient funds (every subscription interval)
@@ -1088,7 +1000,7 @@ export const testStripeWebhook = asyncHandler(async (req: IApiRequest, res: Resp
     // Event when subscription is updated
     case "customer.subscription.updated":
       console.log("Subscription updated!");
-      // console.log(event.data);
+      console.log(event.data);
       break;
 
     // Event when subscription is deleted
@@ -1103,3 +1015,95 @@ export const testStripeWebhook = asyncHandler(async (req: IApiRequest, res: Resp
 
   return apiResponse(res, 200, true, "Send to Payment Page!");
 });
+
+/**
+ * Checkout Session Complete
+ * @param {Request} eventObject - The HTTP webhook event object.
+ * @param {Request} stripe - The stripe object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, stripe: Stripe): Promise<void> => {
+  const [payment, invoice, retailer, freeTrailSubscription] = await Promise.all<[any, any, any, any]>([
+    stripe.checkout.sessions.retrieve(eventObject.id),
+    stripe.invoices.retrieve(eventObject.invoice as string, {
+      expand: ["payment_intent.payment_method"],
+    }),
+    Retailer.findOne({ email: eventObject.customer_email }),
+    Subscription.findOne({ slug: "trial" }),
+  ]);
+
+  // If a user takes a plan without taking the free trial, then the free trial isn't applicable anymore
+  if (!retailer.takeFreeTrial) {
+    Promise.all([
+      EnrollSubscription.create({
+        retailerId: retailer._id,
+        planSnapshot: freeTrailSubscription,
+        paymentStatus: "trial",
+        enrollStatus: "trial",
+        validityFrom: moment(),
+        validityTo: moment(),
+        status: false,
+      }),
+      Retailer.findByIdAndUpdate(retailer._id, { takeFreeTrial: true }),
+    ]);
+  }
+
+  let subscriptionIds = [];
+  let updateSubscriptions = [];
+
+  // Deactivate last previous active plan
+  await EnrollSubscription.updateOne(
+    {
+      retailerId: retailer._id,
+      "planSnapshot.type": "subscription",
+      paymentStatus: { $in: ["completed", "trial"] },
+      status: true,
+    },
+    { status: false }
+  );
+
+  if (invoice.payment_intent.status === "succeeded") {
+    for (let key in payment.metadata) {
+      if (key !== "planEnrollmentId") {
+        const now = moment();
+        const expireDate = moment().add(payment.metadata[key], "days");
+        subscriptionIds.push(key);
+
+        updateSubscriptions.push(
+          EnrollSubscription.findByIdAndUpdate(key, {
+            paymentStatus: "completed",
+            validityFrom: now,
+            validityTo: expireDate,
+            status: true,
+          })
+        );
+      }
+    }
+
+    // Store Payment Info
+    updateSubscriptions.push(
+      Payment.create({
+        retailerId: retailer._id,
+        enrollSubscriptionId: subscriptionIds,
+        paymentIntentId: invoice.payment_intent.id,
+        paymentStatus: invoice.payment_intent.status,
+        amountTotal: payment.amount_total,
+      })
+    );
+
+    // Update expiration for already created branch
+    if ("planEnrollmentId" in payment.metadata) {
+      updateSubscriptions.push(
+        Branch.updateMany(
+          {
+            retailerId: retailer._id,
+            source: "subscription",
+          },
+          { enrollSubscriptionId: payment.metadata["planEnrollmentId"] }
+        )
+      );
+    }
+
+    await Promise.all(updateSubscriptions);
+  }
+};
