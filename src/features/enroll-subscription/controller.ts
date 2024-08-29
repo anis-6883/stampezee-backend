@@ -233,20 +233,28 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       if (changeMode > 0) {
         for (const subscription of subscriptions) {
           if (subscription.type === "subscription") {
-            let finalPrice = subscription.price - balanceAmount;
+            let finalPrice = 0;
+            // finalPrice = subscription.price - balanceAmount;
+
+            finalPrice = Number(
+              (
+                (selectCurrency.exchangeRate / baseCurrency.exchangeRate) *
+                (subscription.price - balanceAmount)
+              ).toFixed(2)
+            );
 
             // If add Coupon, it will attach only in plan!
-            if (coupon) {
-              if (finalPrice < coupon.minPurchaseAmount) {
-                throw `Min. ${coupon.minPurchaseAmount}CAD required to apply coupon!`;
-              }
+            // if (coupon) {
+            //   if (finalPrice < coupon.minPurchaseAmount) {
+            //     throw `Min. ${coupon.minPurchaseAmount}CAD required to apply coupon!`;
+            //   }
 
-              if (coupon.discountType === "percentage") {
-                finalPrice -= Number((subscription.price * coupon.discount) / 100);
-              } else {
-                finalPrice -= coupon.discount;
-              }
-            }
+            //   if (coupon.discountType === "percentage") {
+            //     finalPrice -= Number((subscription.price * coupon.discount) / 100);
+            //   } else {
+            //     finalPrice -= coupon.discount;
+            //   }
+            // }
 
             const enrollSubscription: any = await EnrollSubscription.create({
               retailerId: req.user._id,
@@ -271,19 +279,38 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             totalAmount += finalPrice;
             enrollIdDuration[enrollSubscription._id] = subscription.duration;
             planEnrollmentId = enrollSubscription._id;
-            const couponPackageName = `${subscription.title} (-${coupon?.discount}${coupon?.discountType === "percentage" ? "%" : "CAD"})`;
+            // const couponPackageName = `${subscription.title} (-${coupon?.discount}${coupon?.discountType === "percentage" ? "%" : "CAD"})`;
 
             line_items.push({
+              // price_data: {
+              //   currency: "cad",
+              //   product_data: {
+              //     name: coupon ? couponPackageName : subscription.title,
+              //   },
+              //   unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent,
+              // },
+              // quantity: 1,
               price_data: {
-                currency: "cad",
+                currency: currency.toLowerCase(),
                 product_data: {
-                  name: coupon ? couponPackageName : subscription.title,
+                  name: `${subscription.title} Plan`,
+                  ...(taxStatus === "on" && {
+                    description: `${subscription.title} Plan (including VAT ${taxCost}%)`,
+                  }),
                 },
-                unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent,
+                unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent
+                recurring: {
+                  interval: "month",
+                },
               },
               quantity: 1,
             });
           } else {
+            let finalPrice = 0;
+            finalPrice = Number(
+              ((selectCurrency.exchangeRate / baseCurrency.exchangeRate) * subscription.price).toFixed(2)
+            );
+
             const enrollSubscription: any = await EnrollSubscription.create({
               retailerId: req.user._id,
               planSnapshot: subscription,
@@ -300,12 +327,26 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             totalAmount += Number(subscription.price);
 
             line_items.push({
+              // price_data: {
+              //   currency: "cad",
+              //   product_data: {
+              //     name: subscription.title,
+              //   },
+              //   unit_amount: Math.round(Number(subscription.price) * 100), // convert into cent
+              // },
+              // quantity: 1,
               price_data: {
-                currency: "cad",
+                currency: currency.toLowerCase(),
                 product_data: {
-                  name: subscription.title,
+                  name: `${subscription.title} Add-On`,
+                  ...(taxStatus === "on" && {
+                    description: `${subscription.title} Add-On (including VAT ${taxCost}%)`,
+                  }),
                 },
-                unit_amount: Math.round(Number(subscription.price) * 100), // convert into cent
+                unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent
+                recurring: {
+                  interval: "month",
+                },
               },
               quantity: 1,
             });
@@ -560,16 +601,16 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       }
 
       // Add Plan Change Cost
-      line_items.push({
-        price_data: {
-          currency: "cad",
-          product_data: {
-            name: `Plan Change Cost`,
-          },
-          unit_amount: Math.round(Number(planChangeCost) * 100), // convert into cent
-        },
-        quantity: 1,
-      });
+      // line_items.push({
+      //   price_data: {
+      //     currency: "cad",
+      //     product_data: {
+      //       name: `Plan Change Cost`,
+      //     },
+      //     unit_amount: Math.round(Number(planChangeCost) * 100), // convert into cent
+      //   },
+      //   quantity: 1,
+      // });
     } else {
       ///////////////////////////////////
       //////// New Subscription /////////
@@ -881,44 +922,69 @@ export const testEnrollSubscription = asyncHandler(async (req: IApiRequest, res:
 
   if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
 
-  const { stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } = paymentMetadata.stripe;
+  const { stripeSecretKey } = paymentMetadata.stripe;
   const stripe = new Stripe(stripeSecretKey);
 
-  // const stripeCoupon = await stripe.coupons.create({
-  //   name: `New Year Off`,
-  //   percent_off: 10,
-  //   duration: "once",
-  //   currency: "cad",
-  //   applies_to: {
-  //     products: ["prod_QcdozwoAKCURYf"],
-  //   },
+  // // const stripeCoupon = await stripe.coupons.create({
+  // //   name: `New Year Off`,
+  // //   percent_off: 10,
+  // //   duration: "once",
+  // //   currency: "cad",
+  // //   applies_to: {
+  // //     products: ["prod_QcdozwoAKCURYf"],
+  // //   },
+  // // });
+
+  // const session = await stripe.checkout.sessions.create({
+  //   line_items: [
+  //     {
+  //       price: "price_1PlOXDJVIk5LKvIEkTdrlobS",
+  //       quantity: 1,
+  //     },
+  //     {
+  //       price: "price_1PlOapJVIk5LKvIER2Jw04my",
+  //       quantity: 1,
+  //     },
+  //   ],
+  //   // discounts: [
+  //   //   {
+  //   //     coupon: stripeCoupon.id,
+  //   //   },
+  //   // ],
+  //   mode: "subscription",
+  //   success_url: `${process.env.FRONTEND_URL}`,
+  //   cancel_url: `${process.env.FRONTEND_URL}`,
+  //   customer_email: "anisuzzaman.rootdevs@gmail.com",
+  //   automatic_tax: { enabled: true },
+  //   billing_address_collection: "required",
   // });
 
-  const session = await stripe.checkout.sessions.create({
-    line_items: [
-      {
-        price: "price_1PlOXDJVIk5LKvIEkTdrlobS",
-        quantity: 1,
-      },
-      {
-        price: "price_1PlOapJVIk5LKvIER2Jw04my",
-        quantity: 1,
-      },
-    ],
-    // discounts: [
-    //   {
-    //     coupon: stripeCoupon.id,
-    //   },
-    // ],
-    mode: "subscription",
-    success_url: `${process.env.FRONTEND_URL}`,
-    cancel_url: `${process.env.FRONTEND_URL}`,
-    customer_email: "anisuzzaman.rootdevs@gmail.com",
-    automatic_tax: { enabled: true },
-    billing_address_collection: "required",
+  // const subscriptions = await stripe.subscriptions.list({
+  //   customer: "cus_Qkagtur67NADVx",
+  // });
+
+  const price = await stripe.prices.create({
+    currency: "usd",
+    unit_amount: 1000,
+    recurring: {
+      interval: "month",
+    },
+    product_data: {
+      name: "Pro Plan",
+    },
   });
 
-  return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
+  const subscription = await stripe.subscriptions.update("sub_1Pt5VZAUADTrRdVYmBnP4YZc", {
+    items: [
+      {
+        id: "si_QkagbKEwwNARqR",
+        price: price.id,
+      },
+    ],
+    proration_behavior: "none",
+  });
+
+  return apiResponse(res, 200, true, "Send to Payment Page!", subscription);
 });
 
 /**
@@ -978,7 +1044,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
     //Event when the subscription started
     case "checkout.session.completed":
       console.log("New Subscription started!");
-      console.log(event.data);
+      // console.log(event.data);
       await checkoutSessionComplete(event.data.object, stripe);
       break;
 
@@ -991,8 +1057,24 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
     case "invoice.payment_succeeded":
       console.log("Invoice Payment Succeeded");
       console.log(event.data);
-      // if (event.data.object.billing_reason === "subscription_create") {
-      // }
+
+      const SubscriptionEventObject = event.data.object;
+
+      if (
+        SubscriptionEventObject.billing_reason === "subscription_update" ||
+        SubscriptionEventObject.billing_reason === "subscription_cycle"
+      ) {
+        console.log("Subscription is updated");
+        const now = moment();
+        const expireDate = moment().add(30, "days");
+        await EnrollSubscription.updateMany(
+          { "stripe.subscriptionId": SubscriptionEventObject.subscription },
+          {
+            validityFrom: now,
+            validityTo: expireDate,
+          }
+        );
+      }
       break;
 
     // Event when the payment failed due to card problems or insufficient funds (every subscription interval)
@@ -1004,7 +1086,21 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
     // Event when subscription is updated
     case "customer.subscription.updated":
       console.log("Subscription updated!");
-      console.log(event.data);
+      let subscriptionUpdateObject = event.data.object;
+
+      console.log({ subscriptionUpdateObject });
+
+      await EnrollSubscription.updateMany(
+        { "stripe.subscriptionId": subscriptionUpdateObject.id },
+        {
+          "stripe.renewCancelAt": subscriptionUpdateObject.cancel_at
+            ? new Date(subscriptionUpdateObject.cancel_at * 1000)
+            : null,
+          "stripe.renewCanceledAtByCustomer": subscriptionUpdateObject.canceled_at
+            ? new Date(subscriptionUpdateObject.canceled_at * 1000)
+            : null,
+        }
+      );
       break;
 
     // Event when subscription is deleted
@@ -1056,15 +1152,15 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
   let updateSubscriptions = [];
 
   // Deactivate last previous active plan
-  await EnrollSubscription.updateOne(
-    {
-      retailerId: retailer._id,
-      "planSnapshot.type": "subscription",
-      paymentStatus: { $in: ["completed", "trial"] },
-      status: true,
-    },
-    { status: false }
-  );
+  // await EnrollSubscription.updateOne(
+  //   {
+  //     retailerId: retailer._id,
+  //     "planSnapshot.type": "subscription",
+  //     paymentStatus: { $in: ["completed", "trial"] },
+  //     status: true,
+  //   },
+  //   { status: false }
+  // );
 
   if (invoice.payment_intent.status === "succeeded") {
     for (let key in payment.metadata) {
@@ -1076,6 +1172,12 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
         updateSubscriptions.push(
           EnrollSubscription.findByIdAndUpdate(key, {
             paymentStatus: "completed",
+            stripe: {
+              subscriptionId: payment.subscription,
+              customerId: payment.customer,
+              renewCancelAt: null,
+              renewCanceledAtByCustomer: null,
+            },
             validityFrom: now,
             validityTo: expireDate,
             status: true,

@@ -128,6 +128,24 @@ const enrollSubscriptionSchema = new mongoose.Schema(
       ref: "Retailer",
       required: true,
     },
+    stripe: {
+      subscriptionId: {
+        type: String,
+        default: null,
+      },
+      customerId: {
+        type: String,
+        default: null,
+      },
+      renewCancelAt: {
+        type: Date,
+        default: null,
+      },
+      renewCanceledAtByCustomer: {
+        type: Date,
+        default: null,
+      },
+    },
     planSnapshot: {
       type: subscriptionSchema,
       required: true,
