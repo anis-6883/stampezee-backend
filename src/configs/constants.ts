@@ -16,6 +16,7 @@ export const PACKAGES = {
   PRO: "pro",
   ADVANCED: "advanced",
   STAMP: "stamp",
+  CUSTOM_STAMP_IMAGE: "custom_stamp_image",
   BRANCH: "branch",
   PUSH_NOTIFICATION_USER: "push_notification_user",
   PUSH_NOTIFICATION_LOCATION: "push_notification_location",

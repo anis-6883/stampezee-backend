@@ -8,7 +8,7 @@ export interface IEnrollPayment {
   amount_total: number;
 }
 export interface IEnrollSubscriptionBody {
-  slugs: string[];
+  slug: string;
   branchIds: string[];
   code: string;
   currency: string;
