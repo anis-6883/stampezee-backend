@@ -3,6 +3,7 @@ import { ROLE } from "../configs/constants";
 import billingRoutes from "../features/billing/route";
 import branchRoutes from "../features/branch/route";
 import { submitContact } from "../features/contact/controller";
+import { getAllCurrencyExchanges, getTwoCurrencyExchangeRate } from "../features/currency-exchange/controller";
 import customerRoutes from "../features/customer/routes/retailer";
 import dashboardRoutes from "../features/dashboard/routes/retailer";
 import subscriptionRoutes from "../features/enroll-subscription/route";
@@ -28,6 +29,8 @@ router.post("/contact/submit", submitContact);
 router.get("/get-common-settings", getCommonSettings);
 router.get("/get-secret-settings", authAndPermissionCheck("", false, false), getSecretSettings);
 router.get("/refresh-token", authAndPermissionCheck("", false), refreshAccessToken);
+router.get("/currency-exchange/list", getAllCurrencyExchanges);
+router.get("/currency-exchange/rates", getTwoCurrencyExchangeRate);
 
 // Subscription Routes
 router.use("/subscription-plans", subscriptionRoutes);

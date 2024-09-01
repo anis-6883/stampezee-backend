@@ -43,9 +43,9 @@ app.get("/renew-branch/payment/complete", successRenewBranch);
 app.get("/renew-custom-stamp/payment/complete", successRenewCustomStamp);
 
 // Main Routes
+app.use("/api/web", webRoutes); // web
 app.use(verifyApiKeyHeader);
 app.use("/api/v1", mobileRoutes); // mobile
-app.use("/api/web", webRoutes); // web
 app.use("/api/secret-root/admin", adminRoutes); // admin
 app.use("/api/seeder", seederRoutes); // admin
 
