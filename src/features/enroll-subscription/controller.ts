@@ -220,9 +220,11 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     ////////////////////////////////
     //////// Plan Upgrade /////////
     ///////////////////////////////
+
+    // TODO: Different currency payment handle
+
     if (changeMode > 0) {
       let finalPrice = 0;
-      // finalPrice = subscription.price - balanceAmount;
 
       finalPrice = Number(
         (
@@ -230,21 +232,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           (pickSubscriptionPlan.price - balanceAmount)
         ).toFixed(2)
       );
-
-      console.log({ finalPrice, balanceAmount });
-
-      // If add Coupon, it will attach only in plan!
-      // if (coupon) {
-      //   if (finalPrice < coupon.minPurchaseAmount) {
-      //     throw `Min. ${coupon.minPurchaseAmount}CAD required to apply coupon!`;
-      //   }
-
-      //   if (coupon.discountType === "percentage") {
-      //     finalPrice -= Number((subscription.price * coupon.discount) / 100);
-      //   } else {
-      //     finalPrice -= coupon.discount;
-      //   }
-      // }
 
       const enrollSubscription: any = await EnrollSubscription.create({
         retailerId: req.user._id,
@@ -255,6 +242,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           taxCost: taxStatus === "on" ? taxCost : null,
         },
         balanceInfo: {
+          currency,
           currentBalance: balanceAmount,
           planCurrentPrice: coupon
             ? pickSubscriptionPlan.price - Number((pickSubscriptionPlan.price * coupon.discount) / 100)
@@ -286,6 +274,18 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         },
         quantity: 1,
       });
+
+      // Minus Balance Handle By Coupon
+      // const applyCoupon = await stripe.coupons.create({
+      //   name: "Balance",
+      //   amount_off: balanceAmount * 100,
+      //   currency,
+      //   duration: "once",
+      // });
+
+      // coupons.push({
+      //   coupon: applyCoupon.id,
+      // });
     }
 
     ////////////////////////////////
@@ -601,6 +601,12 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       finalPrice += (finalPrice * taxCost) / 100;
     }
 
+    const planCurrentPrice = coupon
+      ? coupon.discountType === "percentage"
+        ? pickSubscriptionPlan.price - (pickSubscriptionPlan.price * coupon?.discount) / 100
+        : pickSubscriptionPlan.price - coupon?.discount
+      : pickSubscriptionPlan.price;
+
     const enrollSubscription: any = await EnrollSubscription.create({
       retailerId: req.user._id,
       planSnapshot: pickSubscriptionPlan,
@@ -610,7 +616,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         taxCost: taxStatus === "on" ? taxCost : null,
       },
       balanceInfo: {
-        planCurrentPrice: pickSubscriptionPlan.price,
+        planCurrentPrice,
         currency,
       },
       paymentStatus: "pending",
@@ -910,7 +916,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
     //Event when the subscription started
     case "checkout.session.completed":
       console.log("New Subscription started!");
-      // console.log(event.data);
+      // console.log(event.data.object);
       await checkoutSessionComplete(event.data.object, stripe);
       break;
 
@@ -922,8 +928,6 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
 
     case "invoice.payment_succeeded":
       console.log("Invoice Payment Succeeded");
-      console.log(event.data);
-
       const SubscriptionEventObject = event.data.object;
 
       if (
@@ -953,8 +957,6 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
     case "customer.subscription.updated":
       console.log("Subscription updated!");
       let subscriptionUpdateObject = event.data.object;
-
-      console.log({ subscriptionUpdateObject });
 
       await EnrollSubscription.updateMany(
         { "stripe.subscriptionId": subscriptionUpdateObject.id },
