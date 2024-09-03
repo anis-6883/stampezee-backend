@@ -137,6 +137,10 @@ const enrollSubscriptionSchema = new mongoose.Schema(
         type: String,
         default: null,
       },
+      paymentMethodId: {
+        type: String,
+        default: null,
+      },
       renewCancelAt: {
         type: Date,
         default: null,
