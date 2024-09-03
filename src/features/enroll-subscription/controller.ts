@@ -222,16 +222,29 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     ///////////////////////////////
 
     // TODO: Different currency payment handle
-
     if (changeMode > 0) {
       let finalPrice = 0;
+      let couponValue = 0;
 
       finalPrice = Number(
-        (
-          (selectCurrency.exchangeRate / baseCurrency.exchangeRate) *
-          (pickSubscriptionPlan.price - balanceAmount)
-        ).toFixed(2)
+        ((selectCurrency.exchangeRate / baseCurrency.exchangeRate) * pickSubscriptionPlan.price).toFixed(2)
       );
+
+      // Check coupon eligibility & apply
+      if (coupon) {
+        if (pickSubscriptionPlan.price < coupon.minPurchaseAmount) {
+          throw `Min. ${coupon.minPurchaseAmount}*Currency* required to apply coupon!`;
+        }
+
+        couponValue = coupon.discountType === "percentage" ? (finalPrice * coupon?.discount) / 100 : coupon?.discount;
+      }
+
+      // Only tax apply
+      if (taxStatus === "on") {
+        finalPrice += (finalPrice * taxCost) / 100;
+      }
+
+      console.log({ finalPrice, balanceAmount });
 
       const enrollSubscription: any = await EnrollSubscription.create({
         retailerId: req.user._id,
@@ -255,8 +268,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       });
 
       totalAmount += finalPrice;
+      enrollIdDuration["planEnrollmentId"] = String(enrollSubscription._id);
       enrollIdDuration[enrollSubscription._id] = pickSubscriptionPlan.duration;
-      // planEnrollmentId = enrollSubscription._id;
 
       line_items.push({
         price_data: {
@@ -276,16 +289,16 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       });
 
       // Minus Balance Handle By Coupon
-      // const applyCoupon = await stripe.coupons.create({
-      //   name: "Balance",
-      //   amount_off: balanceAmount * 100,
-      //   currency,
-      //   duration: "once",
-      // });
+      const applyCoupon = await stripe.coupons.create({
+        name: coupon ? "Current Balance + Coupon" : "Current Balance",
+        amount_off: Math.round((balanceAmount + couponValue) * 100),
+        currency,
+        duration: "once",
+      });
 
-      // coupons.push({
-      //   coupon: applyCoupon.id,
-      // });
+      coupons.push({
+        coupon: applyCoupon.id,
+      });
     }
 
     ////////////////////////////////
@@ -549,28 +562,24 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     ///////////////////////////////////
     //////// New Subscription /////////
     ///////////////////////////////////
-
     let finalPrice = 0;
 
     finalPrice = Number(
       ((selectCurrency.exchangeRate / baseCurrency.exchangeRate) * pickSubscriptionPlan.price).toFixed(2)
     );
 
-    if (taxStatus === "on" && coupon) {
-      // Check coupon eligibility
+    // Check coupon eligibility & apply
+    if (coupon) {
       if (pickSubscriptionPlan.price < coupon.minPurchaseAmount) {
         throw `Min. ${coupon.minPurchaseAmount}CAD required to apply coupon!`;
       }
-
-      // Apply coupon & tax include
       const couponValue =
         coupon.discountType === "percentage" ? (finalPrice * coupon?.discount) / 100 : coupon?.discount;
-      finalPrice += (finalPrice * taxCost) / 100;
 
       // Tax deduct from coupon
       const applyCoupon = await stripe.coupons.create({
         name: coupon.title,
-        amount_off: couponValue * 100,
+        amount_off: Math.round(couponValue * 100),
         currency,
         duration: "once",
       });
@@ -578,26 +587,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       coupons.push({
         coupon: applyCoupon.id,
       });
-    } else if (coupon) {
-      // Check coupon eligibility
-      if (pickSubscriptionPlan.price < coupon.minPurchaseAmount) {
-        throw `Min. ${coupon.minPurchaseAmount}CAD required to apply coupon!`;
-      }
+    }
 
-      // Only coupon apply
-      const applyCoupon = await stripe.coupons.create({
-        name: coupon.title,
-        ...(coupon.discountType === "percentage"
-          ? { percent_off: coupon.discount }
-          : { amount_off: coupon.discount, currency }),
-        duration: "once",
-      });
-
-      coupons.push({
-        coupon: applyCoupon.id,
-      });
-    } else if (taxStatus === "on") {
-      // Only tax apply
+    // Only tax apply
+    if (taxStatus === "on") {
       finalPrice += (finalPrice * taxCost) / 100;
     }
 
@@ -633,10 +626,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         currency: currency.toLowerCase(),
         product_data: {
           name: `${pickSubscriptionPlan.title} ${isPlan ? "Plan" : "Add-On"}`,
-          ...(taxStatus === "on" &&
-            !coupon && {
-              description: `${pickSubscriptionPlan.title} ${isPlan ? "Plan" : "Add-On"} (including ${taxTitle} ${taxCost}%)`,
-            }),
+          ...(taxStatus === "on" && {
+            description: `${pickSubscriptionPlan.title} ${isPlan ? "Plan" : "Add-On"} (including ${taxTitle} ${taxCost}%)`,
+          }),
         },
         unit_amount: Math.round(Number(finalPrice) * 100), // convert into cent
         recurring: {
@@ -1020,15 +1012,22 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
   let updateSubscriptions = [];
 
   // Deactivate last previous active plan
-  // await EnrollSubscription.updateOne(
-  //   {
-  //     retailerId: retailer._id,
-  //     "planSnapshot.type": "subscription",
-  //     paymentStatus: { $in: ["completed", "trial"] },
-  //     status: true,
-  //   },
-  //   { status: false }
-  // );
+  const prevSubscription = await EnrollSubscription.findOneAndUpdate(
+    {
+      retailerId: retailer._id,
+      "planSnapshot.type": "subscription",
+      paymentStatus: { $in: ["completed", "trial"] },
+      status: true,
+    },
+    { status: false },
+    { new: true }
+  );
+
+  console.log({ prevSubscription });
+
+  if (prevSubscription) {
+    await stripe.subscriptions.cancel(prevSubscription.stripe.subscriptionId);
+  }
 
   if (invoice.payment_intent.status === "succeeded") {
     for (let key in payment.metadata) {
