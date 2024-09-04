@@ -177,12 +177,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     if (alreadyApplied >= coupon.limit) throw "Your coupon limit is over!";
   }
 
-  // Enroll Paid Subscription
-
   const pickSubscriptionPlan = await Subscription.findOne({ slug });
   const isPlan = [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(slug);
 
-  // Check Already enrolled or not
+  // Check already enrolled or not
   const enrolled = await EnrollSubscription.findOne({
     retailerId: req.user._id,
     "planSnapshot.type": "subscription",
@@ -327,14 +325,48 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         }
       }
 
-      totalAmount += Number(pickSubscriptionPlan.price - balanceAmount);
+      const finalPrice =
+        taxStatus === "on"
+          ? pickSubscriptionPlan.price + (pickSubscriptionPlan.price * taxCost) / 100
+          : pickSubscriptionPlan.price;
 
-      // Decision 1: Refund & Downgrade
-      if (totalAmount < 0) {
-        const isRefunded = Math.abs(totalAmount + planChangeCost) >= refundableThreshold;
+      totalAmount += Number(finalPrice - balanceAmount);
 
+      //////// Decision 1: Refund & Downgrade ///////
+      if (totalAmount <= 0) {
+        const price = await stripe.prices.create({
+          currency: currency.toLocaleLowerCase(),
+          unit_amount: Math.round(finalPrice * 100),
+          recurring: {
+            interval: "month",
+          },
+          product_data: {
+            name:
+              taxStatus === "on"
+                ? `${pickSubscriptionPlan.title} Plan (including ${taxTitle} ${taxCost}%)`
+                : `${pickSubscriptionPlan.title} Plan`,
+          },
+        });
+
+        //  Create New Subscription from Stripe
+        const stripeSubscription = await stripe.subscriptions.create({
+          customer: enrolled.stripe.customerId,
+          items: [
+            {
+              price: price.id,
+            },
+          ],
+          default_payment_method: enrolled.stripe.paymentMethodId,
+        });
+
+        //  Create New Enrollment
         const enrollSubscription = await EnrollSubscription.create({
           retailerId: req.user._id,
+          stripe: {
+            subscriptionId: stripeSubscription.id,
+            customerId: enrolled.stripe.customerId,
+            paymentMethodId: enrolled.stripe.paymentMethodId,
+          },
           planSnapshot: pickSubscriptionPlan,
           paymentStatus: "completed",
           enrollStatus: "downgrade",
@@ -344,36 +376,27 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             currentBalance: balanceAmount,
             planCurrentPrice: pickSubscriptionPlan.price,
           },
-          refundAmount: parseFloat(Math.abs(totalAmount - planChangeCost).toFixed(2)),
+          refundAmount: parseFloat(Math.abs(totalAmount).toFixed(2)),
           status: true,
-          planChangeCost,
         });
 
+        // Queries: Update Branch Expire, Disable Previous Enrollment, Cancel Previous Subscription from Stripe
         const updateQueries: any = [
           Branch.updateMany(
             { retailerId: req.user._id, source: "subscription" },
             { enrollSubscriptionId: enrollSubscription._id }
           ),
           EnrollSubscription.updateOne({ _id: enrolled._id }, { status: false }),
-          // stripe.subscriptions.cancel(enrolled.stripe.subscriptionId), // Cancel Subscription from Stripe
+          stripe.subscriptions.cancel(enrolled.stripe.subscriptionId),
         ];
 
-        // Create New Subscription
-        // const subscription = await stripe.subscriptions.create({
-        //   customer: enrolled.stripe.customerId,
-        //   items: [
-        //     {
-        //       price: "price_1PuY3hJVIk5LKvIEZJjIaYVb",
-        //     },
-        //   ],
-        //   default_payment_method: "pm_1PuvK5JVIk5LKvIEK5Y7J4rj",
-        // });
-
-        if (isRefunded) {
+        // Check Refund
+        const isRefunded = Math.abs(totalAmount) >= refundableThreshold;
+        if (isRefunded && totalAmount !== 0) {
           updateQueries.push(
             Refund.create({
               enrollSubscriptionId: enrollSubscription._id,
-              refundAmount: parseFloat(Math.abs(totalAmount + planChangeCost).toFixed(2)),
+              refundAmount: parseFloat(Math.abs(totalAmount).toFixed(2)),
               refundStatus: "pending",
             })
           );
@@ -388,8 +411,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           totalBranch: pickSubscriptionPlan?.allowTotalBranch,
         });
       }
-      // Decision 2: Payment & Downgrade or Not Now
-      else if (totalAmount > 0) {
+      //////// Decision 2: Payment & Downgrade ////////
+      else {
         const enrollSubscription: any = await EnrollSubscription.create({
           retailerId: req.user._id,
           planSnapshot: pickSubscriptionPlan,
@@ -410,42 +433,31 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         enrollIdDuration["planEnrollmentId"] = String(enrollSubscription._id);
         enrollIdDuration[enrollSubscription._id] = pickSubscriptionPlan.duration;
 
-        // Plan & Ad-ons Al-together cause (-) value is not allow to show in stripe
         line_items.push({
           price_data: {
-            currency: "cad",
+            currency,
             product_data: {
-              name: `${pickSubscriptionPlan.title} Plan & Ad-ons`,
+              name: `${pickSubscriptionPlan.title} Plan (Downgrade)`,
             },
-            unit_amount: Math.round(totalAmount * 100),
+            unit_amount: Math.round(finalPrice * 100),
+            recurring: {
+              interval: "month",
+            },
           },
           quantity: 1,
         });
-      }
-      // Decision 3: if totalAmount === 0 (Rare Case)
-      else {
-        const enrollSubscription = await EnrollSubscription.create({
-          retailerId: req.user._id,
-          planSnapshot: pickSubscriptionPlan,
-          paymentStatus: "completed",
-          enrollStatus: "downgrade",
-          validityFrom: moment(),
-          validityTo: moment().add(pickSubscriptionPlan.duration, "days"),
-          balanceInfo: {
-            currentBalance: balanceAmount,
-            planCurrentPrice: pickSubscriptionPlan.price,
-          },
+
+        // Minus Balance Handle By Coupon
+        const applyCoupon = await stripe.coupons.create({
+          name: "Current Balance",
+          amount_off: Math.round(totalAmount * 100),
+          currency,
+          duration: "once",
         });
 
-        await Promise.all([
-          Branch.updateMany(
-            { retailerId: req.user._id, source: "subscription" },
-            { enrollSubscriptionId: enrollSubscription._id }
-          ),
-          EnrollSubscription.updateOne({ _id: enrolled._id }, { status: false }),
-        ]);
-
-        return apiResponse(res, 200, true, `Your plan successfully downgraded!`);
+        coupons.push({
+          coupon: applyCoupon.id,
+        });
       }
     }
 
@@ -921,7 +933,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     { new: true }
   );
 
-  if (prevSubscription) {
+  if (prevSubscription && prevSubscription.paymentStatus !== "trial") {
     await stripe.subscriptions.cancel(prevSubscription.stripe.subscriptionId);
   }
 
