@@ -368,6 +368,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             paymentMethodId: enrolled.stripe.paymentMethodId,
           },
           planSnapshot: pickSubscriptionPlan,
+          taxSnapshot: {
+            taxTitle: taxStatus === "on" ? taxTitle : null,
+            taxCost: taxStatus === "on" ? taxCost : null,
+          },
           paymentStatus: "completed",
           enrollStatus: "downgrade",
           validityFrom: moment(),
