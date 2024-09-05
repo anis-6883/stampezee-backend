@@ -476,6 +476,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     //////// New Subscription /////////
     ///////////////////////////////////
     let finalPrice = 0;
+    let couponValue = 0;
 
     finalPrice = Number(
       ((selectCurrency.exchangeRate / baseCurrency.exchangeRate) * pickSubscriptionPlan.price).toFixed(2)
@@ -486,8 +487,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       if (pickSubscriptionPlan.price < coupon.minPurchaseAmount) {
         throw `Min. ${coupon.minPurchaseAmount}CAD required to apply coupon!`;
       }
-      const couponValue =
-        coupon.discountType === "percentage" ? (finalPrice * coupon?.discount) / 100 : coupon?.discount;
+      couponValue = coupon.discountType === "percentage" ? (finalPrice * coupon?.discount) / 100 : coupon?.discount;
 
       // Tax deduct from coupon
       const applyCoupon = await stripe.coupons.create({
@@ -507,11 +507,11 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       finalPrice += (finalPrice * taxCost) / 100;
     }
 
-    const planCurrentPrice = coupon
-      ? coupon.discountType === "percentage"
-        ? pickSubscriptionPlan.price - (pickSubscriptionPlan.price * coupon?.discount) / 100
-        : pickSubscriptionPlan.price - coupon?.discount
-      : pickSubscriptionPlan.price;
+    // const planCurrentPrice = coupon
+    //   ? coupon.discountType === "percentage"
+    //     ? pickSubscriptionPlan.price - (pickSubscriptionPlan.price * coupon?.discount) / 100
+    //     : pickSubscriptionPlan.price - coupon?.discount
+    //   : pickSubscriptionPlan.price;
 
     const enrollSubscription: any = await EnrollSubscription.create({
       retailerId: req.user._id,
@@ -522,7 +522,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         taxCost: taxStatus === "on" ? taxCost : null,
       },
       balanceInfo: {
-        planCurrentPrice,
+        planCurrentPrice: (finalPrice - couponValue).toFixed(2),
         currency,
       },
       paymentStatus: "pending",
@@ -673,93 +673,6 @@ export const successEnrollSubscription = asyncHandler(async (req: Request, res: 
 });
 
 /**
- * Test Enroll Subscription
- * @param {Request} req - The HTTP request object.
- * @param {Response} res - The HTTP response object.
- * @returns {Promise<void>} - A promise that resolves when the response is sent.
- */
-export const testEnrollSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
-  // Get payment metadata
-  const paymentMetadata = await Settings.findOne(
-    {},
-    {
-      "stripe.planChangeCost": 1,
-      "stripe.refundableThreshold": 1,
-      "stripe.taxTitle": 1,
-      "stripe.taxCost": 1,
-      "stripe.taxStatus": 1,
-      "stripe.stripeSecretKey": 1,
-    }
-  );
-
-  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
-
-  const { stripeSecretKey } = paymentMetadata.stripe;
-  const stripe = new Stripe(stripeSecretKey);
-
-  // // const stripeCoupon = await stripe.coupons.create({
-  // //   name: `New Year Off`,
-  // //   percent_off: 10,
-  // //   duration: "once",
-  // //   currency: "cad",
-  // //   applies_to: {
-  // //     products: ["prod_QcdozwoAKCURYf"],
-  // //   },
-  // // });
-
-  // const session = await stripe.checkout.sessions.create({
-  //   line_items: [
-  //     {
-  //       price: "price_1PlOXDJVIk5LKvIEkTdrlobS",
-  //       quantity: 1,
-  //     },
-  //     {
-  //       price: "price_1PlOapJVIk5LKvIER2Jw04my",
-  //       quantity: 1,
-  //     },
-  //   ],
-  //   // discounts: [
-  //   //   {
-  //   //     coupon: stripeCoupon.id,
-  //   //   },
-  //   // ],
-  //   mode: "subscription",
-  //   success_url: `${process.env.FRONTEND_URL}`,
-  //   cancel_url: `${process.env.FRONTEND_URL}`,
-  //   customer_email: "anisuzzaman.rootdevs@gmail.com",
-  //   automatic_tax: { enabled: true },
-  //   billing_address_collection: "required",
-  // });
-
-  // const subscriptions = await stripe.subscriptions.list({
-  //   customer: "cus_Qkagtur67NADVx",
-  // });
-
-  const price = await stripe.prices.create({
-    currency: "usd",
-    unit_amount: 1000,
-    recurring: {
-      interval: "month",
-    },
-    product_data: {
-      name: "Pro Plan",
-    },
-  });
-
-  const subscription = await stripe.subscriptions.update("sub_1Pt5VZAUADTrRdVYmBnP4YZc", {
-    items: [
-      {
-        id: "si_QkagbKEwwNARqR",
-        price: price.id,
-      },
-    ],
-    proration_behavior: "none",
-  });
-
-  return apiResponse(res, 200, true, "Send to Payment Page!", subscription);
-});
-
-/**
  * Test Customer Billing Portal
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
@@ -887,7 +800,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
 });
 
 /**
- * Checkout Session Complete
+ * Checkout Session Complete Event Handling
  * @param {Request} eventObject - The HTTP webhook event object.
  * @param {Request} stripe - The stripe object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
