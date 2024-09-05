@@ -37,6 +37,7 @@ const s3Bucket = new mongoose.Schema({
 
 const stripe = new mongoose.Schema({
   stripeSecretKey: { type: String, default: "", trim: true },
+  stripeWebhookSecretKey: { type: String, default: "", trim: true },
   planChangeCost: { type: Number, default: 1 },
   refundableThreshold: { type: Number, default: 1 },
   taxTitle: { type: String, default: "", trim: true },

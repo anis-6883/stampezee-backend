@@ -41,7 +41,8 @@ export const settingsSchema = Joi.object({
     "object.base": "s3Bucket must be object!",
   }),
   stripe: Joi.object({
-    stripeSecretKey: stringField("googleMapsApiKey"),
+    stripeSecretKey: stringField("stripeSecretKey"),
+    stripeWebhookSecretKey: stringField("stripeWebhookSecretKey"),
     planChangeCost: numberField("planChangeCost"),
     refundableThreshold: numberField("refundableThreshold"),
     taxTitle: stringField("taxTitle"),

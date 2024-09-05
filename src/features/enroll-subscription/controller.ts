@@ -804,19 +804,21 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
   const sig = req.headers["stripe-signature"];
 
   // Get Stripe Secret Key
-  const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
+  const paymentMetadata = await Settings.findOne(
+    {},
+    { "stripe.stripeSecretKey": 1, "stripe.stripeWebhookSecretKey": 1 }
+  );
   if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
 
-  const { stripeSecretKey } = paymentMetadata.stripe;
+  const { stripeSecretKey, stripeWebhookSecretKey } = paymentMetadata.stripe;
   const stripe = new Stripe(stripeSecretKey, { apiVersion: "2024-04-10", typescript: true });
-  const event: Stripe.Event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET_KEY);
+  const event: Stripe.Event = stripe.webhooks.constructEvent(req.body, sig, stripeWebhookSecretKey);
 
   // Handle the event
   switch (event.type) {
     //Event when the subscription started
     case "checkout.session.completed":
       console.log("New Subscription started!");
-      // console.log(event.data.object);
       await checkoutSessionComplete(event.data.object, stripe);
       break;
 
