@@ -3,8 +3,7 @@ import moment from "moment";
 import Stripe from "stripe";
 import { PACKAGES } from "../../configs/constants";
 import { apiResponse, asyncHandler, calculateBalanceAmount, checkPlanChange } from "../../helpers";
-import { IApiRequest, IEnrollSubscriptionBody, ILineItem } from "../../types";
-import { IEnrollPayment } from "../../types/index";
+import { IApiRequest, IEnrollPayment, IEnrollSubscriptionBody, ILineItem } from "../../types";
 import Branch from "../branch/model";
 import Coupon from "../coupon/model";
 import CurrencyExchange from "../currency-exchange/model";
@@ -127,6 +126,43 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     throw "Free trial already taken!";
   }
 
+  const pickSubscriptionPlan = await Subscription.findOne({ slug });
+  const isPlan = [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(slug);
+
+  // Check already enrolled or not
+  const enrolled = await EnrollSubscription.findOne({
+    retailerId: req.user._id,
+    "planSnapshot.type": "subscription",
+    paymentStatus: "completed",
+    validityTo: { $gt: moment() },
+    status: true,
+  });
+
+  if (enrolled && slug === enrolled.planSnapshot.slug) throw `You already take ${enrolled.planSnapshot.title} plan!`;
+  if (!enrolled && !isPlan) throw `You can't purchase an add-on without an active plan!`;
+
+  // Check & Get Coupon
+  let coupon = null;
+  if (code) {
+    coupon = await Coupon.findOne({
+      code,
+      startedAt: { $lte: new Date() },
+      expiredAt: { $gte: new Date() },
+      status: true,
+      softDeleted: false,
+    });
+
+    if (!coupon) throw "Provide invalid coupon code!";
+
+    const alreadyApplied = await EnrollSubscription.find({
+      retailerId: req.user._id,
+      "couponSnapshot._id": coupon._id,
+      paymentStatus: "completed",
+    }).countDocuments();
+
+    if (alreadyApplied >= coupon.limit) throw "Your coupon limit is over!";
+  }
+
   // Get Payment Metadata & Allowed Currencies
   const [paymentMetadata, allowCurrencies] = await Promise.all([
     Settings.findOne(
@@ -155,44 +191,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
   const stripe = new Stripe(stripeSecretKey);
 
-  // Check & Get Coupon
-  let coupon = null;
-  if (code) {
-    coupon = await Coupon.findOne({
-      code,
-      startedAt: { $lte: new Date() },
-      expiredAt: { $gte: new Date() },
-      status: true,
-      softDeleted: false,
-    });
-
-    if (!coupon) throw "Provide invalid coupon code!";
-
-    const alreadyApplied = await EnrollSubscription.find({
-      retailerId: req.user._id,
-      "couponSnapshot._id": coupon._id,
-      paymentStatus: "completed",
-    }).countDocuments();
-
-    if (alreadyApplied >= coupon.limit) throw "Your coupon limit is over!";
-  }
-
-  const pickSubscriptionPlan = await Subscription.findOne({ slug });
-  const isPlan = [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(slug);
-
-  // Check already enrolled or not
-  const enrolled = await EnrollSubscription.findOne({
-    retailerId: req.user._id,
-    "planSnapshot.type": "subscription",
-    paymentStatus: "completed",
-    validityTo: { $gt: moment() },
-    status: true,
-  });
-
-  if (enrolled && slug === enrolled.planSnapshot.slug) {
-    throw `You already take ${enrolled.planSnapshot.title} plan!`;
-  }
-
   ////////////////////////////////////////////////////////////////////////
   //////// Decision -> (Upgrade or Downgrade) or New Subscription ////////
   ////////////////////////////////////////////////////////////////////////
@@ -203,13 +201,13 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
   let totalAmount = 0;
 
   if (isPlan && enrolled) {
-    const changeMode = checkPlanChange(
+    const changeMode: number = checkPlanChange(
       [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED],
       enrolled.planSnapshot.slug,
       pickSubscriptionPlan?.slug
     );
 
-    const balanceAmount = calculateBalanceAmount(
+    const balanceAmount: number = calculateBalanceAmount(
       enrolled.validityFrom,
       enrolled.validityTo,
       enrolled.balanceInfo.planCurrentPrice
@@ -218,9 +216,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     ////////////////////////////////
     //////// Plan Upgrade /////////
     ///////////////////////////////
-
-    // TODO: Different currency payment handle
-
     if (changeMode > 0) {
       let finalPrice = 0;
       let couponValue = 0;
@@ -564,7 +559,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     metadata: enrollIdDuration, // Need for update info after complete payment
     discounts: coupons,
     success_url: `${process.env.FRONTEND_URL}/payment/complete`,
-    // success_url: `${process.env.BACKEND_URL}/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}&takeFreeTrial=${req.user.takeFreeTrial}&pickSubscriptionPlan=${!!pickSubscriptionPlan}&enrolled=${!!enrolled}&planEnrollmentId=${planEnrollmentId}`,
     cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
     customer_email: req?.user?.email,
   });
@@ -897,51 +891,69 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, stripe: Stripe): Promise<void> => {
-  const [payment, invoice, retailer, freeTrailSubscription] = await Promise.all<[any, any, any, any]>([
-    stripe.checkout.sessions.retrieve(eventObject.id),
-    stripe.invoices.retrieve(eventObject.invoice as string, {
-      expand: ["payment_intent.payment_method"],
-    }),
-    Retailer.findOne({ email: eventObject.customer_email }),
-    Subscription.findOne({ slug: "trial" }),
-  ]);
-
-  // If a user takes a plan without taking the free trial, then the free trial isn't applicable anymore
-  if (!retailer.takeFreeTrial) {
-    Promise.all([
-      EnrollSubscription.create({
-        retailerId: retailer._id,
-        planSnapshot: freeTrailSubscription,
-        paymentStatus: "trial",
-        enrollStatus: "trial",
-        validityFrom: moment(),
-        validityTo: moment(),
-        status: false,
+  try {
+    const [payment, invoice, retailer, freeTrailSubscription] = await Promise.all<[any, any, any, any]>([
+      stripe.checkout.sessions.retrieve(eventObject.id),
+      stripe.invoices.retrieve(eventObject.invoice as string, {
+        expand: ["payment_intent.payment_method"],
       }),
-      Retailer.findByIdAndUpdate(retailer._id, { takeFreeTrial: true }),
+      Retailer.findOne({ email: eventObject.customer_email }),
+      Subscription.findOne({ slug: "trial" }),
     ]);
-  }
 
-  let subscriptionId;
-  let updateSubscriptions = [];
+    if (invoice.payment_intent.status !== "succeeded") return;
 
-  // Deactivate last previous active plan
-  const prevSubscription = await EnrollSubscription.findOneAndUpdate(
-    {
-      retailerId: retailer._id,
-      "planSnapshot.type": "subscription",
-      paymentStatus: { $in: ["completed", "trial"] },
-      status: true,
-    },
-    { status: false },
-    { new: true }
-  );
+    // If a user takes a plan without taking the free trial, then the free trial isn't applicable anymore
+    if (!retailer.takeFreeTrial) {
+      Promise.all([
+        EnrollSubscription.create({
+          retailerId: retailer._id,
+          planSnapshot: freeTrailSubscription,
+          paymentStatus: "trial",
+          enrollStatus: "trial",
+          validityFrom: moment(),
+          validityTo: moment(),
+          status: false,
+        }),
+        Retailer.findByIdAndUpdate(retailer._id, { takeFreeTrial: true }),
+      ]);
+    }
 
-  if (prevSubscription && prevSubscription.paymentStatus !== "trial") {
-    await stripe.subscriptions.cancel(prevSubscription.stripe.subscriptionId);
-  }
+    let subscriptionId;
+    let updateSubscriptions = [];
+    const purchasedSubscription = await EnrollSubscription.findById(payment.metadata["planEnrollmentId"]);
 
-  if (invoice.payment_intent.status === "succeeded") {
+    // Deactivate last previous active plan
+    if (purchasedSubscription.planSnapshot.type === "subscription") {
+      const prevSubscription = await EnrollSubscription.findOneAndUpdate(
+        {
+          retailerId: retailer._id,
+          "planSnapshot.type": "subscription",
+          paymentStatus: { $in: ["completed", "trial"] },
+          status: true,
+        },
+        { status: false },
+        { new: true }
+      );
+
+      if (prevSubscription && prevSubscription.paymentStatus !== "trial") {
+        await stripe.subscriptions.cancel(prevSubscription.stripe.subscriptionId);
+      }
+
+      // Update expiration for already created branch
+      if ("planEnrollmentId" in payment.metadata) {
+        updateSubscriptions.push(
+          Branch.updateMany(
+            {
+              retailerId: retailer._id,
+              source: "subscription",
+            },
+            { enrollSubscriptionId: payment.metadata["planEnrollmentId"] }
+          )
+        );
+      }
+    }
+
     for (let key in payment.metadata) {
       if (key !== "planEnrollmentId") {
         const now = moment();
@@ -977,19 +989,9 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       })
     );
 
-    // Update expiration for already created branch
-    if ("planEnrollmentId" in payment.metadata) {
-      updateSubscriptions.push(
-        Branch.updateMany(
-          {
-            retailerId: retailer._id,
-            source: "subscription",
-          },
-          { enrollSubscriptionId: payment.metadata["planEnrollmentId"] }
-        )
-      );
-    }
-
     await Promise.all(updateSubscriptions);
+  } catch (err) {
+    console.log(err);
+    // throw err.message || err || "Something went wrong!";
   }
 };
