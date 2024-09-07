@@ -198,7 +198,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
   const enrollIdDuration: { [key: string]: number | string } = {};
   const line_items: ILineItem[] = [];
   const coupons: { coupon: string }[] = [];
-  let totalAmount = 0;
 
   if (isPlan && enrolled) {
     const changeMode: number = checkPlanChange(
@@ -259,7 +258,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         status: false,
       });
 
-      totalAmount += finalPrice;
       enrollIdDuration["planEnrollmentId"] = String(enrollSubscription._id);
       enrollIdDuration[enrollSubscription._id] = pickSubscriptionPlan.duration;
 
@@ -325,7 +323,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           ? pickSubscriptionPlan.price + (pickSubscriptionPlan.price * taxCost) / 100
           : pickSubscriptionPlan.price;
 
-      totalAmount += Number(finalPrice - balanceAmount);
+      const totalAmount = Number(finalPrice - balanceAmount);
 
       //////// Decision 1: Refund & Downgrade ///////
       if (totalAmount <= 0) {
@@ -476,6 +474,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     //////// New Subscription /////////
     ///////////////////////////////////
     let finalPrice = 0;
+    let taxValue = 0;
     let couponValue = 0;
 
     finalPrice = Number(
@@ -485,14 +484,15 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     // Check coupon eligibility & apply
     if (coupon) {
       if (pickSubscriptionPlan.price < coupon.minPurchaseAmount) {
-        throw `Min. ${coupon.minPurchaseAmount}CAD required to apply coupon!`;
+        throw `Min. ${((selectCurrency.exchangeRate / baseCurrency.exchangeRate) * coupon.minPurchaseAmount).toFixed(2)}${currency} required to apply coupon!`;
       }
-      couponValue = coupon.discountType === "percentage" ? (finalPrice * coupon?.discount) / 100 : coupon?.discount;
 
-      // Tax deduct from coupon
+      couponValue = coupon.discountType === "percentage" ? (finalPrice * coupon?.discount) / 100 : coupon?.discount;
+      couponValue = Number(couponValue.toFixed(2));
+
       const applyCoupon = await stripe.coupons.create({
         name: coupon.title,
-        amount_off: Math.round(couponValue * 100),
+        amount_off: couponValue * 100,
         currency,
         duration: "once",
       });
@@ -505,13 +505,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     // Only tax apply
     if (taxStatus === "on") {
       finalPrice += (finalPrice * taxCost) / 100;
+      taxValue = (finalPrice * taxCost) / 100;
     }
-
-    // const planCurrentPrice = coupon
-    //   ? coupon.discountType === "percentage"
-    //     ? pickSubscriptionPlan.price - (pickSubscriptionPlan.price * coupon?.discount) / 100
-    //     : pickSubscriptionPlan.price - coupon?.discount
-    //   : pickSubscriptionPlan.price;
 
     const enrollSubscription: any = await EnrollSubscription.create({
       retailerId: req.user._id,
@@ -522,7 +517,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         taxCost: taxStatus === "on" ? taxCost : null,
       },
       balanceInfo: {
-        planCurrentPrice: (finalPrice - couponValue).toFixed(2),
+        planCurrentPrice: (finalPrice - taxValue - couponValue).toFixed(2),
         currency,
       },
       paymentStatus: "pending",
@@ -532,7 +527,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
     enrollIdDuration["planEnrollmentId"] = String(enrollSubscription._id);
     enrollIdDuration[enrollSubscription._id] = pickSubscriptionPlan.duration;
-    totalAmount += finalPrice;
 
     line_items.push({
       price_data: {
@@ -743,6 +737,10 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
 
     case "invoice.payment_succeeded":
       console.log("Invoice Payment Succeeded");
+
+      //////////////////////////////////////////////
+      //////// Handling Renew Subscription ////////
+      /////////////////////////////////////////////
       const SubscriptionEventObject = event.data.object;
 
       if (
@@ -752,7 +750,8 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
         console.log("Subscription is updated");
         const now = moment();
         const expireDate = moment().add(30, "days");
-        await EnrollSubscription.updateMany(
+
+        await EnrollSubscription.updateOne(
           { "stripe.subscriptionId": SubscriptionEventObject.subscription },
           {
             validityFrom: now,
@@ -773,7 +772,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
       console.log("Subscription updated!");
       let subscriptionUpdateObject = event.data.object;
 
-      await EnrollSubscription.updateMany(
+      await EnrollSubscription.updateOne(
         { "stripe.subscriptionId": subscriptionUpdateObject.id },
         {
           "stripe.renewCancelAt": subscriptionUpdateObject.cancel_at
