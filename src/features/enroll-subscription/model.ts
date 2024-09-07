@@ -181,6 +181,10 @@ const enrollSubscriptionSchema = new mongoose.Schema(
         type: String,
         default: "USD",
       },
+      currencyRate: {
+        type: Number,
+        default: 0,
+      },
     },
     planChangeCost: {
       type: Number,

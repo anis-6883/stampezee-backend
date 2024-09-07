@@ -206,17 +206,31 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       pickSubscriptionPlan?.slug
     );
 
+    // 1. Previous plan payable currency
+    // 2. Current plan purchased currency
+    // 3. Default currency
+
+    const convertToBaseCurrency = Number(
+      (enrolled.balanceInfo.planCurrentPrice / (enrolled.balanceInfo.currencyRate / baseCurrency.exchangeRate)).toFixed(
+        2
+      )
+    );
+
+    console.log({ convertToBaseCurrency });
+
     const balanceAmount: number = calculateBalanceAmount(
       enrolled.validityFrom,
       enrolled.validityTo,
-      enrolled.balanceInfo.planCurrentPrice
+      convertToBaseCurrency
+      // enrolled.balanceInfo.planCurrentPrice
     );
 
-    ////////////////////////////////
+    ///////////////////////////////
     //////// Plan Upgrade /////////
     ///////////////////////////////
     if (changeMode > 0) {
       let finalPrice = 0;
+      let taxValue = 0;
       let couponValue = 0;
 
       finalPrice = Number(
@@ -226,7 +240,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       // Check coupon eligibility & apply
       if (coupon) {
         if (pickSubscriptionPlan.price < coupon.minPurchaseAmount) {
-          throw `Min. ${coupon.minPurchaseAmount}*Currency* required to apply coupon!`;
+          throw `Min. ${((selectCurrency.exchangeRate / baseCurrency.exchangeRate) * coupon.minPurchaseAmount).toFixed(2)}${currency} required to apply coupon!`;
         }
 
         couponValue = coupon.discountType === "percentage" ? (finalPrice * coupon?.discount) / 100 : coupon?.discount;
@@ -235,6 +249,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       // Only tax apply
       if (taxStatus === "on") {
         finalPrice += (finalPrice * taxCost) / 100;
+        taxValue += (finalPrice * taxCost) / 100;
       }
 
       const enrollSubscription: any = await EnrollSubscription.create({
@@ -519,6 +534,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       balanceInfo: {
         planCurrentPrice: (finalPrice - taxValue - couponValue).toFixed(2),
         currency,
+        currencyRate: selectCurrency.exchangeRate,
       },
       paymentStatus: "pending",
       enrollStatus: "purchase",
@@ -772,6 +788,9 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
       console.log("Subscription updated!");
       let subscriptionUpdateObject = event.data.object;
 
+      //////////////////////////////////////////////////////////////////
+      //////// Handling Cancel & Renew Subscription By Retailer ////////
+      /////////////////////////////////////////////////////////////////
       await EnrollSubscription.updateOne(
         { "stripe.subscriptionId": subscriptionUpdateObject.id },
         {
