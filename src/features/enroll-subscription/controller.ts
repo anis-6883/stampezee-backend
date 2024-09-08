@@ -174,20 +174,17 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         "stripe.taxCost": 1,
         "stripe.taxStatus": 1,
         "stripe.stripeSecretKey": 1,
-        "stripe.defaultCurrency": 1,
       }
     ),
     CurrencyExchange.find({ status: true }),
   ]);
 
-  const { defaultCurrency, stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } =
+  const { stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } =
     paymentMetadata.stripe ?? {};
   const selectCurrency = allowCurrencies.find((curr) => curr.name === currency);
-  const baseCurrency = allowCurrencies.find((curr) => curr.name === defaultCurrency.currency);
 
   if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
   if (!selectCurrency) throw "Provided currency is not allowed!";
-  if (!baseCurrency) throw "Base currency is not active!";
 
   const stripe = new Stripe(stripeSecretKey);
 
@@ -206,23 +203,14 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       pickSubscriptionPlan?.slug
     );
 
-    // 1. Previous plan payable currency
-    // 2. Current plan purchased currency
-    // 3. Default currency
-
     const convertToBaseCurrency = Number(
-      (enrolled.balanceInfo.planCurrentPrice / (enrolled.balanceInfo.currencyRate / baseCurrency.exchangeRate)).toFixed(
-        2
-      )
+      (enrolled.balanceInfo.planCurrentPrice / enrolled.balanceInfo.currencyRate).toFixed(2)
     );
-
-    console.log({ convertToBaseCurrency });
 
     const balanceAmount: number = calculateBalanceAmount(
       enrolled.validityFrom,
       enrolled.validityTo,
       convertToBaseCurrency
-      // enrolled.balanceInfo.planCurrentPrice
     );
 
     ///////////////////////////////
@@ -233,14 +221,12 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       let taxValue = 0;
       let couponValue = 0;
 
-      finalPrice = Number(
-        ((selectCurrency.exchangeRate / baseCurrency.exchangeRate) * pickSubscriptionPlan.price).toFixed(2)
-      );
+      finalPrice = Number((selectCurrency.exchangeRate * pickSubscriptionPlan.price).toFixed(2));
 
       // Check coupon eligibility & apply
       if (coupon) {
         if (pickSubscriptionPlan.price < coupon.minPurchaseAmount) {
-          throw `Min. ${((selectCurrency.exchangeRate / baseCurrency.exchangeRate) * coupon.minPurchaseAmount).toFixed(2)}${currency} required to apply coupon!`;
+          throw `Min. ${(selectCurrency.exchangeRate * coupon.minPurchaseAmount).toFixed(2)}${currency} required to apply coupon!`;
         }
 
         couponValue = coupon.discountType === "percentage" ? (finalPrice * coupon?.discount) / 100 : coupon?.discount;
@@ -248,8 +234,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
       // Only tax apply
       if (taxStatus === "on") {
-        finalPrice += (finalPrice * taxCost) / 100;
         taxValue += (finalPrice * taxCost) / 100;
+        finalPrice += taxValue;
       }
 
       const enrollSubscription: any = await EnrollSubscription.create({
@@ -263,9 +249,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         balanceInfo: {
           currency,
           currentBalance: balanceAmount,
-          planCurrentPrice: coupon
-            ? pickSubscriptionPlan.price - Number((pickSubscriptionPlan.price * coupon.discount) / 100)
-            : pickSubscriptionPlan.price,
+          currencyRate: selectCurrency.exchangeRate,
+          planCurrentPrice: (finalPrice - taxValue - couponValue).toFixed(2),
         },
         planChangeCost,
         paymentStatus: "pending",
@@ -333,15 +318,20 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         }
       }
 
-      const finalPrice =
-        taxStatus === "on"
-          ? pickSubscriptionPlan.price + (pickSubscriptionPlan.price * taxCost) / 100
-          : pickSubscriptionPlan.price;
+      let finalPrice = Number((selectCurrency.exchangeRate * pickSubscriptionPlan.price).toFixed(2));
+      let taxValue = 0;
 
       const totalAmount = Number(finalPrice - balanceAmount);
 
+      // Only tax apply
+      if (taxStatus === "on") {
+        taxValue += (finalPrice * taxCost) / 100;
+        finalPrice += taxValue;
+      }
+
       //////// Decision 1: Refund & Downgrade ///////
       if (totalAmount <= 0) {
+        // Create price/product for plan downgrading in stripe
         const price = await stripe.prices.create({
           currency: currency.toLocaleLowerCase(),
           unit_amount: Math.round(finalPrice * 100),
@@ -385,8 +375,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           validityFrom: moment(),
           validityTo: moment().add(pickSubscriptionPlan.duration, "days"),
           balanceInfo: {
+            currency,
             currentBalance: balanceAmount,
-            planCurrentPrice: pickSubscriptionPlan.price,
+            planCurrentPrice: finalPrice - taxValue,
+            currencyRate: selectCurrency.exchangeRate,
           },
           refundAmount: parseFloat(Math.abs(totalAmount).toFixed(2)),
           status: true,
@@ -434,8 +426,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           },
           planChangeCost,
           balanceInfo: {
+            currency,
+            planCurrentPrice: finalPrice - taxValue,
             currentBalance: balanceAmount,
-            planCurrentPrice: pickSubscriptionPlan.price,
+            currencyRate: selectCurrency.exchangeRate,
           },
           paymentStatus: "pending",
           enrollStatus: "downgrade",
@@ -492,14 +486,12 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     let taxValue = 0;
     let couponValue = 0;
 
-    finalPrice = Number(
-      ((selectCurrency.exchangeRate / baseCurrency.exchangeRate) * pickSubscriptionPlan.price).toFixed(2)
-    );
+    finalPrice = Number((selectCurrency.exchangeRate * pickSubscriptionPlan.price).toFixed(2));
 
     // Check coupon eligibility & apply
     if (coupon) {
       if (pickSubscriptionPlan.price < coupon.minPurchaseAmount) {
-        throw `Min. ${((selectCurrency.exchangeRate / baseCurrency.exchangeRate) * coupon.minPurchaseAmount).toFixed(2)}${currency} required to apply coupon!`;
+        throw `Min. ${(selectCurrency.exchangeRate * coupon.minPurchaseAmount).toFixed(2)}${currency} required to apply coupon!`;
       }
 
       couponValue = coupon.discountType === "percentage" ? (finalPrice * coupon?.discount) / 100 : coupon?.discount;
@@ -519,8 +511,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
     // Only tax apply
     if (taxStatus === "on") {
-      finalPrice += (finalPrice * taxCost) / 100;
       taxValue = (finalPrice * taxCost) / 100;
+      finalPrice += taxValue;
     }
 
     const enrollSubscription: any = await EnrollSubscription.create({

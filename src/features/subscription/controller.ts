@@ -70,8 +70,8 @@ export const getAllSubscriptions = asyncHandler(async (req: IApiRequest, res: Re
   const skip: number = (Number(page) - 1) * Number(limit);
 
   const [docs, total] = await Promise.all([
-    Subscription.find({ softDeleted: false }).limit(Number(limit)).skip(skip).sort({ createdAt: "desc" }),
-    Subscription.find({ softDeleted: false }).countDocuments(),
+    Subscription.find({ softDeleted: false }).limit(Number(limit)).skip(skip).sort({ createdAt: "asc" }),
+    Subscription.countDocuments({ softDeleted: false }),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);

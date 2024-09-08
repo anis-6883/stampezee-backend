@@ -1,7 +1,6 @@
 import { Response } from "express";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
-import Settings from "../settings/model";
 import CurrencyExchange from "./model";
 import { currencyExchangeSchema, currencyExchangeStatusSchema, updateCurrencyExchangeSchema } from "./validation";
 
@@ -152,20 +151,9 @@ export const confirmDeleteCurrencyExchange = asyncHandler(async (req: IApiReques
  */
 export const getTwoCurrencyExchangeRate = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { currency } = req.query;
+  const currencyExchangeRates = await CurrencyExchange.find({ name: currency });
 
-  const settings = await Settings.findOne(
-    {},
-    {
-      "stripe.defaultCurrency": 1,
-    }
-  );
-
-  const currencyExchangeRates = await CurrencyExchange.find({
-    $or: [{ name: currency }, { name: settings?.stripe?.defaultCurrency?.currency }],
-  });
-
-  // const currencyExchange = await CurrencyExchange.findOne({ name: currency });
-  if (!currencyExchangeRates?.length) return apiResponse(res, 404, false, "Currency exchange not found!");
+  if (!currencyExchangeRates?.length) return apiResponse(res, 404, false, "Currency exchange rate not found!");
 
   return apiResponse(res, 200, true, "Currency exchange rates fetched successfully!", currencyExchangeRates);
 });
