@@ -98,6 +98,20 @@ export const getAllStamps = asyncHandler(async (req: IApiRequest, res: Response)
   const [docs, total] = await Promise.all([
     Stamp.aggregate([
       {
+        $match: query,
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
         $lookup: {
           from: "branches",
           localField: "branchId",
@@ -163,20 +177,6 @@ export const getAllStamps = asyncHandler(async (req: IApiRequest, res: Response)
         },
       },
       {
-        $sort: {
-          createdAt: -1,
-        },
-      },
-      {
-        $match: query,
-      },
-      {
-        $skip: skip,
-      },
-      {
-        $limit: Number(limit),
-      },
-      {
         $project: {
           branchId: 0,
           categoryId: 0,
@@ -229,6 +229,20 @@ export const getBranchCategoryImageList = asyncHandler(async (req: IApiRequest, 
     }),
     StampImage.aggregate([
       {
+        $match: {
+          softDeleted: false,
+          status: true,
+          userId: req.user._id,
+          "enrollSubscription.validityFrom": { $lte: new Date() },
+          "enrollSubscription.validityTo": { $gte: new Date() },
+        },
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
         $lookup: {
           from: "enrollsubscriptions",
           localField: "enrollSubscriptionId",
@@ -248,20 +262,6 @@ export const getBranchCategoryImageList = asyncHandler(async (req: IApiRequest, 
         $unwind: {
           path: "$enrollSubscription",
           preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $match: {
-          softDeleted: false,
-          status: true,
-          userId: req.user._id,
-          "enrollSubscription.validityFrom": { $lte: new Date() },
-          "enrollSubscription.validityTo": { $gte: new Date() },
-        },
-      },
-      {
-        $sort: {
-          createdAt: -1,
         },
       },
       {
