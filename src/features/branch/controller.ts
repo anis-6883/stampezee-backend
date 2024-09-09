@@ -44,16 +44,12 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
     Branch.find({ retailerId: req.user._id, softDeleted: false }),
   ]);
 
-  if (!subscription) {
-    throw "No one is allowed to create a branch without a plan!";
-  }
+  if (!subscription) throw "No one is allowed to create a branch without a plan!";
 
   const allowTotalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addons.length;
   const branchWithoutSystemDisabled = retailerTotalBranch.filter((branch) => !branch.disabledBySystem).length;
 
-  if (branchWithoutSystemDisabled >= allowTotalBranch) {
-    throw "Your branch limit is over. Take new Add-on!";
-  }
+  if (branchWithoutSystemDisabled >= allowTotalBranch) throw "Your branch limit is over. Take new Add-on!";
 
   const retailerAddonIds = retailerTotalBranch
     .filter((branch) => branch.source === "addon")

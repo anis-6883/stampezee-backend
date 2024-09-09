@@ -3,7 +3,7 @@ import moment from "moment";
 import Stripe from "stripe";
 import { PACKAGES } from "../../configs/constants";
 import { apiResponse, asyncHandler, calculateBalanceAmount, checkPlanChange } from "../../helpers";
-import { IApiRequest, IEnrollPayment, IEnrollSubscriptionBody, ILineItem } from "../../types";
+import { IApiRequest, IEnrollSubscriptionBody, ILineItem } from "../../types";
 import Branch from "../branch/model";
 import Coupon from "../coupon/model";
 import CurrencyExchange from "../currency-exchange/model";
@@ -470,7 +470,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         product_data: {
           name: `Plan Change Cost`,
         },
-        unit_amount: Math.round(Number(planChangeCost) * 100), // convert into cent
+        unit_amount: Math.round(Number(planChangeCost * selectCurrency.exchangeRate) * 100), // convert into cent
       },
       quantity: 1,
     });
@@ -565,112 +565,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 });
 
 /**
- * Success Enroll Subscription
- * @param {Request} req - The HTTP request object.
- * @param {Response} res - The HTTP response object.
- * @returns {Promise<void>} - A promise that resolves when the response is sent.
- */
-export const successEnrollSubscription = asyncHandler(async (req: Request, res: Response) => {
-  if (req.query.stripe_success_token === process.env.STRIPE_SUCCESS_TOKEN && req?.query?.session_id) {
-    const stripeMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
-    const { stripeSecretKey } = stripeMetadata?.stripe || {};
-
-    if (!stripeSecretKey) throw "Something went wrong in Stripe settings!";
-    const stripe = new Stripe(stripeSecretKey);
-
-    const payment: IEnrollPayment = await stripe.checkout.sessions.retrieve(String(req.query.session_id), {
-      expand: ["payment_intent.payment_method"],
-    });
-
-    // If a user takes a plan without taking the free trial, then the free trial isn't applicable anymore
-    if (req.query._id && req.query.takeFreeTrial && req.query.takeFreeTrial === "false") {
-      const subscription = await Subscription.findOne({ slug: "trial" });
-      Promise.all([
-        EnrollSubscription.create({
-          retailerId: req.query._id,
-          planSnapshot: subscription,
-          paymentStatus: "trial",
-          enrollStatus: "trial",
-          validityFrom: moment(),
-          validityTo: moment(),
-          status: false,
-        }),
-        Retailer.findByIdAndUpdate(req.query._id, { takeFreeTrial: true }),
-      ]);
-    }
-
-    let subscriptionIds = [];
-    let updateSubscriptions = [];
-
-    // Deactivate last previous active plan
-    if (
-      req.query.pickSubscriptionPlan === "true" &&
-      (req.query.takeFreeTrial === "true" || req.query.enrolled === "true")
-    ) {
-      await EnrollSubscription.updateOne(
-        {
-          retailerId: req.query._id,
-          "planSnapshot.type": "subscription",
-          paymentStatus: { $in: ["completed", "trial"] },
-          status: true,
-        },
-        { status: false }
-      );
-    }
-
-    if (payment.payment_intent.status === "succeeded") {
-      for (let key in payment.metadata) {
-        const now = moment();
-        const expireDate = moment().add(payment.metadata[key], "days");
-        subscriptionIds.push(key);
-
-        updateSubscriptions.push(
-          EnrollSubscription.findByIdAndUpdate(key, {
-            paymentStatus: "completed",
-            validityFrom: now,
-            validityTo: expireDate,
-            status: true,
-          })
-        );
-      }
-
-      // Store Payment Info
-      updateSubscriptions.push(
-        Payment.create({
-          retailerId: req.query._id,
-          enrollSubscriptionId: subscriptionIds,
-          paymentId: payment.id,
-          paymentIntentId: payment.payment_intent.id,
-          paymentStatus: payment.payment_intent.status,
-          amountTotal: payment.amount_total,
-        })
-      );
-
-      // Update expiration for already created branch
-      if (req.query.pickSubscriptionPlan === "true") {
-        updateSubscriptions.push(
-          Branch.updateMany(
-            {
-              retailerId: req.query._id,
-              source: "subscription",
-            },
-            { enrollSubscriptionId: req.query.planEnrollmentId }
-          )
-        );
-      }
-
-      await Promise.all(updateSubscriptions);
-
-      return res.redirect(`${process.env.FRONTEND_URL}/payment/complete`);
-    } else {
-      throw "Something went wrong in payment!";
-    }
-  } else {
-    throw "Something went wrong in payment!";
-  }
-});
-
-/**
  * Test Customer Billing Portal
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
@@ -678,29 +572,16 @@ export const successEnrollSubscription = asyncHandler(async (req: Request, res: 
  */
 export const customerBillingPortal = asyncHandler(async (req: IApiRequest, res: Response) => {
   // Get payment metadata
-  const paymentMetadata = await Settings.findOne(
-    {},
-    {
-      "stripe.planChangeCost": 1,
-      "stripe.refundableThreshold": 1,
-      "stripe.taxTitle": 1,
-      "stripe.taxCost": 1,
-      "stripe.taxStatus": 1,
-      "stripe.stripeSecretKey": 1,
-    }
-  );
-
+  const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
   if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
 
-  const { stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } = paymentMetadata.stripe;
+  const { stripeSecretKey } = paymentMetadata.stripe;
   const stripe = new Stripe(stripeSecretKey);
 
   const portalSession = await stripe.billingPortal.sessions.create({
     customer: req.params.customerId,
     return_url: `${process.env.FRONTEND_URL}/`,
   });
-
-  console.log({ portalSession });
 
   return apiResponse(res, 200, true, "Send to Payment Page!", { url: portalSession.url });
 });
