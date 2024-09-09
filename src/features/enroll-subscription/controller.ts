@@ -203,14 +203,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       pickSubscriptionPlan?.slug
     );
 
-    const convertToBaseCurrency = Number(
-      (enrolled.balanceInfo.planCurrentPrice / enrolled.balanceInfo.currencyRate).toFixed(2)
-    );
-
     const balanceAmount: number = calculateBalanceAmount(
       enrolled.validityFrom,
       enrolled.validityTo,
-      convertToBaseCurrency
+      enrolled.balanceInfo.planCurrentPrice
     );
 
     ///////////////////////////////
@@ -252,7 +248,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           currencyRate: selectCurrency.exchangeRate,
           planCurrentPrice: (finalPrice - taxValue - couponValue).toFixed(2),
         },
-        planChangeCost,
+        planChangeCost: planChangeCost * selectCurrency.exchangeRate,
         paymentStatus: "pending",
         enrollStatus: "upgrade",
         status: false,
@@ -424,7 +420,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             taxTitle: taxStatus === "on" ? taxTitle : null,
             taxCost: taxStatus === "on" ? taxCost : null,
           },
-          planChangeCost,
+          planChangeCost: planChangeCost * selectCurrency.exchangeRate,
           balanceInfo: {
             currency,
             planCurrentPrice: finalPrice - taxValue,

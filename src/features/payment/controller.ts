@@ -21,62 +21,6 @@ export const getSubscriptionPayments = asyncHandler(async (req: IApiRequest, res
   const [docs, total] = await Promise.all([
     Payment.aggregate([
       {
-        $unwind: {
-          path: "$enrollSubscriptionId",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $lookup: {
-          from: "enrollsubscriptions",
-          localField: "enrollSubscriptionId",
-          foreignField: "_id",
-          as: "enrollSubscriptions",
-        },
-      },
-      {
-        $lookup: {
-          from: "retailers",
-          localField: "retailerId",
-          foreignField: "_id",
-          as: "retailer",
-          pipeline: [
-            {
-              $project: {
-                _id: 1,
-                storeName: 1,
-                email: 1,
-                fullName: 1,
-                image: 1,
-              },
-            },
-          ],
-        },
-      },
-      {
-        $unwind: {
-          path: "$retailer",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $addFields: {
-          enrollSubscriptions: { $arrayElemAt: ["$enrollSubscriptions", 0] },
-        },
-      },
-      {
-        $group: {
-          _id: "$_id",
-          originalFields: { $first: "$$ROOT" },
-          enrollSubscriptions: { $push: "$enrollSubscriptions" },
-        },
-      },
-      {
-        $replaceRoot: {
-          newRoot: { $mergeObjects: ["$originalFields", { enrollSubscriptions: "$enrollSubscriptions" }] },
-        },
-      },
-      {
         $sort: {
           createdAt: -1,
         },
@@ -88,18 +32,46 @@ export const getSubscriptionPayments = asyncHandler(async (req: IApiRequest, res
         $limit: Number(limit),
       },
       {
-        $addFields: {
-          amountTotal: { $divide: ["$amountTotal", 100] },
+        $lookup: {
+          from: "enrollsubscriptions",
+          localField: "enrollSubscriptionId",
+          foreignField: "_id",
+          as: "enrollSubscription",
+          pipeline: [
+            {
+              $lookup: {
+                from: "retailers",
+                localField: "retailerId",
+                foreignField: "_id",
+                as: "retailer",
+                pipeline: [
+                  {
+                    $project: {
+                      _id: 1,
+                      storeName: 1,
+                      email: 1,
+                      fullName: 1,
+                      image: 1,
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              $unwind: {
+                path: "$retailer",
+              },
+            },
+          ],
         },
       },
       {
-        $project: {
-          enrollSubscriptionId: 0,
-          retailerId: 0,
+        $unwind: {
+          path: "$enrollSubscription",
         },
       },
     ]),
-    Payment.find().countDocuments(),
+    Payment.countDocuments(),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
