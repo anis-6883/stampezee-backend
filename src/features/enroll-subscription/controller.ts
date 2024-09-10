@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import moment from "moment";
 import Stripe from "stripe";
 import { PACKAGES } from "../../configs/constants";
@@ -203,10 +203,17 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       pickSubscriptionPlan?.slug
     );
 
+    const convertToSelectedCurrency = Number(
+      (
+        (selectCurrency.exchangeRate / enrolled.balanceInfo.currencyRate) *
+        enrolled.balanceInfo.planCurrentPrice
+      ).toFixed(2)
+    );
+
     const balanceAmount: number = calculateBalanceAmount(
       enrolled.validityFrom,
       enrolled.validityTo,
-      enrolled.balanceInfo.planCurrentPrice
+      convertToSelectedCurrency
     );
 
     ///////////////////////////////
@@ -565,13 +572,12 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 });
 
 /**
- * Test Customer Billing Portal
+ * Customer Billing Portal
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const customerBillingPortal = asyncHandler(async (req: IApiRequest, res: Response) => {
-  // Get payment metadata
   const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
   if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
 
@@ -583,11 +589,11 @@ export const customerBillingPortal = asyncHandler(async (req: IApiRequest, res: 
     return_url: `${process.env.FRONTEND_URL}/`,
   });
 
-  return apiResponse(res, 200, true, "Send to Payment Page!", { url: portalSession.url });
+  return apiResponse(res, 200, true, "Send to Customer Billing Page!", { url: portalSession.url });
 });
 
 /**
- * Test Webhook
+ * Stripe Webhook Handler
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -595,7 +601,7 @@ export const customerBillingPortal = asyncHandler(async (req: IApiRequest, res: 
 export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: Response) => {
   const sig = req.headers["stripe-signature"];
 
-  // Get Stripe Secret Key
+  // Get Stripe Webhook Secret Key
   const paymentMetadata = await Settings.findOne(
     {},
     { "stripe.stripeSecretKey": 1, "stripe.stripeWebhookSecretKey": 1 }
@@ -606,33 +612,27 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
   const stripe = new Stripe(stripeSecretKey, { apiVersion: "2024-04-10", typescript: true });
   const event: Stripe.Event = stripe.webhooks.constructEvent(req.body, sig, stripeWebhookSecretKey);
 
-  // Handle the event
   switch (event.type) {
-    //Event when the subscription started
+    //////////////////////////////////////////////
+    ///////// Handling New Subscription /////////
+    /////////////////////////////////////////////
     case "checkout.session.completed":
-      console.log("New Subscription started!");
+      console.log("Handling New Subscription!");
       await checkoutSessionComplete(event.data.object, stripe);
       break;
 
-    // Event when the payment is successful (every subscription interval)
-    // case "invoice.paid":
-    //   console.log("Invoice paid");
-    //   // console.log(event.data);
-    //   break;
-
+    //////////////////////////////////////////////
+    //////// Handling Renew Subscription ////////
+    /////////////////////////////////////////////
     case "invoice.payment_succeeded":
-      console.log("Invoice Payment Succeeded");
-
-      //////////////////////////////////////////////
-      //////// Handling Renew Subscription ////////
-      /////////////////////////////////////////////
+      console.log("Handling Renew Subscription!");
       const SubscriptionEventObject = event.data.object;
 
       if (
         SubscriptionEventObject.billing_reason === "subscription_update" ||
         SubscriptionEventObject.billing_reason === "subscription_cycle"
       ) {
-        console.log("Subscription is updated");
+        console.log("Subscription is updated!");
         const now = moment();
         const expireDate = moment().add(30, "days");
 
@@ -646,20 +646,12 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
       }
       break;
 
-    // Event when the payment failed due to card problems or insufficient funds (every subscription interval)
-    case "invoice.payment_failed":
-      console.log("Invoice payment failed!");
-      // console.log(event.data);
-      break;
-
-    // Event when subscription is updated
+    /////////////////////////////////////////////////////////////////
+    //////// Handling Cancel & Renew Subscription By Retailer ///////
+    /////////////////////////////////////////////////////////////////
     case "customer.subscription.updated":
-      console.log("Subscription updated!");
+      console.log("Handling Cancel & Renew Subscription By Retailer!");
       let subscriptionUpdateObject = event.data.object;
-
-      //////////////////////////////////////////////////////////////////
-      //////// Handling Cancel & Renew Subscription By Retailer ////////
-      /////////////////////////////////////////////////////////////////
       await EnrollSubscription.updateOne(
         { "stripe.subscriptionId": subscriptionUpdateObject.id },
         {
@@ -673,10 +665,35 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
       );
       break;
 
-    // Event when subscription is deleted
+    //////////////////////////////////////////////////////////////////
+    //////// Handling Insufficient Funds or Payment Failed //////////
+    /////////////////////////////////////////////////////////////////
+    case "invoice.payment_failed":
+      console.log("Invoice Payment Failed!");
+      let invoiceObject = event.data.object;
+
+      if (
+        invoiceObject.billing_reason === "subscription_update" ||
+        invoiceObject.billing_reason === "subscription_cycle"
+      ) {
+        console.log("Cancel the subscription & Send a mail!");
+
+        await Promise.all([
+          EnrollSubscription.updateOne(
+            { "stripe.subscriptionId": invoiceObject.subscription },
+            {
+              status: false,
+            }
+          ),
+          stripe.subscriptions.cancel(invoiceObject.subscription as string),
+        ]);
+
+        // @TODO: Send Mail
+      }
+      break;
+
     case "customer.subscription.deleted":
-      console.log("Subscription deleted!");
-      // console.log(event.data);
+      console.log("Subscription Deleted!");
       break;
 
     default:
