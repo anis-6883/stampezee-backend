@@ -8,15 +8,8 @@ const PaymentSchema = new mongoose.Schema(
       required: true,
     },
     enrollSubscriptionId: {
-      type: [mongoose.Types.ObjectId],
-      validate: {
-        validator: (value: [string]) => Array.isArray(value) && value.length > 0,
-        message: "At least one id is required!",
-      },
-      required: true,
-    },
-    paymentId: {
-      type: String,
+      type: "ObjectId", // mongoose.Types.ObjectId
+      ref: "Retailer",
       required: true,
     },
     paymentIntentId: {

@@ -13,11 +13,15 @@ const subscriptionSchema = new mongoose.Schema({
   },
   descriptions: {
     type: [String],
+    validate: {
+      validator: (value: [string]) => Array.isArray(value) && value.length > 0,
+      message: "At least one description is required!",
+    },
   },
   price: {
     type: Number,
-    required: true,
     trim: true,
+    required: true,
   },
   duration: {
     type: Number,
@@ -40,6 +44,11 @@ const subscriptionSchema = new mongoose.Schema({
     default: null,
   },
   allowTotalTeamMember: {
+    type: Number,
+    trim: true,
+    default: null,
+  },
+  allowTotalStamp: {
     type: Number,
     trim: true,
     default: null,
@@ -111,12 +120,35 @@ const couponSchema = new mongoose.Schema({
   },
 });
 
+// Main Schema
 const enrollSubscriptionSchema = new mongoose.Schema(
   {
     retailerId: {
       type: "ObjectId", // mongoose.Types.ObjectId
       ref: "Retailer",
       required: true,
+    },
+    stripe: {
+      subscriptionId: {
+        type: String,
+        default: null,
+      },
+      customerId: {
+        type: String,
+        default: null,
+      },
+      paymentMethodId: {
+        type: String,
+        default: null,
+      },
+      renewCancelAt: {
+        type: Date,
+        default: null,
+      },
+      renewCanceledAtByCustomer: {
+        type: Date,
+        default: null,
+      },
     },
     planSnapshot: {
       type: subscriptionSchema,
@@ -142,6 +174,14 @@ const enrollSubscriptionSchema = new mongoose.Schema(
         default: 0,
       },
       planCurrentPrice: {
+        type: Number,
+        default: 0,
+      },
+      currency: {
+        type: String,
+        default: "USD",
+      },
+      currencyRate: {
         type: Number,
         default: 0,
       },

@@ -161,19 +161,31 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
       retailerId: retailer._id,
       "planSnapshot.type": "addon",
       paymentStatus: "completed",
-      // validityTo: { $gt: new Date() },
       status: true,
     }),
   ]);
 
-  const addonBranches = addons.filter((addon) => addon?.planSnapshot?.slug === PACKAGES.BRANCH).length;
-  const addonCustomStamps = addons.filter((addon) => addon?.planSnapshot?.slug === PACKAGES.STAMP).length;
-  const addonRegularNotifications = addons.filter(
-    (addon) => addon?.planSnapshot?.slug === PACKAGES.PUSH_NOTIFICATION_USER
-  ).length;
-  const addonLocationNotifications = addons.filter(
-    (addon) => addon?.planSnapshot?.slug === PACKAGES.PUSH_NOTIFICATION_LOCATION
-  ).length;
+  const { BRANCH, STAMP, CUSTOM_STAMP_IMAGE, PUSH_NOTIFICATION_USER, PUSH_NOTIFICATION_LOCATION } = PACKAGES;
+
+  const { addonBranches, addonStamps, addonCustomStampImages, addonRegularNotifications, addonLocationNotifications } =
+    addons.reduce(
+      (acc, addon) => {
+        const slug = addon?.planSnapshot?.slug;
+        if (slug === BRANCH) acc.addonBranches++;
+        if (slug === STAMP) acc.addonStamps++;
+        if (slug === CUSTOM_STAMP_IMAGE) acc.addonCustomStampImages++;
+        if (slug === PUSH_NOTIFICATION_USER) acc.addonRegularNotifications++;
+        if (slug === PUSH_NOTIFICATION_LOCATION) acc.addonLocationNotifications++;
+        return acc;
+      },
+      {
+        addonBranches: 0,
+        addonStamps: 0,
+        addonCustomStampImages: 0,
+        addonRegularNotifications: 0,
+        addonLocationNotifications: 0,
+      }
+    );
 
   const accessToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "30d");
   const refreshToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "60d");
@@ -181,18 +193,20 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   // Remove Sensitive Data
   const data = exclude(retailer._doc, ["password", "otp", "otpExpiry"]);
 
+  data.role = ROLE.RETAILER;
   data.accessToken = accessToken;
   data.refreshToken = refreshToken;
-  data.expiresIn = new Date().setTime(new Date().getTime() + ALARM_EXPIRE_TIME);
-  data.role = ROLE.RETAILER;
   data.plan = subscription?.planSnapshot?.slug ?? null;
-  data.planPayment = subscription?.balanceInfo?.planCurrentPrice ?? null;
+  data.planPaymentCurrency = subscription?.balanceInfo.currency ?? null;
+  data.planPayment = Number((subscription?.balanceInfo?.planCurrentPrice).toFixed(2)) ?? null;
   data.planStartAt = subscription?.validityFrom ?? null;
   data.planValidAt = subscription?.validityTo ?? null;
   data.totalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addonBranches;
-  data.totalCustomStamp = addonCustomStamps;
+  data.totalStamp = (subscription?.planSnapshot?.allowTotalStamp ?? 0) + addonStamps;
+  data.totalCustomStampImage = addonCustomStampImages;
   data.totalRegularNotification = addonRegularNotifications;
   data.totalLocationNotification = addonLocationNotifications;
+  data.expiresIn = new Date().setTime(new Date().getTime() + ALARM_EXPIRE_TIME);
 
   return apiResponse(res, 200, true, "Retailer Login Successfully!", data);
 });
@@ -244,31 +258,45 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
       retailerId: req.user._id,
       "planSnapshot.type": "addon",
       paymentStatus: "completed",
-      // validityTo: { $gt: new Date() },
       status: true,
     }),
   ]);
 
-  const addonBranches = addons.filter((addon) => addon?.planSnapshot?.slug === PACKAGES.BRANCH).length;
-  const addonCustomStamps = addons.filter((addon) => addon?.planSnapshot?.slug === PACKAGES.STAMP).length;
-  const addonRegularNotifications = addons.filter(
-    (addon) => addon?.planSnapshot?.slug === PACKAGES.PUSH_NOTIFICATION_USER
-  ).length;
-  const addonLocationNotifications = addons.filter(
-    (addon) => addon?.planSnapshot?.slug === PACKAGES.PUSH_NOTIFICATION_LOCATION
-  ).length;
+  const { BRANCH, STAMP, CUSTOM_STAMP_IMAGE, PUSH_NOTIFICATION_USER, PUSH_NOTIFICATION_LOCATION } = PACKAGES;
+
+  const { addonBranches, addonStamps, addonCustomStampImages, addonRegularNotifications, addonLocationNotifications } =
+    addons.reduce(
+      (acc, addon) => {
+        const slug = addon?.planSnapshot?.slug;
+        if (slug === BRANCH) acc.addonBranches++;
+        if (slug === STAMP) acc.addonStamps++;
+        if (slug === CUSTOM_STAMP_IMAGE) acc.addonCustomStampImages++;
+        if (slug === PUSH_NOTIFICATION_USER) acc.addonRegularNotifications++;
+        if (slug === PUSH_NOTIFICATION_LOCATION) acc.addonLocationNotifications++;
+        return acc;
+      },
+      {
+        addonBranches: 0,
+        addonStamps: 0,
+        addonCustomStampImages: 0,
+        addonRegularNotifications: 0,
+        addonLocationNotifications: 0,
+      }
+    );
 
   data.role = ROLE.RETAILER;
   data.plan = subscription?.planSnapshot?.slug ?? null;
-  data.planPayment = subscription?.balanceInfo?.planCurrentPrice ?? null;
+  data.planPaymentCurrency = subscription?.balanceInfo.currency ?? null;
+  data.planPayment = Number((subscription?.balanceInfo?.planCurrentPrice).toFixed(2)) ?? null;
   data.planStartAt = subscription?.validityFrom ?? null;
   data.planValidAt = subscription?.validityTo ?? null;
   data.totalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addonBranches;
-  data.totalCustomStamp = addonCustomStamps;
+  data.totalStamp = (subscription?.planSnapshot?.allowTotalStamp ?? 0) + addonStamps;
+  data.totalCustomStampImage = addonCustomStampImages;
   data.totalRegularNotification = addonRegularNotifications;
   data.totalLocationNotification = addonLocationNotifications;
 
-  return apiResponse(res, 200, true, "Retailer Profile", data);
+  return apiResponse(res, 200, true, "Retailer profile fetched successfully!", data);
 });
 
 /**

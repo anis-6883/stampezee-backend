@@ -26,7 +26,9 @@ export const getSettings = asyncHandler(async (req: Request, res: Response) => {
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const updateSettings = asyncHandler(async (req: Request, res: Response) => {
-  const result = await settingsSchema.validateAsync(req.body);
+  const result = await settingsSchema.validateAsync(req.body, {
+    abortEarly: false,
+  });
 
   const { general, notification, pages, s3Bucket, stripe, googleMap } = result;
 
@@ -69,6 +71,7 @@ export const getCommonSettings = asyncHandler(async (req: Request, res: Response
       "stripe.taxTitle": 1,
       "stripe.taxCost": 1,
       "stripe.taxStatus": 1,
+      "stripe.allowCurrencies": 1,
       "page.terms": 1,
       "page.policy": 1,
       "googleMap.googleMapsApiKey": 1,

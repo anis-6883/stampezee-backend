@@ -44,16 +44,12 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
     Branch.find({ retailerId: req.user._id, softDeleted: false }),
   ]);
 
-  if (!subscription) {
-    throw "No one is allowed to create a branch without a plan!";
-  }
+  if (!subscription) throw "No one is allowed to create a branch without a plan!";
 
   const allowTotalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addons.length;
   const branchWithoutSystemDisabled = retailerTotalBranch.filter((branch) => !branch.disabledBySystem).length;
 
-  if (branchWithoutSystemDisabled >= allowTotalBranch) {
-    throw "Your branch limit is over. Take new Add-on!";
-  }
+  if (branchWithoutSystemDisabled >= allowTotalBranch) throw "Your branch limit is over. Take new Add-on!";
 
   const retailerAddonIds = retailerTotalBranch
     .filter((branch) => branch.source === "addon")
@@ -100,6 +96,20 @@ export const getAllBranches = asyncHandler(async (req: IApiRequest, res: Respons
   const [docs, total] = await Promise.all([
     Branch.aggregate([
       {
+        $match: query,
+      },
+      {
+        $sort: {
+          disabledBySystem: 1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
         $lookup: {
           from: "enrollsubscriptions",
           localField: "enrollSubscriptionId",
@@ -121,22 +131,8 @@ export const getAllBranches = asyncHandler(async (req: IApiRequest, res: Respons
           preserveNullAndEmptyArrays: true,
         },
       },
-      {
-        $sort: {
-          disabledBySystem: 1,
-        },
-      },
-      {
-        $match: query,
-      },
-      {
-        $skip: skip,
-      },
-      {
-        $limit: Number(limit),
-      },
     ]),
-    Branch.find(query).countDocuments(),
+    Branch.countDocuments(query),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
@@ -330,43 +326,43 @@ export const branchRenew = asyncHandler(async (req: IApiRequest, res: Response) 
   const stripe = new Stripe(stripeSecretKey);
   const line_items = [];
 
-  line_items.push({
-    price_data: {
-      currency: "cad",
-      product_data: {
-        name: `${addOnBranch.title} (Renewal)`,
-      },
-      unit_amount: Math.round(Number(addOnBranch.price) * 100), // convert into cent
-    },
-    quantity: 1,
-  });
+  // line_items.push({
+  //   price_data: {
+  //     currency: "cad",
+  //     product_data: {
+  //       name: `${addOnBranch.title} (Renewal)`,
+  //     },
+  //     unit_amount: Math.round(Number(addOnBranch.price) * 100), // convert into cent
+  //   },
+  //   quantity: 1,
+  // });
 
   // Add Tax in (%)
-  if (taxStatus === "on") {
-    line_items.push({
-      price_data: {
-        currency: "cad",
-        product_data: {
-          name: `${taxTitle} (${taxCost}%)`,
-        },
-        unit_amount: Math.round(((Number(addOnBranch.price) * taxCost) / 100) * 100), // convert into cent
-      },
-      quantity: 1,
-    });
-  }
+  // if (taxStatus === "on") {
+  //   line_items.push({
+  //     price_data: {
+  //       currency: "cad",
+  //       product_data: {
+  //         name: `${taxTitle} (${taxCost}%)`,
+  //       },
+  //       unit_amount: Math.round(((Number(addOnBranch.price) * taxCost) / 100) * 100), // convert into cent
+  //     },
+  //     quantity: 1,
+  //   });
+  // }
 
-  const session = await stripe.checkout.sessions.create({
-    line_items,
-    mode: "payment",
-    metadata: {
-      enrollId: id,
-      duration: addOnBranch.duration,
-    },
-    success_url: `${process.env.BACKEND_URL}/renew-branch/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}`,
-    cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
-  });
+  // const session = await stripe.checkout.sessions.create({
+  //   line_items,
+  //   mode: "payment",
+  //   metadata: {
+  //     enrollId: id,
+  //     duration: addOnBranch.duration,
+  //   },
+  //   success_url: `${process.env.BACKEND_URL}/renew-branch/payment/complete?session_id={CHECKOUT_SESSION_ID}&stripe_success_token=${process.env.STRIPE_SUCCESS_TOKEN}&_id=${req.user._id}`,
+  //   cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
+  // });
 
-  return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
+  return apiResponse(res, 200, true, "Send to Payment Page!");
 });
 
 /**

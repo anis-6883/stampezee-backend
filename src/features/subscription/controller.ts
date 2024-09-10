@@ -2,6 +2,7 @@ import { Response } from "express";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
+import Settings from "../settings/model";
 import Subscription from "./model";
 import { subscriptionSchema, subscriptionStatusSchema, updateSubscriptionSchema } from "./validation";
 
@@ -18,8 +19,19 @@ export const createSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
   result.superAdminId = req.user._id;
 
-  const existingSubscription = await Subscription.findOne({ slug: result.slug });
-  if (existingSubscription) return apiResponse(res, 400, false, "This subscription already exists!");
+  const [setting, existingSubscription] = await Promise.all([
+    Settings.findOne({}, { "stripe.allowCurrencies": 1 }),
+    Subscription.findOne({ slug: result.slug }),
+  ]);
+
+  // const allowCurrencies: any = setting?.stripe?.allowCurrencies || [];
+  // const prices = result.prices.map((price: any) => price.currency);
+  // const missingPrices = allowCurrencies.filter((item: any) => !prices.includes(item.currency)) || [];
+
+  // if (missingPrices.length > 0) {
+  //   throw `Missing currency price: ${missingPrices.map((item: any) => item.currency).join(", ")}`;
+  // }
+  if (existingSubscription) throw "This subscription already exists!";
 
   let imageKey = null;
 
@@ -39,7 +51,7 @@ export const createSubscription = asyncHandler(async (req: IApiRequest, res: Res
     }
   }
 
-  const subscription: any = await Subscription.create({
+  const subscription = await Subscription.create({
     ...result,
     image: imageKey,
   });
@@ -58,8 +70,8 @@ export const getAllSubscriptions = asyncHandler(async (req: IApiRequest, res: Re
   const skip: number = (Number(page) - 1) * Number(limit);
 
   const [docs, total] = await Promise.all([
-    Subscription.find({ softDeleted: false }).limit(Number(limit)).skip(skip).sort({ createdAt: "desc" }),
-    Subscription.find({ softDeleted: false }).countDocuments(),
+    Subscription.find({ softDeleted: false }).limit(Number(limit)).skip(skip).sort({ createdAt: "asc" }),
+    Subscription.countDocuments({ softDeleted: false }),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
@@ -96,8 +108,20 @@ export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Res
   const { id } = req.params;
   const { softDeleted, image, ...updatedBody } = result;
 
-  const subscription = await Subscription.findOne({ _id: id });
-  if (!subscription) return apiResponse(res, 404, false, "Subscription not found!");
+  const [setting, subscription] = await Promise.all([
+    Settings.findOne({}, { "stripe.allowCurrencies": 1 }),
+    Subscription.findOne({ slug: result.slug, _id: { $ne: id } }),
+  ]);
+
+  // const allowCurrencies: any = setting?.stripe?.allowCurrencies || [];
+  // const prices = updatedBody.prices.map((price: any) => price.currency);
+  // const missingPrices = allowCurrencies.filter((item: any) => !prices.includes(item.currency)) || [];
+
+  // if (missingPrices.length > 0) {
+  //   throw `Missing currency price: ${missingPrices.map((item: any) => item.currency).join(", ")}`;
+  // }
+
+  if (subscription) throw "Slug must be unique!";
 
   // File Validation
   if (req.file) {
@@ -119,6 +143,7 @@ export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Res
   }
 
   const updatedData: any = await Subscription.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
+  if (!updatedData) return apiResponse(res, 404, false, "Subscription not found!");
 
   return apiResponse(res, 200, true, "Subscription updated successfully!", updatedData);
 });
@@ -189,7 +214,7 @@ export const getAllDeletedSubscription = asyncHandler(async (req: IApiRequest, r
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  return apiResponse(res, 200, true, "Deleted subscSubscriptions fetched successfully!", data);
+  return apiResponse(res, 200, true, "Deleted subscriptions fetched successfully!", data);
 });
 
 /**

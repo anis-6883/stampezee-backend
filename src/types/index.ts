@@ -7,6 +7,12 @@ export interface IEnrollPayment {
   payment_intent: any;
   amount_total: number;
 }
+export interface IEnrollSubscriptionBody {
+  slug: string;
+  branchIds: string[];
+  code: string;
+  currency: string;
+}
 
 export interface IConfig {
   [key: string]: {
@@ -57,7 +63,13 @@ export interface IApiRequest extends Request {
 }
 
 export interface ILineItem {
-  price_data: { unit_amount: number; currency: string; product_data: { name: string } };
+  price?: string | any;
+  price_data?: {
+    unit_amount: number;
+    currency: string;
+    product_data: { name: string; description?: string };
+    recurring?: { interval: "day" | "week" | "month" | "year" };
+  };
   quantity: number;
 }
 

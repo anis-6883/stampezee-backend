@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
+import EnrollSubscription from "../enroll-subscription/model";
 import Payment from "../payment/model";
 
 /**
@@ -14,42 +15,9 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
   const skip: number = (Number(page) - 1) * Number(limit);
 
   const [docs, total] = await Promise.all([
-    Payment.aggregate([
+    EnrollSubscription.aggregate([
       {
-        $unwind: {
-          path: "$enrollSubscriptionId",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $lookup: {
-          from: "enrollsubscriptions",
-          localField: "enrollSubscriptionId",
-          foreignField: "_id",
-          as: "enrollSubscriptions",
-        },
-      },
-      {
-        $addFields: {
-          enrollSubscriptions: { $arrayElemAt: ["$enrollSubscriptions", 0] },
-        },
-      },
-      {
-        $group: {
-          _id: "$_id",
-          originalFields: { $first: "$$ROOT" },
-          enrollSubscriptions: { $push: "$enrollSubscriptions" },
-        },
-      },
-      {
-        $replaceRoot: {
-          newRoot: { $mergeObjects: ["$originalFields", { enrollSubscriptions: "$enrollSubscriptions" }] },
-        },
-      },
-      {
-        $match: {
-          retailerId: req.user._id,
-        },
+        $match: { retailerId: req.user._id },
       },
       {
         $sort: {
@@ -63,16 +31,24 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
         $limit: Number(limit),
       },
       {
-        $addFields: {
-          amountTotal: { $divide: ["$amountTotal", 100] },
+        $lookup: {
+          from: "payments",
+          localField: "_id",
+          foreignField: "enrollSubscriptionId",
+          as: "payment",
+          pipeline: [
+            {
+              $project: {
+                retailerId: 0,
+                enrollSubscriptionId: 0,
+              },
+            },
+          ],
         },
       },
       {
-        $project: {
-          retailerId: 0,
-          updatedAt: 0,
-          paymentId: 0,
-          paymentIntentId: 0,
+        $unwind: {
+          path: "$payment",
         },
       },
     ]),

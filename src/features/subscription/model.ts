@@ -15,11 +15,15 @@ const schema = new mongoose.Schema(
     },
     descriptions: {
       type: [String],
+      validate: {
+        validator: (value: [string]) => Array.isArray(value) && value.length > 0,
+        message: "At least one description is required!",
+      },
     },
     price: {
       type: Number,
-      required: true,
       trim: true,
+      required: true,
     },
     duration: {
       type: Number,
@@ -42,6 +46,11 @@ const schema = new mongoose.Schema(
       default: null,
     },
     allowTotalTeamMember: {
+      type: Number,
+      trim: true,
+      default: null,
+    },
+    allowTotalStamp: {
       type: Number,
       trim: true,
       default: null,

@@ -5,7 +5,7 @@ import express from "express";
 import helmet from "helmet";
 import logger from "morgan";
 import { successRenewBranch } from "../features/branch/controller";
-import { successEnrollSubscription } from "../features/enroll-subscription/controller";
+import { stripeWebhookHandler } from "../features/enroll-subscription/controller";
 import seederRoutes from "../features/seeder/route";
 import { successRenewCustomStamp } from "../features/stamp-image/controller";
 import errorMiddleware from "../middlewares/errorMiddleware";
@@ -25,6 +25,7 @@ app.use(logger("dev"));
 app.use(cookieParser());
 app.use(express.static("public"));
 app.use(cors(config[env].corsOptions));
+app.post("/stripe/webhook", express.raw({ type: "application/json" }), stripeWebhookHandler);
 app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: true, limit: "100kb" }));
 
@@ -37,14 +38,13 @@ app.get("/", (req, res) => {
 });
 
 // Payment Success Route
-app.get("/payment/complete", successEnrollSubscription);
 app.get("/renew-branch/payment/complete", successRenewBranch);
 app.get("/renew-custom-stamp/payment/complete", successRenewCustomStamp);
 
 // Main Routes
+app.use("/api/web", webRoutes); // web
 app.use(verifyApiKeyHeader);
 app.use("/api/v1", mobileRoutes); // mobile
-app.use("/api/web", webRoutes); // web
 app.use("/api/secret-root/admin", adminRoutes); // admin
 app.use("/api/seeder", seederRoutes); // admin
 
