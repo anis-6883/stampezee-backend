@@ -349,6 +349,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           },
         });
 
+        //  Cancel Previous Subscription from Stripe
+        await stripe.subscriptions.cancel(enrolled.stripe.subscriptionId);
+
         //  Create New Subscription from Stripe
         const stripeSubscription = await stripe.subscriptions.create({
           customer: enrolled.stripe.customerId,
@@ -394,7 +397,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             { enrollSubscriptionId: enrollSubscription._id }
           ),
           EnrollSubscription.updateOne({ _id: enrolled._id }, { status: false }),
-          stripe.subscriptions.cancel(enrolled.stripe.subscriptionId),
         ];
 
         // Check Refund
@@ -652,6 +654,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
     case "customer.subscription.updated":
       console.log("Handling Cancel & Renew Subscription By Retailer!");
       let subscriptionUpdateObject = event.data.object;
+
       await EnrollSubscription.updateOne(
         { "stripe.subscriptionId": subscriptionUpdateObject.id },
         {
@@ -663,6 +666,8 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
             : null,
         }
       );
+
+      // @TODO: Send Mail
       break;
 
     //////////////////////////////////////////////////////////////////
