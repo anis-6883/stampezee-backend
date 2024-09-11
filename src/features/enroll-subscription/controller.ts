@@ -613,6 +613,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
 
   const { stripeSecretKey, stripeWebhookSecretKey } = paymentMetadata.stripe;
   const stripe = new Stripe(stripeSecretKey, { apiVersion: "2024-04-10", typescript: true });
+  console.log({ reqBody: req.body, sig, stripeWebhookSecretKey });
   const event: Stripe.Event = stripe.webhooks.constructEvent(req.body, sig, stripeWebhookSecretKey);
 
   switch (event.type) {
