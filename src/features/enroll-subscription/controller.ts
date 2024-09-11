@@ -626,6 +626,8 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
   // console.log({ reqBody: req.body, sig, stripeWebhookSecretKey });
   const event: Stripe.Event = stripe.webhooks.constructEvent(payloadString, header, stripeWebhookSecretKey);
 
+  console.log({ event });
+
   switch (event.type) {
     //////////////////////////////////////////////
     ///////// Handling New Subscription /////////
