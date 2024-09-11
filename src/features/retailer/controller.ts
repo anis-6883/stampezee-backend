@@ -69,12 +69,51 @@ export const getAllRetailers = asyncHandler(async (req: IApiRequest, res: Respon
 
   const [docs, total] = await Promise.all([
     Retailer.find(query, { password: 0 }).limit(Number(limit)).skip(skip).sort({ createdAt: "desc" }),
-    Retailer.find(query).countDocuments(),
+    Retailer.countDocuments(query),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  return apiResponse(res, 200, true, "Retailers fetched successfully!", data);
+  const test = await Retailer.aggregate([
+    {
+      $match: query,
+    },
+    {
+      $lookup: {
+        from: "enrollsubscriptions",
+        localField: "_id",
+        foreignField: "retailerId",
+        as: "enrollSubscription",
+        pipeline: [
+          {
+            $match: {
+              "planSnapshot.type": "subscription",
+              status: true,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: {
+        path: "$enrollSubscription",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $addFields: {
+        currentPlan: {
+          $cond: {
+            if: { $gt: [{ $type: "$enrollSubscription" }, "missing"] }, // Check if enrollSubscription exists
+            then: "$enrollSubscription.planSnapshot.title", // If true, set currentPlan to title
+            else: null, // If false, set it to null
+          },
+        },
+      },
+    },
+  ]);
+
+  return apiResponse(res, 200, true, "Retailers fetched successfully!", test);
 });
 
 /**

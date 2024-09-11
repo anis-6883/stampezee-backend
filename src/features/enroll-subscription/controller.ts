@@ -603,6 +603,7 @@ export const customerBillingPortal = asyncHandler(async (req: IApiRequest, res: 
 export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: Response) => {
   const sig = req.headers["stripe-signature"];
 
+  console.log({ sig });
   // Get Stripe Webhook Secret Key
   const paymentMetadata = await Settings.findOne(
     {},
