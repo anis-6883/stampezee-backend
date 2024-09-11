@@ -404,6 +404,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         if (isRefunded && totalAmount !== 0) {
           updateQueries.push(
             Refund.create({
+              currency,
               enrollSubscriptionId: enrollSubscription._id,
               refundAmount: parseFloat(Math.abs(totalAmount).toFixed(2)),
               refundStatus: "pending",

@@ -11,6 +11,10 @@ const schema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    currency: {
+      type: String,
+      required: true,
+    },
     refundStatus: {
       type: String,
       enum: ["pending", "completed"],
