@@ -232,7 +232,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           throw `Min. ${(selectCurrency.exchangeRate * coupon.minPurchaseAmount).toFixed(2)}${currency} required to apply coupon!`;
         }
 
-        couponValue = coupon.discountType === "percentage" ? (finalPrice * coupon?.discount) / 100 : coupon?.discount;
+        couponValue =
+          coupon.discountType === "percentage"
+            ? (finalPrice * coupon?.discount) / 100
+            : selectCurrency.exchangeRate * coupon?.discount;
       }
 
       // Only tax apply
@@ -500,7 +503,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         throw `Min. ${(selectCurrency.exchangeRate * coupon.minPurchaseAmount).toFixed(2)}${currency} required to apply coupon!`;
       }
 
-      couponValue = coupon.discountType === "percentage" ? (finalPrice * coupon?.discount) / 100 : coupon?.discount;
+      couponValue =
+        coupon.discountType === "percentage"
+          ? (finalPrice * coupon?.discount) / 100
+          : selectCurrency.exchangeRate * coupon?.discount;
       couponValue = Number(couponValue.toFixed(2));
 
       const applyCoupon = await stripe.coupons.create({

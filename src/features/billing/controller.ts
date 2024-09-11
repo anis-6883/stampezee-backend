@@ -2,7 +2,6 @@ import { Response } from "express";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
 import EnrollSubscription from "../enroll-subscription/model";
-import Payment from "../payment/model";
 
 /**
  * Get Subscription Payments
@@ -11,13 +10,20 @@ import Payment from "../payment/model";
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10 }: any = req.query;
+  const { page = 1, limit = 10, search }: any = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
+
+  const query: any = { retailerId: req.user._id, paymentStatus: "succeeded" };
+
+  if (search) {
+    const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
+    query.paymentIntentId = regex;
+  }
 
   const [docs, total] = await Promise.all([
     EnrollSubscription.aggregate([
       {
-        $match: { retailerId: req.user._id },
+        $match: { retailerId: req.user._id, paymentStatus: "completed" },
       },
       {
         $sort: {
@@ -35,7 +41,7 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
           from: "payments",
           localField: "_id",
           foreignField: "enrollSubscriptionId",
-          as: "payment",
+          as: "paymentDetails",
           pipeline: [
             {
               $project: {
@@ -48,14 +54,31 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
       },
       {
         $unwind: {
-          path: "$payment",
+          path: "$paymentDetails",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields: {
+          payment: {
+            $cond: {
+              if: { $gt: [{ $type: "$paymentDetails" }, "missing"] },
+              then: "$paymentDetails",
+              else: null,
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          paymentDetails: 0,
         },
       },
     ]),
-    Payment.find({ retailerId: req.user._id }).countDocuments(),
+    EnrollSubscription.countDocuments({ retailerId: req.user._id }),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  return apiResponse(res, 200, true, "Subscription payments fetched successfully!", data);
+  return apiResponse(res, 200, true, "Retailer billing fetched successfully!", data);
 });
