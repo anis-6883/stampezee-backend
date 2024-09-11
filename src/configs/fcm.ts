@@ -8,7 +8,7 @@ class NotificationClass {
   }
 
   async initialize(): Promise<void> {
-    console.log("=> Notification service started");
+    console.log("Notification service started!");
     admin.initializeApp({
       credential: admin.credential.cert(path.join(process.cwd(), "stampezee-demo-09ac07adc7b7.json")),
     });

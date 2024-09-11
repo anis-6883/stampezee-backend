@@ -68,52 +68,117 @@ export const getAllRetailers = asyncHandler(async (req: IApiRequest, res: Respon
   }
 
   const [docs, total] = await Promise.all([
-    Retailer.find(query, { password: 0 }).limit(Number(limit)).skip(skip).sort({ createdAt: "desc" }),
+    Retailer.aggregate([
+      {
+        $match: query,
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
+        $lookup: {
+          from: "enrollsubscriptions",
+          localField: "_id",
+          foreignField: "retailerId",
+          as: "enrollSubscription",
+          pipeline: [
+            {
+              $match: {
+                "planSnapshot.type": "subscription",
+                status: true,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: "$enrollSubscription",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields: {
+          currentPlan: {
+            $cond: {
+              if: { $gt: [{ $type: "$enrollSubscription" }, "missing"] }, // Check if enrollSubscription exists
+              then: "$enrollSubscription.planSnapshot.title", // If true, set currentPlan to title
+              else: null, // If false, set it to null
+            },
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: "branches",
+          localField: "_id",
+          foreignField: "retailerId",
+          as: "branches",
+          pipeline: [
+            {
+              $match: {
+                status: true,
+                softDeleted: false,
+                disabledBySystem: false,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $addFields: {
+          totalActiveBranch: { $size: "$branches" }, // Count the number of branches returned in the lookup
+        },
+      },
+      {
+        $lookup: {
+          from: "stamps",
+          localField: "_id",
+          foreignField: "retailerId",
+          as: "stamps",
+          pipeline: [
+            {
+              $match: {
+                startedAt: { $lte: new Date() },
+                expiredAt: { $gte: new Date() },
+                isPublished: true,
+                status: true,
+                softDeleted: false,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $addFields: {
+          totalActiveStamp: { $size: "$stamps" }, // Count the number of stamps returned in the lookup
+        },
+      },
+      {
+        $project: {
+          enrollSubscription: 0,
+          branches: 0,
+          stamps: 0,
+          password: 0,
+          otp: 0,
+          otpExpiry: 0,
+        },
+      },
+    ]),
     Retailer.countDocuments(query),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  const test = await Retailer.aggregate([
-    {
-      $match: query,
-    },
-    {
-      $lookup: {
-        from: "enrollsubscriptions",
-        localField: "_id",
-        foreignField: "retailerId",
-        as: "enrollSubscription",
-        pipeline: [
-          {
-            $match: {
-              "planSnapshot.type": "subscription",
-              status: true,
-            },
-          },
-        ],
-      },
-    },
-    {
-      $unwind: {
-        path: "$enrollSubscription",
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-    {
-      $addFields: {
-        currentPlan: {
-          $cond: {
-            if: { $gt: [{ $type: "$enrollSubscription" }, "missing"] }, // Check if enrollSubscription exists
-            then: "$enrollSubscription.planSnapshot.title", // If true, set currentPlan to title
-            else: null, // If false, set it to null
-          },
-        },
-      },
-    },
-  ]);
-
-  return apiResponse(res, 200, true, "Retailers fetched successfully!", test);
+  return apiResponse(res, 200, true, "Retailers fetched successfully!", data);
 });
 
 /**
