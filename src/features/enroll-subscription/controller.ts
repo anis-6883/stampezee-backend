@@ -601,15 +601,8 @@ export const customerBillingPortal = asyncHandler(async (req: IApiRequest, res: 
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: Response) => {
-  // const sig = req.headers["stripe-signature"];
-  const payload = {
-    id: "evt_test_webhook",
-    object: "event",
-  };
+  const sig = req.headers["stripe-signature"];
 
-  const payloadString = JSON.stringify(payload, null, 2);
-
-  // console.log({ reqHeader: req?.headers, sig });
   // Get Stripe Webhook Secret Key
   const paymentMetadata = await Settings.findOne(
     {},
@@ -619,14 +612,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
 
   const { stripeSecretKey, stripeWebhookSecretKey } = paymentMetadata.stripe;
   const stripe = new Stripe(stripeSecretKey, { apiVersion: "2024-04-10", typescript: true });
-  const header = stripe.webhooks.generateTestHeaderString({
-    payload: payloadString,
-    secret: stripeWebhookSecretKey,
-  });
-  // console.log({ reqBody: req.body, sig, stripeWebhookSecretKey });
-  const event: Stripe.Event = stripe.webhooks.constructEvent(payloadString, header, stripeWebhookSecretKey);
-
-  console.log({ event });
+  const event: Stripe.Event = stripe.webhooks.constructEvent(req.body, sig, stripeWebhookSecretKey);
 
   switch (event.type) {
     //////////////////////////////////////////////
