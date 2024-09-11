@@ -198,7 +198,9 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   data.refreshToken = refreshToken;
   data.plan = subscription?.planSnapshot?.slug ?? null;
   data.planPaymentCurrency = subscription?.balanceInfo.currency ?? null;
-  data.planPayment = Number((subscription?.balanceInfo?.planCurrentPrice).toFixed(2)) ?? null;
+  data.planPayment = subscription?.balanceInfo?.planCurrentPrice
+    ? Number((subscription?.balanceInfo?.planCurrentPrice).toFixed(2))
+    : null;
   data.planStartAt = subscription?.validityFrom ?? null;
   data.planValidAt = subscription?.validityTo ?? null;
   data.totalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addonBranches;
@@ -287,7 +289,9 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
   data.role = ROLE.RETAILER;
   data.plan = subscription?.planSnapshot?.slug ?? null;
   data.planPaymentCurrency = subscription?.balanceInfo.currency ?? null;
-  data.planPayment = Number((subscription?.balanceInfo?.planCurrentPrice).toFixed(2)) ?? null;
+  data.planPayment = subscription?.balanceInfo?.planCurrentPrice
+    ? Number((subscription?.balanceInfo?.planCurrentPrice).toFixed(2))
+    : null;
   data.planStartAt = subscription?.validityFrom ?? null;
   data.planValidAt = subscription?.validityTo ?? null;
   data.totalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addonBranches;
