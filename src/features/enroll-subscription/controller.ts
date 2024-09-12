@@ -635,23 +635,32 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
     /////////////////////////////////////////////
     case "invoice.payment_succeeded":
       console.log("Handling Renew Subscription!");
-      const SubscriptionEventObject = event.data.object;
+      const invoicePaymentEvent = event.data.object;
 
       if (
-        SubscriptionEventObject.billing_reason === "subscription_update" ||
-        SubscriptionEventObject.billing_reason === "subscription_cycle"
+        invoicePaymentEvent.billing_reason === "subscription_update" ||
+        invoicePaymentEvent.billing_reason === "subscription_cycle"
       ) {
         console.log("Subscription is updated!");
         const now = moment();
         const expireDate = moment().add(30, "days");
 
-        await EnrollSubscription.updateOne(
-          { "stripe.subscriptionId": SubscriptionEventObject.subscription },
+        const updatedSubscription = await EnrollSubscription.findOneAndUpdate(
+          { "stripe.subscriptionId": invoicePaymentEvent.subscription },
           {
             validityFrom: now,
             validityTo: expireDate,
-          }
+          },
+          { new: true }
         );
+
+        Payment.create({
+          retailerId: updatedSubscription.retailerId,
+          enrollSubscriptionId: updatedSubscription._id,
+          paymentIntentId: invoicePaymentEvent.payment_intent,
+          paymentStatus: "succeeded",
+          amountTotal: invoicePaymentEvent.total,
+        });
       }
       break;
 

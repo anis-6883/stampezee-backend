@@ -10,9 +10,14 @@ import Payment from "./model";
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getSubscriptionPayments = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10, status }: any = req.query;
+  const { page = 1, limit = 10, status, search }: any = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
-  const query: { paymentStatus: any } = { paymentStatus: { $in: ["pending", "completed"] } };
+  const query: any = { paymentStatus: "succeeded" };
+
+  if (search) {
+    const regex = new RegExp(`.*${search.trim()}.*`, "i"); //case insensitive search. For sensitive remove i
+    query.paymentIntentId = regex;
+  }
 
   if (status && ["pending", "completed"].includes(status)) {
     query.paymentStatus = status;
@@ -20,6 +25,9 @@ export const getSubscriptionPayments = asyncHandler(async (req: IApiRequest, res
 
   const [docs, total] = await Promise.all([
     Payment.aggregate([
+      {
+        $match: query,
+      },
       {
         $sort: {
           createdAt: -1,

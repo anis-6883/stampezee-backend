@@ -13,22 +13,17 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
   const { page = 1, limit = 10, search }: any = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
-  const query: any = { retailerId: req.user._id, paymentStatus: "succeeded" };
+  const query: any = { retailerId: req.user._id, paymentStatus: "completed" };
 
   if (search) {
-    const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
-    query.paymentIntentId = regex;
+    const regex = new RegExp(`.*${search.trim()}.*`, "i"); //case insensitive search. For sensitive remove i
+    query["stripe.subscriptionId"] = regex;
   }
 
   const [docs, total] = await Promise.all([
     EnrollSubscription.aggregate([
       {
-        $match: { retailerId: req.user._id, paymentStatus: "completed" },
-      },
-      {
-        $sort: {
-          createdAt: -1,
-        },
+        $match: query,
       },
       {
         $skip: skip,
@@ -70,12 +65,17 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
         },
       },
       {
+        $sort: {
+          "payment.createdAt": -1,
+        },
+      },
+      {
         $project: {
           paymentDetails: 0,
         },
       },
     ]),
-    EnrollSubscription.countDocuments({ retailerId: req.user._id }),
+    EnrollSubscription.countDocuments(query),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
