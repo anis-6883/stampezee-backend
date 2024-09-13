@@ -26,53 +26,15 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
         $match: query,
       },
       {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
         $skip: skip,
       },
       {
         $limit: Number(limit),
-      },
-      {
-        $lookup: {
-          from: "payments",
-          localField: "_id",
-          foreignField: "enrollSubscriptionId",
-          as: "paymentDetails",
-          pipeline: [
-            {
-              $project: {
-                retailerId: 0,
-                enrollSubscriptionId: 0,
-              },
-            },
-          ],
-        },
-      },
-      {
-        $unwind: {
-          path: "$paymentDetails",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $addFields: {
-          payment: {
-            $cond: {
-              if: { $gt: [{ $type: "$paymentDetails" }, "missing"] },
-              then: "$paymentDetails",
-              else: null,
-            },
-          },
-        },
-      },
-      {
-        $sort: {
-          "payment.createdAt": -1,
-        },
-      },
-      {
-        $project: {
-          paymentDetails: 0,
-        },
       },
     ]),
     EnrollSubscription.countDocuments(query),

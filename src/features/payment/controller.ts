@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
-import Payment from "./model";
+import EnrollSubscription from "../enroll-subscription/model";
 
 /**
  * Get Subscription Payments
@@ -10,21 +10,18 @@ import Payment from "./model";
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getSubscriptionPayments = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10, status, search }: any = req.query;
+  const { page = 1, limit = 10, search }: any = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
-  const query: any = { paymentStatus: "succeeded" };
+
+  const query: any = { paymentStatus: "completed" };
 
   if (search) {
     const regex = new RegExp(`.*${search.trim()}.*`, "i"); //case insensitive search. For sensitive remove i
-    query.paymentIntentId = regex;
-  }
-
-  if (status && ["pending", "completed"].includes(status)) {
-    query.paymentStatus = status;
+    query["stripe.subscriptionId"] = regex;
   }
 
   const [docs, total] = await Promise.all([
-    Payment.aggregate([
+    EnrollSubscription.aggregate([
       {
         $match: query,
       },
@@ -41,33 +38,34 @@ export const getSubscriptionPayments = asyncHandler(async (req: IApiRequest, res
       },
       {
         $lookup: {
-          from: "enrollsubscriptions",
-          localField: "enrollSubscriptionId",
-          foreignField: "_id",
-          as: "enrollSubscription",
+          from: "payments",
+          localField: "_id",
+          foreignField: "enrollSubscriptionId",
+          as: "payments",
           pipeline: [
             {
-              $lookup: {
-                from: "retailers",
-                localField: "retailerId",
-                foreignField: "_id",
-                as: "retailer",
-                pipeline: [
-                  {
-                    $project: {
-                      _id: 1,
-                      storeName: 1,
-                      email: 1,
-                      fullName: 1,
-                      image: 1,
-                    },
-                  },
-                ],
-              },
+              $sort: { createdAt: -1 },
             },
             {
-              $unwind: {
-                path: "$retailer",
+              $project: {
+                retailerId: 0,
+                enrollSubscriptionId: 0,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: "retailers",
+          localField: "retailerId",
+          foreignField: "_id",
+          as: "retailer",
+          pipeline: [
+            {
+              $project: {
+                storeName: 1,
+                image: 1,
               },
             },
           ],
@@ -75,11 +73,12 @@ export const getSubscriptionPayments = asyncHandler(async (req: IApiRequest, res
       },
       {
         $unwind: {
-          path: "$enrollSubscription",
+          path: "$retailer",
+          preserveNullAndEmptyArrays: true,
         },
       },
     ]),
-    Payment.countDocuments(),
+    EnrollSubscription.countDocuments(query),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
