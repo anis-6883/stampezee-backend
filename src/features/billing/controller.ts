@@ -1,10 +1,12 @@
 import { Response } from "express";
+import mongoose from "mongoose";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
 import EnrollSubscription from "../enroll-subscription/model";
+import Payment from "../payment/model";
 
 /**
- * Get Subscription Payments
+ * Get All Subscription Billings
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -43,4 +45,25 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
   return apiResponse(res, 200, true, "Retailer billing fetched successfully!", data);
+});
+
+/**
+ * Get A Subscription Billing
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const getSingleBilling = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { id } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(id)) throw "Please, provide valid id!";
+
+  const enrollSubscription: any = await EnrollSubscription.findById(id);
+  if (!enrollSubscription) throw "No Subscription Found!";
+
+  const payments = await Payment.find({ enrollSubscriptionId: id });
+
+  return apiResponse(res, 200, true, "Retailer single billing fetched successfully!", {
+    ...enrollSubscription._doc,
+    payments,
+  });
 });

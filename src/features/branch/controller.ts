@@ -78,7 +78,7 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
 });
 
 /**
- * Get All Single Branches
+ * Get All Branches
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
