@@ -581,27 +581,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 });
 
 /**
- * Customer Billing Portal
- * @param {Request} req - The HTTP request object.
- * @param {Response} res - The HTTP response object.
- * @returns {Promise<void>} - A promise that resolves when the response is sent.
- */
-export const customerBillingPortal = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
-  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
-
-  const { stripeSecretKey } = paymentMetadata.stripe;
-  const stripe = new Stripe(stripeSecretKey);
-
-  const portalSession = await stripe.billingPortal.sessions.create({
-    customer: req.params.customerId,
-    return_url: `${process.env.FRONTEND_URL}/`,
-  });
-
-  return apiResponse(res, 200, true, "Send to Customer Billing Page!", { url: portalSession.url });
-});
-
-/**
  * Stripe Webhook Handler
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
@@ -683,7 +662,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
         }
       );
 
-      // @TODO: Send Mail
+      // @TODO: Send Cancel & Renew Subscription Mail
       break;
 
     //////////////////////////////////////////////////////////////////
@@ -697,8 +676,6 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
         invoiceObject.billing_reason === "subscription_update" ||
         invoiceObject.billing_reason === "subscription_cycle"
       ) {
-        console.log("Cancel the subscription & Send a mail!");
-
         await Promise.all([
           EnrollSubscription.updateOne(
             { "stripe.subscriptionId": invoiceObject.subscription },
@@ -709,8 +686,23 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
           stripe.subscriptions.cancel(invoiceObject.subscription as string),
         ]);
 
-        // @TODO: Send Mail
+        // @TODO: Send Cancel Subscription Mail
       }
+      break;
+
+    //////////////////////////////////////////////////////////////////
+    //////// Handling Customer Default Payment Card /////////////////
+    /////////////////////////////////////////////////////////////////
+    case "customer.updated":
+      console.log("Customer Updated!");
+      let customerObject = event.data.object;
+
+      await EnrollSubscription.findOneAndUpdate(
+        { "stripe.customerId": customerObject.id },
+        {
+          "stripe.paymentMethodId": customerObject?.invoice_settings?.default_payment_method,
+        }
+      );
       break;
 
     case "customer.subscription.deleted":
