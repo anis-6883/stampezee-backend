@@ -4,7 +4,6 @@ import Stripe from "stripe";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
 import EnrollSubscription from "../enroll-subscription/model";
-import Payment from "../payment/model";
 import Settings from "../settings/model";
 import { portalSchema } from "./validation";
 
@@ -60,15 +59,37 @@ export const getSingleBilling = asyncHandler(async (req: IApiRequest, res: Respo
   const { id } = req.params;
   if (!mongoose.Types.ObjectId.isValid(id)) throw "Please, provide valid id!";
 
-  const enrollSubscription: any = await EnrollSubscription.findById(id);
-  if (!enrollSubscription) throw "No Subscription Found!";
+  const enrollSubscription = await EnrollSubscription.aggregate([
+    {
+      $match: { _id: mongoose.Types.ObjectId.createFromHexString(id) },
+    },
+    {
+      $lookup: {
+        from: "payments",
+        localField: "_id",
+        foreignField: "enrollSubscriptionId",
+        as: "payments",
+        pipeline: [
+          {
+            $sort: { createdAt: -1 },
+          },
+          {
+            $limit: 5,
+          },
+          {
+            $project: {
+              retailerId: 0,
+              enrollSubscriptionId: 0,
+            },
+          },
+        ],
+      },
+    },
+  ]);
 
-  const payments = await Payment.find({ enrollSubscriptionId: id });
+  if (enrollSubscription.length <= 0) throw "No Subscription Found!";
 
-  return apiResponse(res, 200, true, "Retailer single billing fetched successfully!", {
-    ...enrollSubscription._doc,
-    payments,
-  });
+  return apiResponse(res, 200, true, "Retailer single billing fetched successfully!", enrollSubscription[0]);
 });
 
 /**

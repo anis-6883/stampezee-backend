@@ -16,6 +16,14 @@ const PaymentSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    invoiceNumber: {
+      type: String,
+      required: true,
+    },
+    invoicePdf: {
+      type: String,
+      required: true,
+    },
     amountTotal: {
       type: Number,
       required: true,

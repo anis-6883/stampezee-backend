@@ -637,6 +637,8 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
           retailerId: updatedSubscription.retailerId,
           enrollSubscriptionId: updatedSubscription._id,
           paymentIntentId: invoicePaymentEvent.payment_intent,
+          invoiceNumber: invoicePaymentEvent.number,
+          invoicePdf: invoicePaymentEvent.invoice_pdf,
           paymentStatus: "succeeded",
           amountTotal: invoicePaymentEvent.total,
         });
@@ -815,6 +817,8 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       Payment.create({
         retailerId: retailer._id,
         enrollSubscriptionId: subscriptionId,
+        invoiceNumber: invoice.number,
+        invoicePdf: invoice.invoice_pdf,
         paymentIntentId: invoice.payment_intent.id,
         paymentStatus: invoice.payment_intent.status,
         amountTotal: payment.amount_total,
