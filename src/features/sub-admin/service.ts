@@ -11,7 +11,6 @@ export const sendRegistrationMail = async (
     host: "smtp.gmail.com",
     port: 465,
     secure: true,
-    pool: true,
     auth: {
       user: process.env.MAIL_USERNAME,
       pass: process.env.MAIL_PASSWORD,
