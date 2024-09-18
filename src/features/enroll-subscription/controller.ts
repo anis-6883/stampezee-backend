@@ -57,11 +57,17 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
       discountType: 1,
       discount: 1,
       minPurchaseAmount: 1,
+      allowFor: 1,
+      allowedRetailers: 1,
       limit: 1,
     }
   );
 
   if (!coupon) throw "Provide invalid coupon code!";
+
+  if (coupon.allowFor === "specific") {
+    if (!coupon.allowedRetailers.includes(req.user._id as any)) throw "Provide invalid coupon code!";
+  }
 
   const alreadyApplied = await EnrollSubscription.countDocuments({
     retailerId: req.user._id,
@@ -69,9 +75,7 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
     paymentStatus: "completed",
   });
 
-  if (alreadyApplied >= coupon.limit) {
-    throw "Your coupon limit is over!";
-  }
+  if (alreadyApplied >= coupon.limit) throw "Your coupon limit is over!";
 
   return apiResponse(res, 200, true, "Coupon applied!", coupon);
 });
@@ -153,6 +157,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     });
 
     if (!coupon) throw "Provide invalid coupon code!";
+
+    if (coupon.allowFor === "specific") {
+      if (!coupon.allowedRetailers.includes(req.user._id as any)) throw "Provide invalid coupon code!";
+    }
 
     const alreadyApplied = await EnrollSubscription.find({
       retailerId: req.user._id,
