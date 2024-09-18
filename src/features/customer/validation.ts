@@ -9,6 +9,7 @@ import {
 
 export const customerSchema = Joi.object({
   email: requiredEmailField,
+  address: stringField("address"),
   password: requiredWeakPasswordField(6),
   fullName: requiredStringField("fullName"),
   dialCode: requiredStringField("dialCode"),

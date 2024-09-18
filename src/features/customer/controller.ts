@@ -26,11 +26,45 @@ export const getAllCustomers = asyncHandler(async (req: IApiRequest, res: Respon
   }
 
   const [docs, total] = await Promise.all([
-    Customer.find(query, { password: 0, otp: 0, otpExpiry: 0, token: 0 })
-      .limit(Number(limit))
-      .skip(skip)
-      .sort({ createdAt: "desc" }),
-    Customer.find(query).countDocuments(),
+    Customer.aggregate([
+      {
+        $match: query,
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
+        $lookup: {
+          from: "collectstamps",
+          localField: "_id",
+          foreignField: "customerId",
+          as: "collectStamps",
+        },
+      },
+      {
+        $addFields: {
+          totalCollectStamp: { $size: "$collectStamps" },
+        },
+      },
+      {
+        $project: {
+          password: 0,
+          otp: 0,
+          otpExpiry: 0,
+          token: 0,
+          collectStamps: 0,
+        },
+      },
+    ]),
+    Customer.countDocuments(query),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
@@ -136,12 +170,13 @@ export const createCustomerBySuperAdmin = asyncHandler(async (req: IApiRequest, 
     abortEarly: false,
   });
 
-  const { otp, otpExpiry, isVerified, verifiedAt, image, ref, password, ...createBody } = result;
+  const { otp, otpExpiry, isVerified, verifiedAt, image, ref, password, address, ...createBody } = result;
 
   createBody.password = await bcrypt.hash(password, 10);
   createBody.isVerified = true;
   createBody.verifiedAt = new Date();
   createBody.ref = "super_admin";
+  createBody["address.name"] = address;
 
   const existingCustomer: IUser = await Customer.findOne({
     email: createBody.email,
