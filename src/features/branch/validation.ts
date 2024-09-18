@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { requiredStringField, stringField } from "../../helpers";
+import { requiredBooleanField, requiredStringField, stringField } from "../../helpers";
 
 const updateLongitude = Joi.when("address", {
   is: Joi.exist(),
@@ -38,9 +38,5 @@ export const updateBranchSchema = Joi.object({
 });
 
 export const branchStatusSchema = Joi.object({
-  status: Joi.boolean().required().messages({
-    "any.required": "status is required!",
-    "boolean.base": "status must be boolean!",
-    "boolean.empty": "status must not be empty!",
-  }),
+  status: requiredBooleanField("status"),
 });

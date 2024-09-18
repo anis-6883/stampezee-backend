@@ -1,5 +1,11 @@
 import Joi from "joi";
-import { requiredEmailField, requiredStringField, requiredWeakPasswordField, stringField } from "../../helpers";
+import {
+  requiredBooleanField,
+  requiredEmailField,
+  requiredStringField,
+  requiredWeakPasswordField,
+  stringField,
+} from "../../helpers";
 
 // Main schemas
 export const retailerSchema = Joi.object({
@@ -39,9 +45,5 @@ export const retailerSchemaUpdate = Joi.object({
 });
 
 export const retailerStatusSchema = Joi.object({
-  status: Joi.boolean().required().messages({
-    "any.required": "status is required!",
-    "boolean.base": "status must be boolean!",
-    "boolean.empty": "status must not be empty!",
-  }),
+  status: requiredBooleanField("status"),
 });

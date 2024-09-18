@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { requiredStringField, stringField } from "../../helpers";
+import { requiredBooleanField, requiredStringField, stringField } from "../../helpers";
 
 const startedAt = Joi.date().messages({
   "date.base": "startedAt must be date!",
@@ -42,6 +42,10 @@ const code = Joi.string().trim().min(6).messages({
   "string.min": `code must be 6 characters long!`,
 });
 
+const allowedRetailers = Joi.array().items(Joi.string().allow(null)).messages({
+  "array.base": "allowedRetailers must be array!",
+});
+
 export const couponSchema = Joi.object({
   title: requiredStringField("title"),
   description: stringField("description"),
@@ -66,6 +70,7 @@ export const couponSchema = Joi.object({
   minPurchaseAmount: minPurchaseAmount.required().messages({
     "any.required": "minPurchaseAmount is required!",
   }),
+  allowedRetailers,
 });
 
 export const updateCouponSchema = Joi.object({
@@ -78,12 +83,9 @@ export const updateCouponSchema = Joi.object({
   discount,
   limit,
   minPurchaseAmount,
+  allowedRetailers,
 });
 
 export const couponStatusSchema = Joi.object({
-  status: Joi.boolean().required().messages({
-    "any.required": "status is required!",
-    "boolean.base": "status must be boolean!",
-    "boolean.empty": "status must not be empty!",
-  }),
+  status: requiredBooleanField("status"),
 });

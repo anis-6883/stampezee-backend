@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { lowercaseStringField, requiredLowercaseStringField, stringField } from "../../helpers";
+import { lowercaseStringField, requiredBooleanField, requiredLowercaseStringField, stringField } from "../../helpers";
 
 export const categorySchema = Joi.object({
   name: requiredLowercaseStringField("name"),
@@ -12,9 +12,5 @@ export const updateCategorySchema = Joi.object({
 });
 
 export const categoryStatusSchema = Joi.object({
-  status: Joi.boolean().required().messages({
-    "any.required": "status is required!",
-    "boolean.base": "status must be boolean!",
-    "boolean.empty": "status must not be empty!",
-  }),
+  status: requiredBooleanField("status"),
 });

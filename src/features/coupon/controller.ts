@@ -17,7 +17,6 @@ export const createCoupon = asyncHandler(async (req: IApiRequest, res: Response)
   });
 
   const { softDeleted, ...createBody } = result;
-
   createBody.createdBy = req.user._id;
 
   const existingCoupon = await Coupon.findOne({
@@ -30,10 +29,7 @@ export const createCoupon = asyncHandler(async (req: IApiRequest, res: Response)
   if (existingCoupon) throw "Coupon already exists within date range!";
 
   const settings = await Settings.findOne(null, { "general.timezone": 1 });
-
-  if (!settings?.general?.timezone) {
-    throw "Setup TimeZone First!";
-  }
+  if (!settings?.general?.timezone) throw "Setup TimeZone First!";
 
   const systemTime = getUTC(createBody.startedAt, Number(settings.general.timezone.value));
   const expireTime = getUTC(createBody.expiredAt, Number(settings.general.timezone.value), true);
@@ -117,10 +113,7 @@ export const updateCoupon = asyncHandler(async (req: IApiRequest, res: Response)
   if (existingCoupon) throw "Coupon already exists within date range!";
 
   const settings = await Settings.findOne(null, { "general.timezone": 1 });
-
-  if (!settings?.general?.timezone) {
-    throw "Setup TimeZone First!";
-  }
+  if (!settings?.general?.timezone) throw "Setup TimeZone First!";
 
   const systemTime = getUTC(updatedBody.startedAt, Number(settings.general.timezone.value));
   const expireTime = getUTC(updatedBody.expiredAt, Number(settings.general.timezone.value), true);

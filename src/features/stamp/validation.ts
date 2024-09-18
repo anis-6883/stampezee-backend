@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { requiredStringField, stringField } from "../../helpers";
+import { requiredBooleanField, requiredStringField, stringField } from "../../helpers";
 
 const noOfStampsToCollect = Joi.number().required().min(1).messages({
   "any.required": "noOfStampsToCollect is required!",
@@ -114,9 +114,5 @@ export const updateStampSchema = Joi.object({
 });
 
 export const stampStatusSchema = Joi.object({
-  status: Joi.boolean().required().messages({
-    "any.required": "status is required!",
-    "boolean.base": "status must be boolean!",
-    "boolean.empty": "status must not be empty!",
-  }),
+  status: requiredBooleanField("status"),
 });

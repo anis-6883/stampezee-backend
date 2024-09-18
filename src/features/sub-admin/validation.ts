@@ -1,6 +1,7 @@
 import Joi from "joi";
 import {
   emailField,
+  requiredBooleanField,
   requiredEmailField,
   requiredStringField,
   requiredWeakPasswordField,
@@ -24,9 +25,5 @@ export const subAdminSchema2 = Joi.object({
 });
 
 export const subAdminStatusSchema = Joi.object({
-  status: Joi.boolean().required().messages({
-    "any.required": "status is required!",
-    "boolean.base": "status must be boolean!",
-    "boolean.empty": "status must not be empty!",
-  }),
+  status: requiredBooleanField("status"),
 });

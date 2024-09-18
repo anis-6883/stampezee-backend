@@ -42,6 +42,10 @@ const schema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+    allowedRetailers: {
+      type: [mongoose.Types.ObjectId],
+      default: [],
+    },
     status: {
       type: Boolean,
       default: true,
