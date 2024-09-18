@@ -42,6 +42,11 @@ const schema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+    allowFor: {
+      type: String,
+      enum: ["all", "specific"],
+      default: "all",
+    },
     allowedRetailers: {
       type: [mongoose.Types.ObjectId],
       default: [],

@@ -42,6 +42,13 @@ const code = Joi.string().trim().min(6).messages({
   "string.min": `code must be 6 characters long!`,
 });
 
+const allowFor = Joi.string().trim().lowercase().valid("all", "specific").messages({
+  "any.required": "allowFor is required!",
+  "string.base": "allowFor must be string!",
+  "any.only": "allowFor must be [all, specific]",
+  "string.empty": "allowFor must not be empty!",
+});
+
 const allowedRetailers = Joi.array().items(Joi.string().allow(null)).messages({
   "array.base": "allowedRetailers must be array!",
 });
@@ -70,6 +77,9 @@ export const couponSchema = Joi.object({
   minPurchaseAmount: minPurchaseAmount.required().messages({
     "any.required": "minPurchaseAmount is required!",
   }),
+  allowFor: allowFor.required().messages({
+    "any.required": "allowFor is required!",
+  }),
   allowedRetailers,
 });
 
@@ -83,6 +93,7 @@ export const updateCouponSchema = Joi.object({
   discount,
   limit,
   minPurchaseAmount,
+  allowFor,
   allowedRetailers,
 });
 

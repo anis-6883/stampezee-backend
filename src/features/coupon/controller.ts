@@ -2,6 +2,7 @@ import { Response } from "express";
 import { apiResponse, asyncHandler, getUTC, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
 import Settings from "../settings/model";
+import Retailer from "../user/retailer/model";
 import Coupon from "./model";
 import { couponSchema, couponStatusSchema, updateCouponSchema } from "./validation";
 
@@ -40,6 +41,18 @@ export const createCoupon = asyncHandler(async (req: IApiRequest, res: Response)
   const coupon = await Coupon.create(createBody);
 
   return apiResponse(res, 201, true, "Coupon created successfully!", coupon);
+});
+
+/**
+ * Get All Retailers with Short Info
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const getAllRetailers = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const retailers = await Retailer.find({}, { storeName: 1, image: 1 });
+
+  return apiResponse(res, 200, true, "All retailer short info fetched successfully!", retailers);
 });
 
 /**
