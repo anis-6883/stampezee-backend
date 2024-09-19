@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import { Response } from "express";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import { IApiRequest, IUser } from "../../types";
+import Branch from "../branch/model";
 import CollectStamp from "../mobile/customer/search/model";
 import Customer from "../user/customer/model";
 import { sendRegistrationMail } from "./service";
@@ -50,8 +51,34 @@ export const getAllCustomers = asyncHandler(async (req: IApiRequest, res: Respon
         },
       },
       {
+        $lookup: {
+          from: "orderstamps",
+          localField: "_id",
+          foreignField: "customerId",
+          as: "orderStamps",
+        },
+      },
+      {
         $addFields: {
           totalCollectStamp: { $size: "$collectStamps" },
+        },
+      },
+      {
+        $addFields: {
+          totalScan: { $size: "$orderStamps" },
+        },
+      },
+      {
+        $addFields: {
+          totalRewardCollect: {
+            $size: {
+              $filter: {
+                input: "$orderStamps", // Filter on the orderStamps array
+                as: "orderStamp", // Alias for each element in the array
+                cond: { $eq: ["$$orderStamp.rewardCollected", true] }, // Condition: rewardCollected should be true
+              },
+            },
+          },
         },
       },
       {
@@ -82,34 +109,13 @@ export const getAllRetailerCustomers = asyncHandler(async (req: IApiRequest, res
   const { page = 1, limit = 10 } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
+  const branchIds = (await Branch.find({ retailerId: req.user._id }, { _id: 1 })).map((branch) => branch._id);
+  const query = { branchId: { $in: branchIds } };
+
   const [docs, total] = await Promise.all([
     CollectStamp.aggregate([
       {
-        $lookup: {
-          from: "branches",
-          localField: "branchId",
-          foreignField: "_id",
-          as: "branch",
-        },
-      },
-      {
-        $lookup: {
-          from: "customers",
-          localField: "customerId",
-          foreignField: "_id",
-          as: "customer",
-        },
-      },
-      {
-        $unwind: "$customer",
-      },
-      {
-        $unwind: "$branch",
-      },
-      {
-        $match: {
-          "branch.retailerId": req.user._id,
-        },
+        $match: query,
       },
       {
         $sort: {
@@ -122,8 +128,6 @@ export const getAllRetailerCustomers = asyncHandler(async (req: IApiRequest, res
       {
         $limit: Number(limit),
       },
-    ]),
-    CollectStamp.aggregate([
       {
         $lookup: {
           from: "branches",
@@ -146,15 +150,11 @@ export const getAllRetailerCustomers = asyncHandler(async (req: IApiRequest, res
       {
         $unwind: "$branch",
       },
-      {
-        $match: {
-          "branch.retailerId": req.user._id,
-        },
-      },
     ]),
+    CollectStamp.countDocuments(query),
   ]);
 
-  const data = makePaginate(docs, Number(page), Number(limit), skip, total.length);
+  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
   return apiResponse(res, 200, true, "Retailer Customers fetched successfully!", data);
 });
