@@ -233,8 +233,6 @@ export const getBranchCategoryImageList = asyncHandler(async (req: IApiRequest, 
           softDeleted: false,
           status: true,
           userId: req.user._id,
-          "enrollSubscription.validityFrom": { $lte: new Date() },
-          "enrollSubscription.validityTo": { $gte: new Date() },
         },
       },
       {
@@ -262,6 +260,12 @@ export const getBranchCategoryImageList = asyncHandler(async (req: IApiRequest, 
         $unwind: {
           path: "$enrollSubscription",
           preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $match: {
+          "enrollSubscription.validityFrom": { $lte: new Date() },
+          "enrollSubscription.validityTo": { $gte: new Date() },
         },
       },
       {
@@ -331,9 +335,7 @@ export const updateStamp = asyncHandler(async (req: IApiRequest, res: Response) 
 
   const settings = await Settings.findOne(null, { "general.timezone": 1 });
 
-  if (!settings?.general?.timezone) {
-    throw "Setup TimeZone First!";
-  }
+  if (!settings?.general?.timezone) throw "Setup TimeZone First!";
 
   const systemTime = getUTC(updatedBody.startedAt, Number(settings.general.timezone.value));
   const expireTime = getUTC(updatedBody.expiredAt, Number(settings.general.timezone.value), true);

@@ -3,7 +3,6 @@ import multer from "multer";
 import {
   confirmDeleteStampImage,
   createStampImage,
-  customStampRenew,
   getAllDeletedStampImages,
   getAllStampImages,
   getSingleStampImage,
@@ -19,7 +18,6 @@ const router = express.Router();
 router.post("/", upload.single("image"), createStampImage);
 router.get("/all", getAllStampImages);
 router.get("/deleted", getAllDeletedStampImages);
-router.put("/renew/:id", customStampRenew);
 router.put("/status/:id", updateStampImageStatus);
 router.get("/:id", getSingleStampImage);
 router.put("/:id", upload.single("image"), updateStampImage);
