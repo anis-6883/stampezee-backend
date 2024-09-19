@@ -7,6 +7,7 @@ import { IApiRequest } from "../../types";
 import EnrollSubscription from "../enroll-subscription/model";
 import Settings from "../settings/model";
 import Customer from "../user/customer/model";
+import Retailer from "../user/retailer/model";
 import Notification from "./model";
 import { notificationBasedOnLocationSchema, notificationSchema } from "./validation";
 
@@ -53,7 +54,7 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
   }
 
   if (totalNotification >= allowTotalNotification) {
-    throw "Your notification limit is over!";
+    throw "Your notification limit is over. Take Another Add-on!";
   }
 
   // File Validation
@@ -68,7 +69,7 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
   if (req.file) {
     const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "notification");
     if (status) {
-      notificationObj.image = key;
+      notificationObj.image = `${process.env.S3_BASE_URL}/${key}`;
     }
   }
 
@@ -136,7 +137,7 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
   }
 
   if (totalNotification >= allowTotalNotification) {
-    throw "Your notification limit is over!";
+    throw "Your notification limit is over. Take Another Add-on!";
   }
 
   // File Validation
@@ -151,7 +152,7 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
   if (req.file) {
     const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "notification");
     if (status) {
-      notificationObj.image = key;
+      notificationObj.image = `${process.env.S3_BASE_URL}/${key}`;
     }
   }
 
@@ -290,7 +291,14 @@ export const getAllNotificationsForSuperAdmin = asyncHandler(async (req: IApiReq
     query.type = type;
   }
   if (search) {
-    query.$or = [{ title: { $regex: search, $options: "i" } }, { description: { $regex: search, $options: "i" } }];
+    const retailerIds = (await Retailer.find({ storeName: { $regex: search, $options: "i" } }, { _id: 1 })).map(
+      (store) => store._id
+    );
+    query.$or = [
+      { title: { $regex: search, $options: "i" } },
+      { description: { $regex: search, $options: "i" } },
+      { retailerId: { $in: retailerIds } },
+    ];
   }
 
   const [docs, total] = await Promise.all([
@@ -314,27 +322,19 @@ export const getAllNotificationsForSuperAdmin = asyncHandler(async (req: IApiReq
           from: "retailers",
           localField: "retailerId",
           foreignField: "_id",
-          as: "retailers",
+          as: "retailer",
           pipeline: [
             {
               $project: {
-                firstName: 1,
-                lastName: 1,
                 storeName: 1,
-                email: 1,
                 image: 1,
-                dialCode: 1,
-                phone: 1,
-                country: 1,
-                city: 1,
-                address: 1,
               },
             },
           ],
         },
       },
       {
-        $unwind: "$retailers",
+        $unwind: "$retailer",
       },
       {
         $project: {
@@ -343,10 +343,10 @@ export const getAllNotificationsForSuperAdmin = asyncHandler(async (req: IApiReq
         },
       },
     ]),
-    Notification.find(query).countDocuments(),
+    Notification.countDocuments(query),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  return apiResponse(res, 200, true, "Notificationes fetched successfully!", data);
+  return apiResponse(res, 200, true, "Notifications fetched successfully!", data);
 });

@@ -9,6 +9,7 @@ export const stampScanDetailsForRetailer = asyncHandler(async (req: IApiRequest,
   const { page = 1, limit = 10, search }: any = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
   const query: IRetailerScanQuery = { retailerId: req?.user?._id };
+
   if (search) {
     const regex = new RegExp(`.*${search}.*`, "i"); // case insensitive search. For sensitive remove 'i'
     const customers = await Customer.find({
@@ -171,7 +172,7 @@ export const stampScanDetailsForRetailer = asyncHandler(async (req: IApiRequest,
         },
       },
     ]),
-    OrderStamp.find(query).countDocuments(),
+    OrderStamp.countDocuments(query),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
@@ -183,6 +184,7 @@ export const stampScanDetailsForSuperAdmin = asyncHandler(async (req: IApiReques
   const { page = 1, limit = 10, search }: any = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
   const query: ISuperAdminScanQuery = {};
+
   if (search) {
     const regex = new RegExp(`.*${search}.*`, "i"); // case insensitive search. For sensitive remove 'i'
     const [customers, retailers] = await Promise.all([
@@ -199,6 +201,7 @@ export const stampScanDetailsForSuperAdmin = asyncHandler(async (req: IApiReques
     const retailerIds = retailers.map((retailer) => retailer._id);
     query.$or = [{ customerId: { $in: customerIds } }, { retailerId: { $in: retailerIds } }];
   }
+
   const [docs, total] = await Promise.all([
     OrderStamp.aggregate([
       {
@@ -378,7 +381,7 @@ export const stampScanDetailsForSuperAdmin = asyncHandler(async (req: IApiReques
         },
       },
     ]),
-    OrderStamp.find(query).countDocuments(),
+    OrderStamp.countDocuments(query),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
