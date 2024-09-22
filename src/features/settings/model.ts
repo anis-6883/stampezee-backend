@@ -20,10 +20,13 @@ const general = new mongoose.Schema({
   instagram: { type: String, default: "", trim: true },
   tiktok: { type: String, default: "", trim: true },
   linkedin: { type: String, default: "", trim: true },
-  emailHost: { type: String, default: "", trim: true },
-  emailPort: { type: String, default: "", trim: true },
-  emailUsername: { type: String, default: "", trim: true },
-  emailPassword: { type: String, default: "", trim: true },
+});
+
+const mail = new mongoose.Schema({
+  host: { type: String, default: "", trim: true },
+  port: { type: String, default: "", trim: true },
+  username: { type: String, default: "", trim: true },
+  password: { type: String, default: "", trim: true },
 });
 
 const notification = new mongoose.Schema({
@@ -64,6 +67,7 @@ const googleMap = new mongoose.Schema({
 const schema = new mongoose.Schema(
   {
     general,
+    mail,
     notification,
     s3Bucket,
     stripe,

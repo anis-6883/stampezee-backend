@@ -2,25 +2,24 @@ import nodemailer from "nodemailer";
 import Settings from "../settings/model";
 
 export const sendVerificationEmail = async (email: string, verificationCode: number, platform: string = "web") => {
-  const mailSettings = await Settings.findOne(
+  const settings = await Settings.findOne(
     {},
     {
-      "general.emailHost": 1,
-      "general.emailPort": 1,
-      "general.emailUsername": 1,
-      "general.emailPassword": 1,
+      "mail.host": 1,
+      "mail.port": 1,
+      "mail.username": 1,
+      "mail.password": 1,
+      "general.companyName": 1,
     }
   );
 
-  const { emailHost, emailPort, emailUsername, emailPassword } = mailSettings.general ?? {};
-
   const transporter = nodemailer.createTransport({
-    host: emailHost,
-    port: Number(emailPort),
+    host: settings?.mail?.host,
+    port: Number(settings?.mail?.port),
     secure: true,
     auth: {
-      user: emailUsername,
-      pass: emailPassword,
+      user: settings?.mail?.username,
+      pass: settings?.mail?.password,
     },
   });
 
@@ -88,10 +87,10 @@ export const sendVerificationEmail = async (email: string, verificationCode: num
       <p>Don't share your otp with anyone!</p>
       <p>Thank you for signing up!</p>
       <p>Best Regards,</p>
-      <p>${process.env.APP_NAME} Team</p>`;
+      <p>${settings?.general?.companyName} Team</p>`;
 
   const mailOptions = {
-    from: emailUsername,
+    from: settings?.mail?.username,
     to: email,
     subject: "Email Verification",
     html: template,

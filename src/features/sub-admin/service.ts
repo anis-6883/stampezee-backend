@@ -8,25 +8,24 @@ export const sendRegistrationMail = async (
   storeName: string,
   branchName: string
 ) => {
-  const mailSettings = await Settings.findOne(
+  const settings = await Settings.findOne(
     {},
     {
-      "general.emailHost": 1,
-      "general.emailPort": 1,
-      "general.emailUsername": 1,
-      "general.emailPassword": 1,
+      "mail.host": 1,
+      "mail.port": 1,
+      "mail.username": 1,
+      "mail.password": 1,
+      "general.companyName": 1,
     }
   );
 
-  const { emailHost, emailPort, emailUsername, emailPassword } = mailSettings.general ?? {};
-
   const transporter = nodemailer.createTransport({
-    host: emailHost,
-    port: Number(emailPort),
+    host: settings?.mail?.host,
+    port: Number(settings?.mail?.port),
     secure: true,
     auth: {
-      user: emailUsername,
-      pass: emailPassword,
+      user: settings?.mail?.username,
+      pass: settings?.mail?.password,
     },
   });
 
@@ -42,10 +41,10 @@ export const sendRegistrationMail = async (
       <p>Don't share your credentials with anyone!</p>
       <p>Thank you for joining with us!</p>
       <p>Best Regards,</p>
-      <p>${process.env.APP_NAME} Team</p>`;
+      <p>${settings?.general?.companyName} Team</p>`;
 
   const mailOptions = {
-    from: process.env.MAIL_USERNAME,
+    from: settings?.mail?.username,
     to: email,
     subject: "Membership Account Registration",
     html: template,

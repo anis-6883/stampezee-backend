@@ -12,10 +12,6 @@ export const settingsSchema = Joi.object({
     postalCode: stringField("postalCode"),
     address: stringField("address"),
     contactEmail: stringField("contactEmail"),
-    emailHost: stringField("emailHost"),
-    emailPort: stringField("emailPort"),
-    emailUsername: stringField("emailUsername"),
-    emailPassword: stringField("emailPassword"),
     androidDownloadLink: stringField("androidDownloadLink"),
     iosDownloadLink: stringField("iosDownloadLink"),
     facebook: stringField("iosDownloadLink"),
@@ -28,6 +24,14 @@ export const settingsSchema = Joi.object({
     }),
   }).messages({
     "object.base": "general must be object!",
+  }),
+  mail: Joi.object({
+    host: stringField("host"),
+    port: stringField("port"),
+    username: stringField("username"),
+    password: stringField("password"),
+  }).messages({
+    "object.base": "mail must be object!",
   }),
   notification: Joi.object({
     notificationType: stringField("notificationType"),
