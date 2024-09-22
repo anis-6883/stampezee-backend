@@ -66,6 +66,12 @@ export const getCommonSettings = asyncHandler(async (req: Request, res: Response
     {},
     {
       "general.timezone": 1,
+      "general.facebook": 1,
+      "general.instagram": 1,
+      "general.tiktok": 1,
+      "general.linkedin": 1,
+      "general.androidDownloadLink": 1,
+      "general.iosDownloadLink": 1,
       "stripe.planChangeCost": 1,
       "stripe.refundableThreshold": 1,
       "stripe.taxTitle": 1,
