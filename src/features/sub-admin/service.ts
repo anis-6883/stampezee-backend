@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import Settings from "../settings/model";
 
 export const sendRegistrationMail = async (
   email: string,
@@ -7,13 +8,25 @@ export const sendRegistrationMail = async (
   storeName: string,
   branchName: string
 ) => {
+  const mailSettings = await Settings.findOne(
+    {},
+    {
+      "general.emailHost": 1,
+      "general.emailPort": 1,
+      "general.emailUsername": 1,
+      "general.emailPassword": 1,
+    }
+  );
+
+  const { emailHost, emailPort, emailUsername, emailPassword } = mailSettings.general ?? {};
+
   const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
+    host: emailHost,
+    port: Number(emailPort),
     secure: true,
     auth: {
-      user: process.env.MAIL_USERNAME,
-      pass: process.env.MAIL_PASSWORD,
+      user: emailUsername,
+      pass: emailPassword,
     },
   });
 

@@ -1,13 +1,26 @@
 import nodemailer from "nodemailer";
+import Settings from "../settings/model";
 
 export const sendVerificationEmail = async (email: string, verificationCode: number, platform: string = "web") => {
+  const mailSettings = await Settings.findOne(
+    {},
+    {
+      "general.emailHost": 1,
+      "general.emailPort": 1,
+      "general.emailUsername": 1,
+      "general.emailPassword": 1,
+    }
+  );
+
+  const { emailHost, emailPort, emailUsername, emailPassword } = mailSettings.general ?? {};
+
   const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
+    host: emailHost,
+    port: Number(emailPort),
     secure: true,
     auth: {
-      user: process.env.MAIL_USERNAME,
-      pass: process.env.MAIL_PASSWORD,
+      user: emailUsername,
+      pass: emailPassword,
     },
   });
 
@@ -78,7 +91,7 @@ export const sendVerificationEmail = async (email: string, verificationCode: num
       <p>${process.env.APP_NAME} Team</p>`;
 
   const mailOptions = {
-    from: process.env.MAIL_USERNAME,
+    from: emailUsername,
     to: email,
     subject: "Email Verification",
     html: template,
