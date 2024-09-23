@@ -21,6 +21,11 @@ const schema = new mongoose.Schema(
       ref: "Customer",
       required: true,
     },
+    branchId: {
+      type: "ObjectId", // mongoose.Types.ObjectId
+      ref: "Branch",
+      required: true,
+    },
     subAdminId: {
       type: "ObjectId", // mongoose.Types.ObjectId
       ref: "Retailer",

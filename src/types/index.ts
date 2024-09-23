@@ -1,6 +1,9 @@
 import { Request } from "express";
 import mongoose from "mongoose";
 
+export interface Object {
+  [key: string]: any;
+}
 export interface IEnrollPayment {
   id: string;
   metadata: any;
