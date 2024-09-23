@@ -1,9 +1,11 @@
 import bcrypt from "bcrypt";
 import { Response } from "express";
+import mongoose from "mongoose";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import { IApiRequest, IUser } from "../../types";
 import Branch from "../branch/model";
 import CollectStamp from "../mobile/customer/search/model";
+import OrderStamp from "../mobile/sub-admin/home/model";
 import Customer from "../user/customer/model";
 import { sendRegistrationMail } from "./service";
 import { customerSchema, customerStatusSchema, updateCustomerSchema } from "./validation";
@@ -61,15 +63,7 @@ export const getAllCustomers = asyncHandler(async (req: IApiRequest, res: Respon
       {
         $addFields: {
           totalCollectStamp: { $size: "$collectStamps" },
-        },
-      },
-      {
-        $addFields: {
           totalScan: { $size: "$orderStamps" },
-        },
-      },
-      {
-        $addFields: {
           totalRewardCollect: {
             $size: {
               $filter: {
@@ -88,6 +82,7 @@ export const getAllCustomers = asyncHandler(async (req: IApiRequest, res: Respon
           otpExpiry: 0,
           token: 0,
           collectStamps: 0,
+          orderStamps: 0,
         },
       },
     ]),
@@ -100,7 +95,266 @@ export const getAllCustomers = asyncHandler(async (req: IApiRequest, res: Respon
 });
 
 /**
- * Get All Retailer Customers
+ * Get single customer for Super Admin
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const getSingleCustomerForSuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { id } = req.params;
+
+  const customer = await Customer.aggregate([
+    {
+      $match: { _id: mongoose.Types.ObjectId.createFromHexString(id) },
+    },
+    {
+      $lookup: {
+        from: "collectstamps",
+        localField: "_id",
+        foreignField: "customerId",
+        as: "collectStamps",
+      },
+    },
+    {
+      $lookup: {
+        from: "orderstamps",
+        localField: "_id",
+        foreignField: "customerId",
+        as: "orderStamps",
+      },
+    },
+    {
+      $addFields: {
+        totalCollectStamp: { $size: "$collectStamps" },
+        totalScan: { $size: "$orderStamps" },
+        totalPurchased: { $sum: "$orderStamps.amount" },
+        totalRewardCollect: {
+          $size: {
+            $filter: {
+              input: "$orderStamps",
+              as: "orderStamp",
+              cond: { $eq: ["$$orderStamp.rewardCollected", true] },
+            },
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        password: 0,
+        otp: 0,
+        otpExpiry: 0,
+        token: 0,
+        collectStamps: 0,
+        orderStamps: 0,
+      },
+    },
+  ]);
+
+  if (customer.length <= 0) return apiResponse(res, 404, false, "Customer not found!");
+
+  return apiResponse(res, 200, true, "Customer fetched successfully!", customer[0]);
+});
+
+/**
+ * Get single customer scan list for Super Admin
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const getSingleCustomerScanListForSuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { id } = req.params;
+  const { page = 1, limit = 10 }: any = req.query;
+  const skip: number = (Number(page) - 1) * Number(limit);
+
+  const scans = await OrderStamp.aggregate([
+    {
+      $match: {
+        customerId: mongoose.Types.ObjectId.createFromHexString(id),
+      },
+    },
+    {
+      $sort: {
+        createdAt: -1,
+      },
+    },
+    {
+      $skip: skip,
+    },
+    {
+      $limit: Number(limit),
+    },
+    {
+      $lookup: {
+        from: "collectstamps",
+        localField: "collectStampId",
+        foreignField: "_id",
+        as: "collectstamp",
+        pipeline: [
+          {
+            $lookup: {
+              from: "stamps",
+              localField: "stampId",
+              foreignField: "_id",
+              as: "stamp",
+              pipeline: [
+                {
+                  $lookup: {
+                    from: "categories",
+                    localField: "categoryId",
+                    foreignField: "_id",
+                    as: "category",
+                    pipeline: [
+                      {
+                        $project: {
+                          name: 1,
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  $unwind: "$category",
+                },
+                {
+                  $project: {
+                    title: 1,
+                    description: 1,
+                    rules: 1,
+                    noOfStampsToCollect: 1,
+                    minPurchaseAmount: 1,
+                    rewardType: 1,
+                    promotionReward: 1,
+                    discountReward: 1,
+                    category: "$category.name",
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $unwind: "$stamp",
+          },
+          {
+            $lookup: {
+              from: "branches",
+              localField: "branchId",
+              foreignField: "_id",
+              as: "branch",
+              pipeline: [
+                {
+                  $project: {
+                    _id: 0,
+                    name: 1,
+                    address: "$address.name",
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $unwind: "$branch",
+          },
+        ],
+      },
+    },
+    {
+      $unwind: "$collectstamp",
+    },
+    {
+      $lookup: {
+        from: "subadmins",
+        localField: "subAdminId",
+        foreignField: "_id",
+        as: "subAdmin",
+        pipeline: [
+          {
+            $project: {
+              _id: 0,
+              fullName: 1,
+              email: 1,
+              image: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: "$subAdmin",
+    },
+    {
+      $lookup: {
+        from: "customers",
+        localField: "customerId",
+        foreignField: "_id",
+        as: "customer",
+        pipeline: [
+          {
+            $project: {
+              _id: 0,
+              fullName: 1,
+              email: 1,
+              image: 1,
+              dialCode: 1,
+              phone: 1,
+              country: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: "$customer",
+    },
+    {
+      $lookup: {
+        from: "retailers",
+        localField: "retailerId",
+        foreignField: "_id",
+        as: "retailer",
+        pipeline: [
+          {
+            $project: {
+              _id: 0,
+              fullName: 1,
+              email: 1,
+              image: 1,
+              dialCode: 1,
+              phone: 1,
+              country: 1,
+              city: 1,
+              address: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: "$retailer",
+    },
+    {
+      $project: {
+        "scan.time": "$createdAt",
+        "scan.rewardCollected": "$rewardCollected",
+        "scan.stampNumber": "$number",
+        "scan.amount": "$amount",
+        "scan.invoice": "$invoice",
+        branch: "$collectstamp.branch",
+        offer: "$collectstamp.stamp",
+        subAdmin: 1,
+        customer: 1,
+        retailer: 1,
+      },
+    },
+  ]);
+
+  if (scans.length <= 0) return apiResponse(res, 404, false, "Customer not found!");
+
+  return apiResponse(res, 200, true, "Customer fetched successfully!", scans);
+});
+
+/**
+ * Get All Customers for Retailer
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
