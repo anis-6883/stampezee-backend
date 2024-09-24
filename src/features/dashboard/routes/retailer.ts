@@ -1,8 +1,8 @@
 import express from "express";
-import { fetchDashboardRetailer } from "../controller";
+import { retailerDashboard } from "../controller";
 
 const router = express.Router();
 
-router.get("/calc", fetchDashboardRetailer);
+router.get("/calc", retailerDashboard);
 
 export default router;

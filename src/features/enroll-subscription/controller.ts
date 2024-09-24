@@ -841,6 +841,8 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       })
     );
 
+    // @TODO: Send Subscription Invoice
+
     await Promise.all(updateSubscriptions);
   } catch (err) {
     console.log(err);
