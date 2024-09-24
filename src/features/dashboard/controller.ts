@@ -190,5 +190,5 @@ export const retailerDashboard = asyncHandler(async (req: IApiRequest, res: Resp
 
   if (retailer.length <= 0) return apiResponse(res, 404, false, "Retailer not found!");
 
-  return apiResponse(res, 200, true, "Retailer dashboard fetched successfully!", retailer);
+  return apiResponse(res, 200, true, "Retailer dashboard fetched successfully!", retailer[0]);
 });

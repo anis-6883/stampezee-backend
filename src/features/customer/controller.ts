@@ -95,12 +95,12 @@ export const getAllCustomers = asyncHandler(async (req: IApiRequest, res: Respon
 });
 
 /**
- * Get single customer for Super Admin
+ * Get single customer for Both (SuperAdmin & Retailer)
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getSingleCustomerForSuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getSingleCustomer = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
   const customer = await Customer.aggregate([
@@ -157,200 +157,189 @@ export const getSingleCustomerForSuperAdmin = asyncHandler(async (req: IApiReque
 });
 
 /**
- * Get single customer scan list for Super Admin
+ * Get single customer scan list for Both (SuperAdmin & Retailer)
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getSingleCustomerScanListForSuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getSingleCustomerScanList = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
-  const { page = 1, limit = 10 }: any = req.query;
+  const { page = 1, limit = 10, search }: any = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
-  const scans = await OrderStamp.aggregate([
-    {
-      $match: {
-        customerId: mongoose.Types.ObjectId.createFromHexString(id),
+  const query: any = {};
+
+  if (search) {
+    query["retailer.storeName"] = { $regex: search, $options: "i" };
+  }
+
+  const [scans, total] = await Promise.all([
+    OrderStamp.aggregate([
+      {
+        $match: {
+          customerId: mongoose.Types.ObjectId.createFromHexString(id),
+        },
       },
-    },
-    {
-      $sort: {
-        createdAt: -1,
+      {
+        $sort: {
+          createdAt: -1,
+        },
       },
-    },
-    {
-      $skip: skip,
-    },
-    {
-      $limit: Number(limit),
-    },
-    {
-      $lookup: {
-        from: "collectstamps",
-        localField: "collectStampId",
-        foreignField: "_id",
-        as: "collectstamp",
-        pipeline: [
-          {
-            $lookup: {
-              from: "stamps",
-              localField: "stampId",
-              foreignField: "_id",
-              as: "stamp",
-              pipeline: [
-                {
-                  $lookup: {
-                    from: "categories",
-                    localField: "categoryId",
-                    foreignField: "_id",
-                    as: "category",
-                    pipeline: [
-                      {
-                        $project: {
-                          name: 1,
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
+        $lookup: {
+          from: "collectstamps",
+          localField: "collectStampId",
+          foreignField: "_id",
+          as: "collectstamp",
+          pipeline: [
+            {
+              $lookup: {
+                from: "stamps",
+                localField: "stampId",
+                foreignField: "_id",
+                as: "stamp",
+                pipeline: [
+                  {
+                    $lookup: {
+                      from: "categories",
+                      localField: "categoryId",
+                      foreignField: "_id",
+                      as: "category",
+                      pipeline: [
+                        {
+                          $project: {
+                            name: 1,
+                          },
                         },
-                      },
-                    ],
+                      ],
+                    },
                   },
-                },
-                {
-                  $unwind: "$category",
-                },
-                {
-                  $project: {
-                    title: 1,
-                    description: 1,
-                    rules: 1,
-                    noOfStampsToCollect: 1,
-                    minPurchaseAmount: 1,
-                    rewardType: 1,
-                    promotionReward: 1,
-                    discountReward: 1,
-                    category: "$category.name",
+                  {
+                    $unwind: "$category",
                   },
-                },
-              ],
-            },
-          },
-          {
-            $unwind: "$stamp",
-          },
-          {
-            $lookup: {
-              from: "branches",
-              localField: "branchId",
-              foreignField: "_id",
-              as: "branch",
-              pipeline: [
-                {
-                  $project: {
-                    _id: 0,
-                    name: 1,
-                    address: "$address.name",
+                  {
+                    $project: {
+                      title: 1,
+                      description: 1,
+                      rules: 1,
+                      noOfStampsToCollect: 1,
+                      minPurchaseAmount: 1,
+                      rewardType: 1,
+                      promotionReward: 1,
+                      discountReward: 1,
+                      category: "$category.name",
+                    },
                   },
-                },
-              ],
+                ],
+              },
             },
-          },
-          {
-            $unwind: "$branch",
-          },
-        ],
-      },
-    },
-    {
-      $unwind: "$collectstamp",
-    },
-    {
-      $lookup: {
-        from: "subadmins",
-        localField: "subAdminId",
-        foreignField: "_id",
-        as: "subAdmin",
-        pipeline: [
-          {
-            $project: {
-              _id: 0,
-              fullName: 1,
-              email: 1,
-              image: 1,
+            {
+              $unwind: "$stamp",
             },
-          },
-        ],
-      },
-    },
-    {
-      $unwind: "$subAdmin",
-    },
-    {
-      $lookup: {
-        from: "customers",
-        localField: "customerId",
-        foreignField: "_id",
-        as: "customer",
-        pipeline: [
-          {
-            $project: {
-              _id: 0,
-              fullName: 1,
-              email: 1,
-              image: 1,
-              dialCode: 1,
-              phone: 1,
-              country: 1,
+            {
+              $lookup: {
+                from: "branches",
+                localField: "branchId",
+                foreignField: "_id",
+                as: "branch",
+                pipeline: [
+                  {
+                    $project: {
+                      _id: 0,
+                      name: 1,
+                      address: "$address.name",
+                    },
+                  },
+                ],
+              },
             },
-          },
-        ],
-      },
-    },
-    {
-      $unwind: "$customer",
-    },
-    {
-      $lookup: {
-        from: "retailers",
-        localField: "retailerId",
-        foreignField: "_id",
-        as: "retailer",
-        pipeline: [
-          {
-            $project: {
-              _id: 0,
-              fullName: 1,
-              email: 1,
-              image: 1,
-              dialCode: 1,
-              phone: 1,
-              country: 1,
-              city: 1,
-              address: 1,
+            {
+              $unwind: "$branch",
             },
-          },
-        ],
+          ],
+        },
       },
-    },
-    {
-      $unwind: "$retailer",
-    },
-    {
-      $project: {
-        "scan.time": "$createdAt",
-        "scan.rewardCollected": "$rewardCollected",
-        "scan.stampNumber": "$number",
-        "scan.amount": "$amount",
-        "scan.invoice": "$invoice",
-        branch: "$collectstamp.branch",
-        offer: "$collectstamp.stamp",
-        subAdmin: 1,
-        customer: 1,
-        retailer: 1,
+      {
+        $unwind: "$collectstamp",
       },
-    },
+      {
+        $lookup: {
+          from: "subadmins",
+          localField: "subAdminId",
+          foreignField: "_id",
+          as: "subAdmin",
+          pipeline: [
+            {
+              $project: {
+                _id: 0,
+                fullName: 1,
+                email: 1,
+                image: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: "$subAdmin",
+      },
+      {
+        $lookup: {
+          from: "retailers",
+          localField: "retailerId",
+          foreignField: "_id",
+          as: "retailer",
+          pipeline: [
+            {
+              $project: {
+                _id: 1,
+                storeName: 1,
+                fullName: 1,
+                email: 1,
+                image: 1,
+                dialCode: 1,
+                phone: 1,
+                country: 1,
+                city: 1,
+                address: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: "$retailer",
+      },
+      {
+        $match: query,
+      },
+      {
+        $project: {
+          "scan.time": "$createdAt",
+          "scan.rewardCollected": "$rewardCollected",
+          "scan.stampNumber": "$number",
+          "scan.amount": "$amount",
+          "scan.invoice": "$invoice",
+          branch: "$collectstamp.branch",
+          offer: "$collectstamp.stamp",
+          subAdmin: 1,
+          customer: 1,
+          retailer: 1,
+        },
+      },
+    ]),
+    OrderStamp.countDocuments({ customerId: mongoose.Types.ObjectId.createFromHexString(id) }),
   ]);
 
-  if (scans.length <= 0) return apiResponse(res, 404, false, "Customer not found!");
+  const data = makePaginate(scans, Number(page), Number(limit), skip, total);
 
-  return apiResponse(res, 200, true, "Customer fetched successfully!", scans);
+  return apiResponse(res, 200, true, "Customer fetched successfully!", data);
 });
 
 /**
@@ -360,14 +349,57 @@ export const getSingleCustomerScanListForSuperAdmin = asyncHandler(async (req: I
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getAllRetailerCustomers = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10 } = req.query;
+  const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
-  const branchIds = (await Branch.find({ retailerId: req.user._id }, { _id: 1 })).map((branch) => branch._id);
-  const query = { branchId: { $in: branchIds } };
+  const query: any = { softDeleted: false };
+
+  if (search) {
+    const regex = new RegExp(`.*${search}.*`, "i"); // case insensitive search. For sensitive remove i
+    const orQuery = [{ fullName: regex }, { email: regex }];
+    query.$or = orQuery;
+  }
+
+  const branchIds = (await Branch.find({ retailerId: req?.user?._id })).map((branch) => branch._id);
+
+  const collectStamp = (
+    await CollectStamp.aggregate([
+      {
+        $group: {
+          _id: "$branchId", // Group by branchId
+          uniqueCustomers: { $addToSet: "$customerId" }, // Collect unique customerId values in a set
+        },
+      },
+      {
+        $match: {
+          _id: { $in: branchIds },
+        },
+      },
+      {
+        $group: {
+          _id: null, // Group everything into a single document
+          allUniqueCustomers: { $addToSet: "$uniqueCustomers" }, // Collect all unique customer arrays
+        },
+      },
+      {
+        $project: {
+          _id: 0, // Remove the _id field
+          customerIds: {
+            $reduce: {
+              input: "$allUniqueCustomers", // Flatten the array of arrays
+              initialValue: [],
+              in: { $setUnion: ["$$value", "$$this"] }, // Merge unique customer arrays
+            },
+          },
+        },
+      },
+    ])
+  )[0];
+
+  query._id = { $in: collectStamp.customerIds };
 
   const [docs, total] = await Promise.all([
-    CollectStamp.aggregate([
+    Customer.aggregate([
       {
         $match: query,
       },
@@ -384,33 +416,52 @@ export const getAllRetailerCustomers = asyncHandler(async (req: IApiRequest, res
       },
       {
         $lookup: {
-          from: "branches",
-          localField: "branchId",
-          foreignField: "_id",
-          as: "branch",
+          from: "collectstamps",
+          localField: "_id",
+          foreignField: "customerId",
+          as: "collectStamps",
         },
       },
       {
         $lookup: {
-          from: "customers",
-          localField: "customerId",
-          foreignField: "_id",
-          as: "customer",
+          from: "orderstamps",
+          localField: "_id",
+          foreignField: "customerId",
+          as: "orderStamps",
         },
       },
       {
-        $unwind: "$customer",
+        $addFields: {
+          totalCollectStamp: { $size: "$collectStamps" },
+          totalScan: { $size: "$orderStamps" },
+          totalRewardCollect: {
+            $size: {
+              $filter: {
+                input: "$orderStamps", // Filter on the orderStamps array
+                as: "orderStamp", // Alias for each element in the array
+                cond: { $eq: ["$$orderStamp.rewardCollected", true] }, // Condition: rewardCollected should be true
+              },
+            },
+          },
+        },
       },
       {
-        $unwind: "$branch",
+        $project: {
+          password: 0,
+          otp: 0,
+          otpExpiry: 0,
+          token: 0,
+          collectStamps: 0,
+          orderStamps: 0,
+        },
       },
     ]),
-    CollectStamp.countDocuments(query),
+    Customer.countDocuments(query),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  return apiResponse(res, 200, true, "Retailer Customers fetched successfully!", data);
+  return apiResponse(res, 200, true, "Customers fetched successfully!", data);
 });
 
 /**

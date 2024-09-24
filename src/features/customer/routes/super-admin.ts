@@ -2,8 +2,8 @@ import express from "express";
 import {
   createCustomerBySuperAdmin,
   getAllCustomers,
-  getSingleCustomerForSuperAdmin,
-  getSingleCustomerScanListForSuperAdmin,
+  getSingleCustomer,
+  getSingleCustomerScanList,
   softDeleteCustomerBySuperAdmin,
   updateCustomerBySuperAdmin,
   updateCustomerStatusBySuperAdmin,
@@ -12,8 +12,8 @@ import {
 const router = express.Router();
 
 router.get("/all", getAllCustomers);
-router.get("/find/:id", getSingleCustomerForSuperAdmin);
-router.get("/scans/:id", getSingleCustomerScanListForSuperAdmin);
+router.get("/find/:id", getSingleCustomer);
+router.get("/scans/:id", getSingleCustomerScanList);
 router.post("/create", createCustomerBySuperAdmin);
 router.put("/status/:id", updateCustomerStatusBySuperAdmin);
 router.put("/:id", updateCustomerBySuperAdmin);
