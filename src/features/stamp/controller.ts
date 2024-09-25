@@ -324,7 +324,7 @@ export const updateStamp = asyncHandler(async (req: IApiRequest, res: Response) 
     if (!stampImage) throw "Stamp image not found!";
   }
 
-  if (!updatedBody.hasValidity) {
+  if (!hasValidity) {
     updatedBody.startedAt = new Date();
     updatedBody.expiredAt = new Date("3070-01-01");
   }
@@ -334,7 +334,6 @@ export const updateStamp = asyncHandler(async (req: IApiRequest, res: Response) 
   updatedBody.categoryId = categoryId;
 
   const settings = await Settings.findOne(null, { "general.timezone": 1 });
-
   if (!settings?.general?.timezone) throw "Setup TimeZone First!";
 
   const systemTime = getUTC(updatedBody.startedAt, Number(settings.general.timezone.value));

@@ -43,9 +43,7 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
     Settings.findOne().select("notification"),
   ]);
 
-  if (!subscription) {
-    throw "No one is allowed to send a notification without a plan!";
-  }
+  if (!subscription) throw "No one is allowed to send a notification without a plan!";
 
   let allowTotalNotification = 0;
 
@@ -53,16 +51,12 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
     allowTotalNotification += addon.planSnapshot?.limit;
   }
 
-  if (totalNotification >= allowTotalNotification) {
-    throw "Your notification limit is over. Take Another Add-on!";
-  }
+  if (totalNotification >= allowTotalNotification) throw "Your notification limit is over. Take Another Add-on!";
 
   // File Validation
   if (req.file) {
     const { status, message } = fileValidation(req.file, undefined, ["image/jpeg", "image/png", "image/jpg"]);
-    if (!status) {
-      return apiResponse(res, 400, false, "Invalid Request!", { image: message });
-    }
+    if (!status) return apiResponse(res, 400, false, "Invalid Request!", { image: message });
   }
 
   // Upload File to S3 Bucket
@@ -126,9 +120,7 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
     Notification.countDocuments({ retailerId: req.user._id, type: "location" }),
   ]);
 
-  if (!subscription) {
-    throw "No one is allowed to send a notification without a plan!";
-  }
+  if (!subscription) throw "No one is allowed to send a notification without a plan!";
 
   let allowTotalNotification = 0;
 
@@ -136,9 +128,7 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
     allowTotalNotification += addon.planSnapshot?.limit;
   }
 
-  if (totalNotification >= allowTotalNotification) {
-    throw "Your notification limit is over. Take Another Add-on!";
-  }
+  if (totalNotification >= allowTotalNotification) throw "Your notification limit is over. Take Another Add-on!";
 
   // File Validation
   if (req.file) {
@@ -216,7 +206,7 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
 });
 
 /**
- * Get All Single Notifications
+ * Get All Single Notifications for Retailer
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -282,6 +272,12 @@ export const getAllNotificationsForRetailer = asyncHandler(async (req: IApiReque
   return apiResponse(res, 200, true, "Notification fetched successfully!", data);
 });
 
+/**
+ * Get All Single Notifications for Super Admin
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
 export const getAllNotificationsForSuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { page = 1, limit = 10, search, type } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
