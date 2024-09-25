@@ -303,7 +303,7 @@ export const updateStamp = asyncHandler(async (req: IApiRequest, res: Response) 
   });
 
   const { id } = req.params;
-  const { branchId, categoryId, stampImageId, hasValidity, softDeleted, ...updatedBody } = result;
+  const { branchId, categoryId, stampImageId, softDeleted, ...updatedBody } = result;
 
   const stamp = await Stamp.findOne({ _id: id });
   if (!stamp) throw "Stamp not found!";
@@ -324,7 +324,7 @@ export const updateStamp = asyncHandler(async (req: IApiRequest, res: Response) 
     if (!stampImage) throw "Stamp image not found!";
   }
 
-  if (!hasValidity) {
+  if (!updatedBody?.hasValidity) {
     updatedBody.startedAt = new Date();
     updatedBody.expiredAt = new Date("3070-01-01");
   }
