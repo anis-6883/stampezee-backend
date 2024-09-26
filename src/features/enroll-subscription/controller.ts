@@ -63,10 +63,16 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
           pipeline: [
             {
               $project: {
-                title: 1,
+                slug: 1,
               },
             },
           ],
+        },
+      },
+      {
+        $unwind: {
+          path: "$applicablePackage",
+          preserveNullAndEmptyArrays: true,
         },
       },
       {
@@ -85,7 +91,7 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
   )[0];
 
   if (!coupon) throw "Provide invalid coupon code!";
-  if (coupon.applicablePackage.title !== slug) throw "Provide invalid coupon code!";
+  if (coupon.applicablePackage.slug !== slug) throw "Provide invalid coupon code!";
 
   if (coupon.allowFor === "specific") {
     if (!coupon.allowedRetailers.includes(req.user._id as any)) throw "Provide invalid coupon code!";
@@ -190,10 +196,16 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             pipeline: [
               {
                 $project: {
-                  title: 1,
+                  slug: 1,
                 },
               },
             ],
+          },
+        },
+        {
+          $unwind: {
+            path: "$applicablePackage",
+            preserveNullAndEmptyArrays: true,
           },
         },
         {
@@ -212,7 +224,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     )[0];
 
     if (!coupon) throw "Provide invalid coupon code!";
-    if (coupon.applicablePackage.title !== slug) throw "Provide invalid coupon code!";
+    if (coupon.applicablePackage.slug !== slug) throw "Provide invalid coupon code!";
 
     if (coupon.allowFor === "specific") {
       if (!coupon.allowedRetailers.includes(req.user._id as any)) throw "Provide invalid coupon code!";
