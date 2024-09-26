@@ -26,10 +26,6 @@ const schema = new mongoose.Schema(
       type: Number,
       required: true,
     },
-    minPurchaseAmount: {
-      type: Number,
-      default: 0,
-    },
     limit: {
       type: Number,
       default: 1,
@@ -50,6 +46,11 @@ const schema = new mongoose.Schema(
     allowedRetailers: {
       type: [mongoose.Types.ObjectId],
       default: [],
+    },
+    applicablePackage: {
+      type: "ObjectId", // mongoose.Types.ObjectId
+      ref: "Subscription",
+      required: true,
     },
     status: {
       type: Boolean,

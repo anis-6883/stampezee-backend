@@ -2,6 +2,7 @@ import { Response } from "express";
 import { apiResponse, asyncHandler, getUTC, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
 import Settings from "../settings/model";
+import Subscription from "../subscription/model";
 import Retailer from "../user/retailer/model";
 import Coupon from "./model";
 import { couponSchema, couponStatusSchema, updateCouponSchema } from "./validation";
@@ -20,14 +21,24 @@ export const createCoupon = asyncHandler(async (req: IApiRequest, res: Response)
   const { softDeleted, ...createBody } = result;
   createBody.createdBy = req.user._id;
 
-  const existingCoupon = await Coupon.findOne({
-    code: createBody.code,
-    startedAt: { $lte: createBody.expiredAt },
-    expiredAt: { $gte: createBody.startedAt },
-    softDeleted: false,
-  });
+  const [existingCoupon, subscription] = await Promise.all([
+    Coupon.findOne({
+      code: createBody.code,
+      startedAt: { $lte: createBody.expiredAt },
+      expiredAt: { $gte: createBody.startedAt },
+      softDeleted: false,
+    }),
+    Subscription.findOne({ _id: createBody.applicablePackage, slug: { $ne: "trial" } }),
+  ]);
 
   if (existingCoupon) throw "Coupon already exists within date range!";
+  if (!subscription) throw "Provide invalid coupon code!";
+
+  if (createBody.discountType === "flat") {
+    if (subscription.price / 2 <= createBody.discount) {
+      throw `Discount must be less than ${Number(subscription.price / 2).toFixed(2)} CAD of the package price!`;
+    }
+  }
 
   const settings = await Settings.findOne(null, { "general.timezone": 1 });
   if (!settings?.general?.timezone) throw "Setup TimeZone First!";
@@ -44,15 +55,21 @@ export const createCoupon = asyncHandler(async (req: IApiRequest, res: Response)
 });
 
 /**
- * Get All Retailers with Short Info
+ * Get All Retailers & Packages with Short Info
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllRetailers = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const retailers = await Retailer.find({}, { storeName: 1, image: 1 });
+export const getAllRetailersAndPlans = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const [retailers, subscriptions] = await Promise.all([
+    Retailer.find({}, { storeName: 1, image: 1 }),
+    Subscription.find({ slug: { $ne: "trial" } }, { title: 1 }).sort({ createdAt: "asc" }),
+  ]);
 
-  return apiResponse(res, 200, true, "All retailer short info fetched successfully!", retailers);
+  return apiResponse(res, 200, true, "All retailer & plans short info fetched successfully!", {
+    retailers,
+    subscriptions,
+  });
 });
 
 /**
@@ -74,8 +91,44 @@ export const getAllCoupons = asyncHandler(async (req: IApiRequest, res: Response
   }
 
   const [docs, total] = await Promise.all([
-    Coupon.find(query).limit(Number(limit)).skip(skip).sort({ createdAt: "desc" }),
-    Coupon.find(query).countDocuments(),
+    Coupon.aggregate([
+      {
+        $match: query,
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
+        $lookup: {
+          from: "subscriptions",
+          localField: "applicablePackage",
+          foreignField: "_id",
+          as: "applicablePackage",
+          pipeline: [
+            {
+              $project: {
+                title: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: "$applicablePackage",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+    ]),
+    Coupon.countDocuments(query),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
@@ -115,15 +168,25 @@ export const updateCoupon = asyncHandler(async (req: IApiRequest, res: Response)
   const coupon = await Coupon.findOne({ _id: id });
   if (!coupon) return apiResponse(res, 404, false, "Coupon not found!");
 
-  const existingCoupon = await Coupon.findOne({
-    _id: { $ne: id },
-    code: updatedBody.code,
-    startedAt: { $lte: updatedBody.expiredAt },
-    expiredAt: { $gte: updatedBody.startedAt },
-    softDeleted: false,
-  });
+  const [existingCoupon, subscription] = await Promise.all([
+    Coupon.findOne({
+      _id: { $ne: id },
+      code: updatedBody.code,
+      startedAt: { $lte: updatedBody.expiredAt },
+      expiredAt: { $gte: updatedBody.startedAt },
+      softDeleted: false,
+    }),
+    Subscription.findOne({ _id: updatedBody.applicablePackage, slug: { $ne: "trial" } }),
+  ]);
 
   if (existingCoupon) throw "Coupon already exists within date range!";
+  if (!subscription) throw "Provide invalid coupon code!";
+
+  if (updatedBody.discountType === "flat") {
+    if (subscription.price / 2 <= updatedBody.discount) {
+      throw "Discount must be less than 50% of the package price!";
+    }
+  }
 
   const settings = await Settings.findOne(null, { "general.timezone": 1 });
   if (!settings?.general?.timezone) throw "Setup TimeZone First!";

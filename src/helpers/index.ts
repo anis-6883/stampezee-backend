@@ -71,6 +71,13 @@ export const requiredObjectIdField = (fieldName: string) =>
       "string.empty": `${fieldName} must not be empty!`,
     });
 
+export const objectIdField = (fieldName: string) =>
+  JoiExtended.objectId().messages({
+    "any.required": `${fieldName} is required!`,
+    "objectId.base": `${fieldName} must be a valid ObjectId!`,
+    "string.empty": `${fieldName} must not be empty!`,
+  });
+
 export const requiredStringField = (fieldName: string) =>
   Joi.string()
     .trim()

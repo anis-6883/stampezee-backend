@@ -41,29 +41,51 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
     abortEarly: false,
   });
 
-  const { code } = result || {};
+  const { code, slug } = result || {};
 
-  const coupon = await Coupon.findOne(
-    {
-      code,
-      startedAt: { $lte: new Date() },
-      expiredAt: { $gte: new Date() },
-      status: true,
-      softDeleted: false,
-    },
-    {
-      _id: 1,
-      title: 1,
-      discountType: 1,
-      discount: 1,
-      minPurchaseAmount: 1,
-      allowFor: 1,
-      allowedRetailers: 1,
-      limit: 1,
-    }
-  );
+  const coupon = (
+    await Coupon.aggregate([
+      {
+        $match: {
+          code,
+          startedAt: { $lte: new Date() },
+          expiredAt: { $gte: new Date() },
+          status: true,
+          softDeleted: false,
+        },
+      },
+      {
+        $lookup: {
+          from: "subscriptions",
+          localField: "applicablePackage",
+          foreignField: "_id",
+          as: "applicablePackage",
+          pipeline: [
+            {
+              $project: {
+                title: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          title: 1,
+          discountType: 1,
+          discount: 1,
+          allowFor: 1,
+          allowedRetailers: 1,
+          applicablePackage: 1,
+          limit: 1,
+        },
+      },
+    ])
+  )[0];
 
   if (!coupon) throw "Provide invalid coupon code!";
+  if (coupon.applicablePackage.title !== slug) throw "Provide invalid coupon code!";
 
   if (coupon.allowFor === "specific") {
     if (!coupon.allowedRetailers.includes(req.user._id as any)) throw "Provide invalid coupon code!";
@@ -148,15 +170,49 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
   // Check & Get Coupon
   let coupon = null;
   if (code) {
-    coupon = await Coupon.findOne({
-      code,
-      startedAt: { $lte: new Date() },
-      expiredAt: { $gte: new Date() },
-      status: true,
-      softDeleted: false,
-    });
+    coupon = (
+      await Coupon.aggregate([
+        {
+          $match: {
+            code,
+            startedAt: { $lte: new Date() },
+            expiredAt: { $gte: new Date() },
+            status: true,
+            softDeleted: false,
+          },
+        },
+        {
+          $lookup: {
+            from: "subscriptions",
+            localField: "applicablePackage",
+            foreignField: "_id",
+            as: "applicablePackage",
+            pipeline: [
+              {
+                $project: {
+                  title: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            title: 1,
+            discountType: 1,
+            discount: 1,
+            allowFor: 1,
+            allowedRetailers: 1,
+            applicablePackage: 1,
+            limit: 1,
+          },
+        },
+      ])
+    )[0];
 
     if (!coupon) throw "Provide invalid coupon code!";
+    if (coupon.applicablePackage.title !== slug) throw "Provide invalid coupon code!";
 
     if (coupon.allowFor === "specific") {
       if (!coupon.allowedRetailers.includes(req.user._id as any)) throw "Provide invalid coupon code!";
@@ -236,10 +292,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
       // Check coupon eligibility & apply
       if (coupon) {
-        if (pickSubscriptionPlan.price < coupon.minPurchaseAmount) {
-          throw `Min. ${(selectCurrency.exchangeRate * coupon.minPurchaseAmount).toFixed(2)}${currency} required to apply coupon!`;
-        }
-
         couponValue =
           coupon.discountType === "percentage"
             ? (finalPrice * coupon?.discount) / 100
@@ -514,10 +566,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
     // Check coupon eligibility & apply
     if (coupon) {
-      if (pickSubscriptionPlan.price < coupon.minPurchaseAmount) {
-        throw `Min. ${(selectCurrency.exchangeRate * coupon.minPurchaseAmount).toFixed(2)}${currency} required to apply coupon!`;
-      }
-
       couponValue =
         coupon.discountType === "percentage"
           ? (finalPrice * coupon?.discount) / 100

@@ -1,5 +1,11 @@
 import Joi from "joi";
-import { requiredBooleanField, requiredStringField, stringField } from "../../helpers";
+import {
+  objectIdField,
+  requiredBooleanField,
+  requiredObjectIdField,
+  requiredStringField,
+  stringField,
+} from "../../helpers";
 
 const startedAt = Joi.date().messages({
   "date.base": "startedAt must be date!",
@@ -18,22 +24,24 @@ const discountType = Joi.string().trim().lowercase().valid("percentage", "flat")
   "string.empty": "discountType must not be empty!",
 });
 
-const discount = Joi.number().min(1).messages({
-  "number.base": "discount must be number!",
-  "any.required": "discount is required!",
-  "number.min": "discount must be greater than or equal to 1!",
+const discount = Joi.alternatives().conditional("discountType", {
+  is: "percentage",
+  then: Joi.number().max(50).messages({
+    "number.base": "discount must be number!",
+    "any.required": "discount is required!",
+    "number.min": "discount must be smaller than or equal to 50!",
+  }),
+  otherwise: Joi.number().min(1).messages({
+    "number.base": "discount must be number!",
+    "any.required": "discount is required!",
+    "number.min": "discount must be greater than or equal to 1!",
+  }),
 });
 
 const limit = Joi.number().min(1).messages({
   "number.base": "limit must be number!",
   "any.required": "limit is required!",
   "number.min": "limit must be greater than or equal to 1!",
-});
-
-const minPurchaseAmount = Joi.number().min(0).messages({
-  "number.base": "minPurchaseAmount must be number!",
-  "any.required": "minPurchaseAmount is required!",
-  "number.min": "minPurchaseAmount must be greater than or equal to 0!",
 });
 
 const code = Joi.string().trim().min(6).messages({
@@ -74,13 +82,11 @@ export const couponSchema = Joi.object({
   limit: limit.required().messages({
     "any.required": "limit is required!",
   }),
-  minPurchaseAmount: minPurchaseAmount.required().messages({
-    "any.required": "minPurchaseAmount is required!",
-  }),
   allowFor: allowFor.required().messages({
     "any.required": "allowFor is required!",
   }),
   allowedRetailers,
+  applicablePackage: requiredObjectIdField("applicablePackage"),
 });
 
 export const updateCouponSchema = Joi.object({
@@ -92,9 +98,9 @@ export const updateCouponSchema = Joi.object({
   discountType,
   discount,
   limit,
-  minPurchaseAmount,
   allowFor,
   allowedRetailers,
+  applicablePackage: objectIdField("applicablePackage"),
 });
 
 export const couponStatusSchema = Joi.object({
