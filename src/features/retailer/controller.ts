@@ -5,6 +5,7 @@ import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bu
 import { apiResponse, asyncHandler, exclude, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
 import Retailer from "../user/retailer/model";
+import { sendRegistrationMail } from "./service";
 import { retailerSchema, retailerSchemaUpdate, retailerStatusSchema } from "./validation";
 
 /**
@@ -34,15 +35,19 @@ export const createRetailer = asyncHandler(async (req: IApiRequest, res: Respons
   }
 
   createBody.password = await bcrypt.hash(password, 10);
+  const fullName = createBody?.lastName ? `${createBody.firstName} ${createBody.lastName}` : createBody.firstName;
 
   const retailer: any = await Retailer.create({
     ...createBody,
-    fullName: createBody?.lastName ? `${createBody.firstName} ${createBody.lastName}` : createBody.firstName,
+    fullName,
     image: imageKey,
     isVerified: true,
     verifiedAt: Date.now(),
     ref: req.role,
   });
+
+  // Sending Mail
+  await sendRegistrationMail(createBody.email, fullName, password, createBody.storeName);
 
   // Remove Sensitive Data
   const data = exclude(retailer._doc, ["password", "createdAt", "updatedAt"]);
