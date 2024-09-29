@@ -25,11 +25,21 @@ const updateLatitude = Joi.when("address", {
 
 export const customerRegisterSchema = Joi.object({
   email: requiredEmailField,
-  password: requiredWeakPasswordField(6),
+  password: Joi.string().when("provider", {
+    is: "email",
+    then: requiredWeakPasswordField(6),
+    otherwise: Joi.optional(),
+  }),
   fullName: requiredStringField("fullName"),
-  dialCode: requiredStringField("dialCode"),
-  phone: requiredStringField("phone"),
-  country: requiredStringField("country"),
+  dialCode: stringField("dialCode"),
+  phone: stringField("phone"),
+  country: stringField("country"),
+  provider: Joi.string().trim().required().lowercase().valid("email", "google", "apple").messages({
+    "any.required": "provider is required!",
+    "string.base": "provider must be string!",
+    "any.only": "provider must be [email, google, apple]",
+    "string.empty": "provider must not be empty!",
+  }),
 });
 
 export const customerUpdateProfile = Joi.object({
@@ -69,6 +79,21 @@ export const superAdminRegisterSchema2 = Joi.object({
 export const loginSchema = Joi.object({
   email: requiredEmailField,
   password: requiredStringField("password"),
+});
+
+export const customerLoginSchema = Joi.object({
+  email: requiredEmailField,
+  password: Joi.string().when("provider", {
+    is: "email",
+    then: requiredWeakPasswordField(6),
+    otherwise: Joi.optional(),
+  }),
+  provider: Joi.string().trim().required().lowercase().valid("email", "google", "apple").messages({
+    "any.required": "provider is required!",
+    "string.base": "provider must be string!",
+    "any.only": "provider must be [email, google, apple]",
+    "string.empty": "provider must not be empty!",
+  }),
 });
 
 export const verifyOtpSchema = Joi.object({

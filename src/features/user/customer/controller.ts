@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
+import moment from "moment";
 import { ROLE } from "../../../configs/constants";
 import {
   apiResponse,
@@ -15,11 +16,11 @@ import OrderStamp from "../../mobile/sub-admin/home/model";
 import { sendVerificationEmail } from "../service";
 import {
   customerChangeForgetPasswordSchema,
+  customerLoginSchema,
   customerRegisterSchema,
   customerUpdateProfile,
   forgetPasswordSchema,
   locationTokenSchema,
-  loginSchema,
   verifyOtpSchema,
 } from "../validation";
 import Customer from "./model";
@@ -34,35 +35,48 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
   const result = customerRegisterSchema.validate(req.body);
   if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
 
-  const { otp, otpExpiry, isVerified, verifiedAt, image, ref, ...customerBody } = result.value;
-
-  customerBody.password = await bcrypt.hash(customerBody.password, 10);
-  customerBody.otp = getRandomInteger(100000, 999999);
-  customerBody.otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
+  const { otp, otpExpiry, isVerified, verifiedAt, image, ref, provider, ...customerBody } = result.value;
 
   const existingCustomer: IUser = await Customer.findOne({
     email: customerBody.email,
   });
 
-  if (existingCustomer && existingCustomer.isVerified) {
-    throw "This customer already exists!";
-  }
+  if (existingCustomer && existingCustomer.isVerified) throw "This customer already exists!";
 
-  const token = generateSignature({ email: customerBody.email, role: ROLE.CUSTOMER, ott: true }, "15m"); // 15 min
+  if (provider !== "email") {
+    const token = generateSignature({ email: customerBody.email, role: ROLE.CUSTOMER }, "30 days");
 
-  sendVerificationEmail(customerBody.email, customerBody.otp, "mobile");
-
-  if (existingCustomer) {
-    await Customer.updateOne(
-      { email: customerBody.email },
-      { $set: { otp: customerBody.otp, otpExpiry: customerBody.otpExpiry, token } }
-    );
-  } else {
+    customerBody.provider = provider;
+    customerBody.isVerified = true;
+    customerBody.verifiedAt = moment();
     customerBody.token = token;
-    await Customer.create(customerBody);
-  }
+    customerBody.password = await bcrypt.hash("123456", 10);
 
-  return apiResponse(res, 201, true, "Otp send successfully!", { token });
+    const customer: any = await Customer.create(customerBody);
+
+    return apiResponse(res, 201, true, "Login successfully!", { token, ...customer._doc });
+  } else {
+    customerBody.provider = provider;
+    customerBody.password = await bcrypt.hash(customerBody.password, 10);
+    customerBody.otp = getRandomInteger(100000, 999999);
+    customerBody.otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
+
+    const token = generateSignature({ email: customerBody.email, role: ROLE.CUSTOMER, ott: true }, "15m"); // 15 min
+
+    sendVerificationEmail(customerBody.email, customerBody.otp, "mobile");
+
+    if (existingCustomer) {
+      await Customer.updateOne(
+        { email: customerBody.email },
+        { $set: { otp: customerBody.otp, otpExpiry: customerBody.otpExpiry, token } }
+      );
+    } else {
+      customerBody.token = token;
+      await Customer.create(customerBody);
+    }
+
+    return apiResponse(res, 201, true, "Otp send successfully!", { token });
+  }
 });
 
 /**
@@ -123,26 +137,31 @@ export const customerResendOtp = asyncHandler(async (req: IApiRequest, res: Resp
 
 /**
  * Customer Login
+ * @TODO: Add Social Login
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const customerLogin = asyncHandler(async (req: Request, res: Response) => {
-  const result = loginSchema.validate(req.body);
+  const result = customerLoginSchema.validate(req.body);
   if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
 
-  const customer: any = await Customer.findOne({ email: result.value.email });
+  const { email, password, provider } = result.value;
+
+  const customer: any = await Customer.findOne({ email });
   if (!customer) return apiResponse(res, 401, false, "Please, complete your registration first!");
 
   if (!customer.isVerified) {
-    await Customer.deleteOne({ email: result.value.email });
+    await Customer.deleteOne({ email });
     return apiResponse(res, 401, false, "Please, complete your registration first!");
   }
 
   if (!customer.status) return apiResponse(res, 401, false, "Your account has been blocked by admin!");
 
-  const isPasswordValid = await bcrypt.compare(result.value.password, customer.password);
-  if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
+  if (provider === email) {
+    const isPasswordValid = await bcrypt.compare(password, customer.password);
+    if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
+  }
 
   const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER }, "30 days");
   await Customer.updateMany({ email: customer.email }, { token, deletionRequest: false });

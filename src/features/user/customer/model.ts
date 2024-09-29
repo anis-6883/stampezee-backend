@@ -13,6 +13,11 @@ const schema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
+    provider: {
+      type: String,
+      required: true,
+      enum: ["email", "google", "apple"],
+    },
     password: {
       type: String,
       required: true,
@@ -56,14 +61,10 @@ const schema = new mongoose.Schema(
       trim: true,
       default: null,
     },
-    image: {
-      type: String,
-      default: null,
-    },
     dialCode: {
       type: String,
       trim: true,
-      required: true,
+      default: null,
     },
     phone: {
       type: String,
