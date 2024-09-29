@@ -363,8 +363,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         name: coupon ? "Current Balance + Coupon" : "Current Balance",
         amount_off:
           selectCurrency?.name === "JPY"
-            ? Math.round(balanceAmount + couponValue)
-            : Math.round((balanceAmount + couponValue) * 100),
+            ? Math.round(Number(balanceAmount + couponValue))
+            : Math.round(Number(balanceAmount + couponValue) * 100),
         currency,
         duration: "once",
       });
@@ -417,7 +417,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         // Create price/product for plan downgrading in stripe
         const price = await stripe.prices.create({
           currency: currency.toLocaleLowerCase(),
-          unit_amount: selectCurrency?.name === "JPY" ? Math.round(Number(finalPrice)) : Math.round(finalPrice * 100),
+          unit_amount:
+            selectCurrency?.name === "JPY" ? Math.round(Number(finalPrice)) : Math.round(Number(finalPrice * 100)),
           recurring: {
             interval: "month",
           },
@@ -531,7 +532,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             product_data: {
               name: `${pickSubscriptionPlan.title} Plan (Downgrade)`,
             },
-            unit_amount: selectCurrency?.name === "JPY" ? Math.round(Number(finalPrice)) : Math.round(finalPrice * 100),
+            unit_amount:
+              selectCurrency?.name === "JPY" ? Math.round(Number(finalPrice)) : Math.round(Number(finalPrice * 100)),
             recurring: {
               interval: "month",
             },
@@ -542,7 +544,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         // Minus Balance Handle By Coupon
         const applyCoupon = await stripe.coupons.create({
           name: "Current Balance",
-          amount_off: selectCurrency?.name === "JPY" ? Math.round(totalAmount) : Math.round(totalAmount * 100),
+          amount_off:
+            selectCurrency?.name === "JPY" ? Math.round(Number(totalAmount)) : Math.round(Number(totalAmount * 100)),
           currency,
           duration: "once",
         });
@@ -587,7 +590,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
       const applyCoupon = await stripe.coupons.create({
         name: coupon.title,
-        amount_off: selectCurrency?.name === "JPY" ? Math.round(couponValue) : couponValue * 100,
+        amount_off:
+          selectCurrency?.name === "JPY" ? Math.round(Number(couponValue)) : Math.round(Number(couponValue) * 100),
         currency,
         duration: "once",
       });
