@@ -49,6 +49,7 @@ export interface IUser {
   isVerified: boolean;
   verifiedAt: Date;
   takeFreeTrial: boolean;
+  provider?: string;
   address?: {
     loc: {
       type: string;

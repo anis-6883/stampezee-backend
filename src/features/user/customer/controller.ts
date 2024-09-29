@@ -41,7 +41,7 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
     email: customerBody.email,
   });
 
-  if (existingCustomer && existingCustomer.isVerified) throw "This customer already exists!";
+  if (existingCustomer && existingCustomer.isVerified && provider === "email") throw "This customer already exists!";
 
   if (provider !== "email") {
     const token = generateSignature({ email: customerBody.email, role: ROLE.CUSTOMER }, "30 days");
@@ -52,7 +52,7 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
     customerBody.token = token;
     customerBody.password = await bcrypt.hash("123456", 10);
 
-    const customer: any = await Customer.create(customerBody);
+    const customer: any = existingCustomer ?? (await Customer.create(customerBody));
 
     return apiResponse(res, 201, true, "Login successfully!", { token, ...customer._doc });
   } else {
@@ -137,7 +137,6 @@ export const customerResendOtp = asyncHandler(async (req: IApiRequest, res: Resp
 
 /**
  * Customer Login
- * @TODO: Add Social Login
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -157,6 +156,8 @@ export const customerLogin = asyncHandler(async (req: Request, res: Response) =>
   }
 
   if (!customer.status) return apiResponse(res, 401, false, "Your account has been blocked by admin!");
+
+  if (provider === "email" && customer.provider !== "email") throw "Please, try social login [google, apple]!";
 
   if (provider === email) {
     const isPasswordValid = await bcrypt.compare(password, customer.password);

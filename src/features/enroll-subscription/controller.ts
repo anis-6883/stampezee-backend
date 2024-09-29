@@ -90,11 +90,11 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
     ])
   )[0];
 
-  if (!coupon) throw "Provide invalid coupon code!";
-  if (coupon.applicablePackage.slug !== slug) throw "Provide invalid coupon code!";
+  if (!coupon) throw "Provided invalid coupon code!";
+  if (coupon.applicablePackage.slug !== slug) throw "Provided invalid coupon code!";
 
   if (coupon.allowFor === "specific") {
-    if (!coupon.allowedRetailers.includes(req.user._id as any)) throw "Provide invalid coupon code!";
+    if (!coupon.allowedRetailers.includes(req.user._id as any)) throw "Provided invalid coupon code!";
   }
 
   const alreadyApplied = await EnrollSubscription.countDocuments({
@@ -224,11 +224,11 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       ])
     )[0];
 
-    if (!coupon) throw "Provide invalid coupon code!";
-    if (coupon.applicablePackage.slug !== slug) throw "Provide invalid coupon code!";
+    if (!coupon) throw "Provided invalid coupon code!";
+    if (coupon.applicablePackage.slug !== slug) throw "Provided invalid coupon code!";
 
     if (coupon.allowFor === "specific") {
-      if (!coupon.allowedRetailers.includes(req.user._id as any)) throw "Provide invalid coupon code!";
+      if (!coupon.allowedRetailers.includes(req.user._id as any)) throw "Provided invalid coupon code!";
     }
 
     const alreadyApplied = await EnrollSubscription.find({
