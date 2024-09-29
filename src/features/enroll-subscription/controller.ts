@@ -212,6 +212,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           $project: {
             _id: 1,
             title: 1,
+            code: 1,
             discountType: 1,
             discount: 1,
             allowFor: 1,
@@ -601,6 +602,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       taxValue = (finalPrice * taxCost) / 100;
       finalPrice += taxValue;
     }
+    console.log({ coupon });
 
     const enrollSubscription: any = await EnrollSubscription.create({
       retailerId: req.user._id,

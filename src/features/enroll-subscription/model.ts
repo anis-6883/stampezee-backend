@@ -85,11 +85,11 @@ const couponSchema = new mongoose.Schema({
   },
   startedAt: {
     type: Date,
-    required: true,
+    default: null,
   },
   expiredAt: {
     type: Date,
-    required: true,
+    default: null,
   },
   discountType: {
     type: String,
@@ -103,16 +103,6 @@ const couponSchema = new mongoose.Schema({
   status: {
     type: Boolean,
     default: true,
-  },
-  createdBy: {
-    type: "ObjectId", // mongoose.Types.ObjectId
-    ref: "Retailer",
-    required: true,
-  },
-  deletedBy: {
-    type: "ObjectId", // mongoose.Types.ObjectId
-    ref: "Retailer",
-    default: null,
   },
   softDeleted: {
     type: Boolean,
