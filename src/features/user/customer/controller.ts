@@ -42,6 +42,10 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
   });
 
   if (existingCustomer && existingCustomer.isVerified && provider === "email") {
+    return apiResponse(res, 401, false, "Please log in using the email and password you registered with!");
+  }
+
+  if (existingCustomer && existingCustomer.isVerified && provider !== existingCustomer.provider) {
     let message;
     switch (existingCustomer.provider) {
       case "apple":

@@ -24,16 +24,28 @@ const updateLatitude = Joi.when("address", {
 });
 
 export const customerRegisterSchema = Joi.object({
+  fullName: requiredStringField("fullName"),
   email: requiredEmailField,
   password: Joi.string().when("provider", {
     is: "email",
     then: requiredWeakPasswordField(6),
     otherwise: Joi.optional(),
   }),
-  fullName: requiredStringField("fullName"),
-  dialCode: stringField("dialCode"),
-  phone: stringField("phone"),
-  country: stringField("country"),
+  dialCode: Joi.string().when("provider", {
+    is: "email",
+    then: requiredStringField("dialCode"),
+    otherwise: stringField("dialCode"),
+  }),
+  phone: Joi.string().when("provider", {
+    is: "email",
+    then: requiredStringField("phone"),
+    otherwise: stringField("phone"),
+  }),
+  country: Joi.string().when("provider", {
+    is: "email",
+    then: requiredStringField("country"),
+    otherwise: stringField("country"),
+  }),
   provider: Joi.string().trim().required().lowercase().valid("email", "google", "apple").messages({
     "any.required": "provider is required!",
     "string.base": "provider must be string!",
