@@ -41,7 +41,21 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
     email: customerBody.email,
   });
 
-  if (existingCustomer && existingCustomer.isVerified && provider === "email") throw "This customer already exists!";
+  if (existingCustomer && existingCustomer.isVerified && provider === "email") {
+    let message;
+    switch (existingCustomer.provider) {
+      case "apple":
+        message = "Your account was registered using Apple. Please log in with Apple!";
+        break;
+      case "google":
+        message = "Your account was registered using Google. Please log in with Google!";
+        break;
+      default:
+        message = "Please log in using the email and password you registered with!";
+        break;
+    }
+    return apiResponse(res, 401, false, message);
+  }
 
   if (provider !== "email") {
     const token = generateSignature({ email: customerBody.email, role: ROLE.CUSTOMER }, "30 days");
@@ -145,7 +159,7 @@ export const customerLogin = asyncHandler(async (req: Request, res: Response) =>
   const result = customerLoginSchema.validate(req.body);
   if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
 
-  const { email, password, provider } = result.value;
+  const { email, password } = result.value;
 
   const customer: any = await Customer.findOne({ email });
   if (!customer) return apiResponse(res, 401, false, "Please, complete your registration first!");
@@ -157,12 +171,25 @@ export const customerLogin = asyncHandler(async (req: Request, res: Response) =>
 
   if (!customer.status) return apiResponse(res, 401, false, "Your account has been blocked by admin!");
 
-  if (provider === "email" && customer.provider !== "email") throw "Please, try social login [google, apple]!";
-
-  if (provider === email) {
-    const isPasswordValid = await bcrypt.compare(password, customer.password);
-    if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
+  // Switch Account Login Try
+  if (customer.provider != "email") {
+    let message;
+    switch (customer.provider) {
+      case "apple":
+        message = "Your account was registered using Apple. Please log in with Apple!";
+        break;
+      case "google":
+        message = "Your account was registered using Google. Please log in with Google!";
+        break;
+      default:
+        message = "Please log in using the email and password you registered with!";
+        break;
+    }
+    return apiResponse(res, 401, false, message);
   }
+
+  const isPasswordValid = await bcrypt.compare(password, customer.password);
+  if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
   const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER }, "30 days");
   await Customer.updateMany({ email: customer.email }, { token, deletionRequest: false });
