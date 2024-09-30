@@ -109,6 +109,9 @@ export const getAllSubAdmins = asyncHandler(async (req: IApiRequest, res: Respon
   const [docs, total] = await Promise.all([
     SubAdmin.aggregate([
       {
+        $match: query,
+      },
+      {
         $sort: {
           createdAt: -1,
         },
@@ -118,9 +121,6 @@ export const getAllSubAdmins = asyncHandler(async (req: IApiRequest, res: Respon
       },
       {
         $limit: Number(limit),
-      },
-      {
-        $match: query,
       },
       {
         $lookup: {
@@ -138,7 +138,10 @@ export const getAllSubAdmins = asyncHandler(async (req: IApiRequest, res: Respon
         },
       },
       {
-        $unwind: "$branch",
+        $unwind: {
+          path: "$branch",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $project: {
@@ -147,8 +150,7 @@ export const getAllSubAdmins = asyncHandler(async (req: IApiRequest, res: Respon
         },
       },
     ]),
-
-    SubAdmin.find({ retailerId: req.user._id, softDeleted: { $eq: false } }).countDocuments(),
+    SubAdmin.countDocuments(query),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
