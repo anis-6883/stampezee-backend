@@ -6,6 +6,7 @@ import { submitContact } from "../features/contact/controller";
 import { getAllCurrencyExchanges, getTwoCurrencyExchangeRate } from "../features/currency-exchange/controller";
 import customerRoutes from "../features/customer/routes/retailer";
 import dashboardRoutes from "../features/dashboard/routes/retailer";
+import { testEmailPDF } from "../features/enroll-subscription/controller";
 import subscriptionRoutes from "../features/enroll-subscription/route";
 import { getAllFaqsForWeb } from "../features/faq/controller";
 import { subscribeNewsletter } from "../features/newsletter/controller";
@@ -23,6 +24,7 @@ import { authAndPermissionCheck } from "../middlewares/authMiddleware";
 const router = express.Router();
 
 // Common Routes
+router.get("/test-email-pdf", testEmailPDF);
 router.get("/faqs", getAllFaqsForWeb);
 router.post("/newsletter/join", subscribeNewsletter);
 router.post("/contact/submit", submitContact);

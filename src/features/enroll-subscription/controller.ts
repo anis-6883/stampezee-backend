@@ -915,3 +915,13 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     // throw err.message || err || "Something went wrong!";
   }
 };
+
+/**
+ * Test Email with PDF
+ * @param {Request} eventObject - The HTTP webhook event object.
+ * @param {Request} stripe - The stripe object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const testEmailPDF = asyncHandler(async (req: IApiRequest, res: Response) => {
+  return apiResponse(res, 200, true, "Test Email with Pdf!");
+});

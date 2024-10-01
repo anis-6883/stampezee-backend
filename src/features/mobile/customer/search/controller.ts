@@ -6,6 +6,7 @@ import Branch from "../../../branch/model";
 import Category from "../../../category/model";
 import Sorting from "../../../sorting/model";
 import Stamp from "../../../stamp/model";
+import Retailer from "../../../user/retailer/model";
 import CollectStamp from "./model";
 import { collectStampSchema } from "./validation";
 
@@ -34,108 +35,159 @@ export const getAllCategories = asyncHandler(async (req: IApiRequest, res: Respo
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10, search, categoryId }: any = req.query;
+  const { page = 1, limit = 10, search = "", categoryId }: any = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
   const long = req.user.address.loc.coordinates[0];
   const lat = req.user.address.loc.coordinates[1];
 
-  if (!long || !lat) {
-    throw "Latitude & Longitude must be set!";
-  }
+  if (!long || !lat) throw "Latitude & Longitude must be set!";
 
-  const query: any = { status: true, softDeleted: false };
-  if (search) {
-    const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
-    query.name = regex;
-  }
-
+  // Find already collected stampIds
   const stampIds = (await CollectStamp.find({ customerId: req.user._id }, { stampId: 1, _id: 0 })).map(
     ({ stampId }) => stampId
   );
 
-  const query2: any = {
-    startedAt: { $lte: new Date() },
-    expiredAt: { $gte: new Date() },
-    isPublished: true,
-    status: true,
-    softDeleted: false,
-    _id: { $nin: stampIds },
-  };
+  // const [docs, total] = await Promise.all([
+  //   Branch.aggregate([
+  //     {
+  //       $geoNear: {
+  //         near: { type: "Point", coordinates: [Number(long), Number(lat)] },
+  //         distanceField: "distance",
+  //         spherical: true,
+  //       },
+  //     },
+  //     // {
+  //     //   $match: query,
+  //     // },
+  //     {
+  //       $lookup: {
+  //         from: "stamps",
+  //         localField: "_id",
+  //         foreignField: "branchId",
+  //         as: "stamp",
+  //         pipeline: [
+  //           // {
+  //           //   $match: query2,
+  //           // },
+  //           {
+  //             $project: {
+  //               title: 1,
+  //               categoryId: 1,
+  //               description: 1,
+  //               rules: 1,
+  //               noOfStampsToCollect: 1,
+  //               minPurchaseAmount: 1,
+  //               rewardType: 1,
+  //               promotionReward: 1,
+  //               discountReward: 1,
+  //               createdAt: 1,
+  //               updatedAt: 1,
+  //             },
+  //           },
+  //         ],
+  //       },
+  //     },
+  //     {
+  //       $lookup: {
+  //         from: "retailers",
+  //         localField: "retailerId",
+  //         foreignField: "_id",
+  //         as: "retailer",
+  //       },
+  //     },
+  //     {
+  //       $unwind: "$stamp",
+  //     },
+  //     {
+  //       $unwind: "$retailer",
+  //     },
+  //     {
+  //       $project: {
+  //         branch: {
+  //           _id: "$_id",
+  //           name: "$name",
+  //           address: "$address.name",
+  //         },
+  //         "retailer._id": 1,
+  //         "retailer.storeName": 1,
+  //         "retailer.image": 1,
+  //         stamp: 1,
+  //         _id: 0,
+  //       },
+  //     },
+  //     {
+  //       $sort: {
+  //         distance: 1,
+  //       },
+  //     },
+  //     {
+  //       $skip: skip,
+  //     },
+  //     {
+  //       $limit: Number(limit),
+  //     },
+  //   ]),
+  //   Stamp.countDocuments(query2),
+  // ]);
 
-  if (categoryId) {
-    query2.categoryId = mongoose.Types.ObjectId.createFromHexString(categoryId);
+  // @TODO: Sort Branch Geo Location Wise by Customer
+
+  let branchIds = [];
+
+  if (search) {
+    const result = (
+      await Retailer.aggregate([
+        {
+          $match: { storeName: { $regex: search, $options: "i" } },
+        },
+        {
+          $lookup: {
+            from: "branches",
+            localField: "_id",
+            foreignField: "retailerId",
+            as: "branches",
+          },
+        },
+        {
+          $unwind: "$branches",
+        },
+        {
+          $group: {
+            _id: null, // Group by null to accumulate all branch IDs
+            branchIds: { $addToSet: "$branches._id" }, // Use $addToSet to ensure unique branch IDs
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            branchIds: 1,
+          },
+        },
+      ])
+    )[0];
+
+    if (result) {
+      branchIds = result.branchIds;
+    }
   }
 
   const [docs, total] = await Promise.all([
-    Branch.aggregate([
+    Stamp.aggregate([
       {
-        $geoNear: {
-          near: { type: "Point", coordinates: [Number(long), Number(lat)] },
-          distanceField: "distance",
-          spherical: true,
-        },
-      },
-      {
-        $match: query,
-      },
-      {
-        $lookup: {
-          from: "stamps",
-          localField: "_id",
-          foreignField: "branchId",
-          as: "stamp",
-          pipeline: [
-            {
-              $match: query2,
-            },
-            {
-              $project: {
-                title: 1,
-                description: 1,
-                rules: 1,
-                noOfStampsToCollect: 1,
-                minPurchaseAmount: 1,
-                rewardType: 1,
-                promotionReward: 1,
-                discountReward: 1,
-                createdAt: 1,
-                updatedAt: 1,
-              },
-            },
-          ],
-        },
-      },
-      {
-        $lookup: {
-          from: "retailers",
-          localField: "retailerId",
-          foreignField: "_id",
-          as: "retailer",
-        },
-      },
-      {
-        $unwind: "$stamp",
-      },
-      {
-        $unwind: "$retailer",
-      },
-      {
-        $project: {
-          branch: {
-            _id: "$_id",
-            name: "$name",
-            address: "$address.name",
-          },
-          "retailer._id": 1,
-          "retailer.storeName": 1,
-          "retailer.image": 1,
-          stamp: 1,
-          _id: 0,
+        $match: {
+          startedAt: { $lte: new Date() },
+          expiredAt: { $gte: new Date() },
+          isPublished: true,
+          status: true,
+          softDeleted: false,
+          _id: { $nin: stampIds },
+          ...(categoryId && { categoryId: mongoose.Types.ObjectId.createFromHexString(categoryId) }),
+          ...(search && { $or: [{ title: { $regex: search, $options: "i" } }, { branchId: { $in: branchIds } }] }),
         },
       },
       {
         $sort: {
-          distance: 1,
+          createdAt: -1,
         },
       },
       {
@@ -144,8 +196,61 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
       {
         $limit: Number(limit),
       },
+      {
+        $lookup: {
+          from: "branches",
+          localField: "branchId",
+          foreignField: "_id",
+          as: "branch",
+          pipeline: [
+            {
+              $lookup: {
+                from: "retailers",
+                localField: "retailerId",
+                foreignField: "_id",
+                as: "retailer",
+              },
+            },
+            {
+              $unwind: "$retailer",
+            },
+          ],
+        },
+      },
+      {
+        $unwind: "$branch",
+      },
+      {
+        $project: {
+          stamp: {
+            $mergeObjects: [
+              {
+                $arrayToObject: {
+                  $filter: { input: { $objectToArray: "$$ROOT" }, cond: { $ne: ["$$this.k", "branch"] } },
+                },
+              },
+            ],
+          },
+          "branch._id": "$branch._id",
+          "branch.name": "$branch.name",
+          "branch.address": "$branch.address.name",
+          "retailer._id": "$branch.retailer._id",
+          "retailer.storeName": "$branch.retailer.storeName",
+          "retailer.image": "$branch.retailer.image",
+          _id: 0,
+        },
+      },
     ]),
-    Stamp.find(query2).countDocuments(),
+    Stamp.countDocuments({
+      startedAt: { $lte: new Date() },
+      expiredAt: { $gte: new Date() },
+      isPublished: true,
+      status: true,
+      softDeleted: false,
+      _id: { $nin: stampIds },
+      ...(categoryId && { categoryId: mongoose.Types.ObjectId.createFromHexString(categoryId) }),
+      ...(search && { $or: [{ title: { $regex: search, $options: "i" } }, { branchId: { $in: branchIds } }] }),
+    }),
   ]);
 
   const mobilePagination = makePaginateForMobile(Number(page), Number(limit), skip, total);
