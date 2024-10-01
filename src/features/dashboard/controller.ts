@@ -117,6 +117,13 @@ export const retailerDashboard = asyncHandler(async (req: IApiRequest, res: Resp
               localField: "_id",
               foreignField: "branchId",
               as: "subadmin",
+              pipeline: [
+                {
+                  $match: {
+                    softDeleted: false,
+                  },
+                },
+              ],
             },
           },
           {
