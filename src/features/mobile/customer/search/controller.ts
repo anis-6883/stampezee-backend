@@ -47,91 +47,6 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
     ({ stampId }) => stampId
   );
 
-  // const [docs, total] = await Promise.all([
-  //   Branch.aggregate([
-  //     {
-  //       $geoNear: {
-  //         near: { type: "Point", coordinates: [Number(long), Number(lat)] },
-  //         distanceField: "distance",
-  //         spherical: true,
-  //       },
-  //     },
-  //     // {
-  //     //   $match: query,
-  //     // },
-  //     {
-  //       $lookup: {
-  //         from: "stamps",
-  //         localField: "_id",
-  //         foreignField: "branchId",
-  //         as: "stamp",
-  //         pipeline: [
-  //           // {
-  //           //   $match: query2,
-  //           // },
-  //           {
-  //             $project: {
-  //               title: 1,
-  //               categoryId: 1,
-  //               description: 1,
-  //               rules: 1,
-  //               noOfStampsToCollect: 1,
-  //               minPurchaseAmount: 1,
-  //               rewardType: 1,
-  //               promotionReward: 1,
-  //               discountReward: 1,
-  //               createdAt: 1,
-  //               updatedAt: 1,
-  //             },
-  //           },
-  //         ],
-  //       },
-  //     },
-  //     {
-  //       $lookup: {
-  //         from: "retailers",
-  //         localField: "retailerId",
-  //         foreignField: "_id",
-  //         as: "retailer",
-  //       },
-  //     },
-  //     {
-  //       $unwind: "$stamp",
-  //     },
-  //     {
-  //       $unwind: "$retailer",
-  //     },
-  //     {
-  //       $project: {
-  //         branch: {
-  //           _id: "$_id",
-  //           name: "$name",
-  //           address: "$address.name",
-  //         },
-  //         "retailer._id": 1,
-  //         "retailer.storeName": 1,
-  //         "retailer.image": 1,
-  //         stamp: 1,
-  //         _id: 0,
-  //       },
-  //     },
-  //     {
-  //       $sort: {
-  //         distance: 1,
-  //       },
-  //     },
-  //     {
-  //       $skip: skip,
-  //     },
-  //     {
-  //       $limit: Number(limit),
-  //     },
-  //   ]),
-  //   Stamp.countDocuments(query2),
-  // ]);
-
-  // @TODO: Sort Branch Geo Location Wise by Customer
-
   let branchIds = [];
 
   if (search) {
@@ -171,7 +86,32 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
     }
   }
 
-  const [docs, total] = await Promise.all([
+  const gioPipeline: any = [
+    {
+      $geoNear: {
+        near: { type: "Point", coordinates: [Number(long), Number(lat)] },
+        distanceField: "distance",
+        spherical: true,
+      },
+    },
+  ];
+
+  // Add $match stage only if branchIds array is not empty
+  if (branchIds.length > 0) {
+    gioPipeline.push({
+      $match: { _id: { $in: branchIds } },
+    });
+  }
+
+  // Add sorting
+  gioPipeline.push({
+    $sort: {
+      distance: 1,
+    },
+  });
+
+  const [branchSortByGio, docs, total] = await Promise.all([
+    Branch.aggregate(gioPipeline),
     Stamp.aggregate([
       {
         $match: {
@@ -253,9 +193,23 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
     }),
   ]);
 
+  // Create a lookup object to maintain the order of branchIds
+  const branchIdOrder: any = {};
+  branchSortByGio.forEach((branch: any, index: number) => {
+    branchIdOrder[branch._id.toString()] = index;
+  });
+
+  // Sort the stamps based on the order of branchId in the branchIdOrder
+  const sortedStamps = docs.sort((a, b) => {
+    const aBranchId = a.branch._id.toString();
+    const bBranchId = b.branch._id.toString();
+
+    return branchIdOrder[aBranchId] - branchIdOrder[bBranchId];
+  });
+
   const mobilePagination = makePaginateForMobile(Number(page), Number(limit), skip, total);
 
-  return apiResponse(res, 200, true, "Location by stamp fetched successfully!", docs, mobilePagination);
+  return apiResponse(res, 200, true, "Location by stamp fetched successfully!", sortedStamps, mobilePagination);
 });
 
 /**
