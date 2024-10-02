@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { apiResponse, asyncHandler } from "../../helpers";
+import { apiResponse, asyncHandler, countryData, generateRandomColor } from "../../helpers";
 import { IApiRequest } from "../../types";
 import Stamp from "../stamp/model";
 import Customer from "../user/customer/model";
@@ -198,4 +198,60 @@ export const retailerDashboard = asyncHandler(async (req: IApiRequest, res: Resp
   if (retailer.length <= 0) return apiResponse(res, 404, false, "Retailer not found!");
 
   return apiResponse(res, 200, true, "Retailer dashboard fetched successfully!", retailer[0]);
+});
+
+/**
+ * Get All Retailer Stats By Country Wise
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const retailerStatsWithCountryWise = asyncHandler(async (req: IApiRequest, res: Response) => {
+  // Perform the aggregation to get country-wise counts and total count
+  const retailerCounts = await Retailer.aggregate([
+    {
+      $group: {
+        _id: "$country",
+        count: { $sum: 1 }, // Count retailers in each country
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalRetailers: { $sum: "$count" }, // Total count of all retailers
+        countries: {
+          $push: {
+            country: "$_id",
+            count: "$count",
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        totalRetailers: 1,
+        countries: 1,
+      },
+    },
+  ]);
+
+  if (!retailerCounts.length) {
+    return apiResponse(res, 404, false, `No retailers found`);
+  }
+
+  const { totalRetailers, countries } = retailerCounts[0];
+
+  // Map the results to the desired format
+  const formattedResponse = countries.map((c: any) => ({
+    country: countryData?.find((item: any) => item?.country === c.country)?.code?.toLocaleLowerCase(),
+    name: c.country,
+    value: Math.round((c.count / totalRetailers) * 100), // Percentage value
+    style: generateRandomColor(), // Random color for background
+  }));
+
+  return apiResponse(res, 200, true, "Retailer countries fetched successfully!", {
+    totalRetailers,
+    countries: formattedResponse?.sort((a: any, b: any) => b.value - a.value),
+  });
 });

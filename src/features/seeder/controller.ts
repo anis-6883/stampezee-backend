@@ -15,30 +15,41 @@ import Retailer from "../user/retailer/model";
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const createRetailers = asyncHandler(async (req: Request, res: Response) => {
-  for (let i = 0; i < 10; i++) {
-    await Retailer.create({
-      storeName: faker.company.name(),
-      firstName: faker.person.firstName(),
-      lastName: faker.person.lastName(),
-      fullName: faker.person.fullName(),
-      email: faker.internet.email().toLowerCase(),
-      isVerified: true,
-      verifiedAt: Date.now(),
-      password: await bcrypt.hash("12345678", 10),
-      image: null,
-      ref: "self",
-      status: true,
-      dialCode: "+880",
-      phone: "1987518025",
-      country: faker.location.country(),
-      city: faker.location.country(),
-      province: faker.location.country(),
-      postalCode: faker.location.zipCode(),
-      address: faker.location.streetAddress(),
-    });
+  const { retailerNumber = 10 } = req.query;
+  const retailerPromises = [];
+
+  for (let i = 0; i < Number(retailerNumber); i++) {
+    const country = faker.location.country();
+    const hashedPassword = await bcrypt.hash("12345678", 10);
+
+    retailerPromises.push(
+      Retailer.create({
+        storeName: faker.company.name(),
+        firstName: faker.person.firstName(),
+        lastName: faker.person.lastName(),
+        fullName: faker.person.fullName(),
+        email: faker.internet.email().toLowerCase(),
+        isVerified: true,
+        verifiedAt: Date.now(),
+        password: hashedPassword,
+        image: null,
+        ref: "self",
+        status: true,
+        dialCode: "+880",
+        phone: "1987518025",
+        country,
+        city: country,
+        province: country,
+        postalCode: faker.location.zipCode(),
+        address: faker.location.streetAddress(),
+      })
+    );
   }
 
-  return apiResponse(res, 201, true, "Retailer created successfully!");
+  // Wait for all the retailer creations to complete
+  await Promise.all(retailerPromises);
+
+  return apiResponse(res, 201, true, "Retailers created successfully!");
 });
 
 /**
