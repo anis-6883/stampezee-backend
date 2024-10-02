@@ -1,8 +1,10 @@
 import { Response } from "express";
 import moment from "moment";
+import nodemailer from "nodemailer";
 import Stripe from "stripe";
 import { PACKAGES } from "../../configs/constants";
 import { apiResponse, asyncHandler, calculateBalanceAmount, checkPlanChange } from "../../helpers";
+import { invoiceTemplate } from "../../templates/invoice";
 import { IApiRequest, IEnrollSubscriptionBody, ILineItem } from "../../types";
 import Branch from "../branch/model";
 import Coupon from "../coupon/model";
@@ -923,5 +925,48 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const testEmailPDF = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const settings = await Settings.findOne(
+    {},
+    {
+      "mail.host": 1,
+      "mail.port": 1,
+      "mail.username": 1,
+      "mail.password": 1,
+      "general.companyName": 1,
+    }
+  );
+
+  const transporter = nodemailer.createTransport({
+    host: settings?.mail?.host,
+    port: Number(settings?.mail?.port),
+    secure: true,
+    auth: {
+      user: settings?.mail?.username,
+      pass: settings?.mail?.password,
+    },
+  });
+
+  const mailOptions = {
+    from: settings?.mail?.username,
+    to: "anisuzzaman.rootdevs@gmail.com",
+    subject: "Demo Account Registration",
+    html: invoiceTemplate,
+    attachments: [
+      {
+        path: __dirname + "/temp/1.pdf",
+        filename: "invoice.pdf",
+        contentType: "contentType",
+      },
+    ],
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log("Demo email sent successfully!");
+  } catch (error) {
+    console.error("Error sending verification email:", error);
+    throw new Error("Error sending verification email!");
+  }
+
   return apiResponse(res, 200, true, "Test Email with Pdf!");
 });
