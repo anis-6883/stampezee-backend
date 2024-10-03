@@ -237,7 +237,10 @@ export const retailerStatsWithCountryWise = asyncHandler(async (req: IApiRequest
   ]);
 
   if (!retailerCounts.length) {
-    return apiResponse(res, 404, false, `No retailers found`);
+    return apiResponse(res, 200, true, "Customer countries fetched successfully!", {
+      totalRetailers: 0,
+      countries: [],
+    });
   }
 
   const { totalRetailers, countries } = retailerCounts[0];
@@ -252,6 +255,65 @@ export const retailerStatsWithCountryWise = asyncHandler(async (req: IApiRequest
 
   return apiResponse(res, 200, true, "Retailer countries fetched successfully!", {
     totalRetailers,
+    countries: formattedResponse?.sort((a: any, b: any) => b.value - a.value),
+  });
+});
+
+/**
+ * Get All Customer Stats By Country Wise
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const CustomerStatsWithCountryWise = asyncHandler(async (req: IApiRequest, res: Response) => {
+  // Perform the aggregation to get country-wise counts and total count
+  const customerCounts = await Customer.aggregate([
+    {
+      $group: {
+        _id: "$country",
+        count: { $sum: 1 }, // Count customers in each country
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalCustomers: { $sum: "$count" }, // Total count of all customer
+        countries: {
+          $push: {
+            country: "$_id",
+            count: "$count",
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        totalCustomers: 1,
+        countries: 1,
+      },
+    },
+  ]);
+
+  if (!customerCounts.length) {
+    return apiResponse(res, 200, true, "Customer countries fetched successfully!", {
+      totalCustomers: 0,
+      countries: [],
+    });
+  }
+
+  const { totalCustomers, countries } = customerCounts[0];
+
+  // Map the results to the desired format
+  const formattedResponse = countries.map((c: any) => ({
+    country: countryData?.find((item: any) => item?.country === c.country)?.code?.toLocaleLowerCase(),
+    name: c.country,
+    value: Math.round((c.count / totalCustomers) * 100), // Percentage value
+    style: generateRandomColor(), // Random color for background
+  }));
+
+  return apiResponse(res, 200, true, "Customer countries fetched successfully!", {
+    totalCustomers,
     countries: formattedResponse?.sort((a: any, b: any) => b.value - a.value),
   });
 });

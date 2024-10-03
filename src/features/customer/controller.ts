@@ -482,6 +482,7 @@ export const createCustomerBySuperAdmin = asyncHandler(async (req: IApiRequest, 
   createBody.verifiedAt = new Date();
   createBody.ref = "super_admin";
   createBody["address.name"] = address;
+  createBody.provider = "email";
 
   const existingCustomer: IUser = await Customer.findOne({
     email: createBody.email,

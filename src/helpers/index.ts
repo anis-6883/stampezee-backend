@@ -362,12 +362,22 @@ export const calculateBalanceAmount = (startDate: Date, expirationDate: Date, pl
 
 // Helper function to generate a random color
 export const generateRandomColor = () => {
-  const letters = "0123456789ABCDEF";
-  let color = "#";
-  for (let i = 0; i < 6; i++) {
-    color += letters[Math.floor(Math.random() * 16)];
-  }
-  return `bg-[${color}]`;
+  // const letters = "0123456789abcdef";
+  // let color = "#";
+  // for (let i = 0; i < 6; i++) {
+  //   color += letters[Math.floor(Math.random() * 16)];
+  // }
+  // return `bg-[${color}]`;
+  // Generate random values for red, green, and blue
+  const r = Math.floor(Math.random() * 256);
+  const g = Math.floor(Math.random() * 256);
+  const b = Math.floor(Math.random() * 256);
+
+  // Convert to hexadecimal and pad with zeros if necessary
+  const hexColor = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+
+  // Return the color in the desired format
+  return `bg-[${hexColor}]`;
 };
 
 export const countryData = [
