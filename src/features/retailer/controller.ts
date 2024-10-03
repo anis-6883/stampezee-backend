@@ -278,6 +278,13 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
               localField: "_id",
               foreignField: "branchId",
               as: "subadmin",
+              pipeline: [
+                {
+                  $match: {
+                    softDeleted: false,
+                  },
+                },
+              ],
             },
           },
           {

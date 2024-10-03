@@ -69,6 +69,10 @@ export const invoiceTemplate = `
         text-align: center; /* text-center */
       }
 
+      .text-end {
+        text-align: end; /* text-center */
+      }
+
       .bg-blue-500 {
         background-color: #3b82f6; /* bg-blue-500 */
       }
@@ -183,78 +187,259 @@ export const invoiceTemplate = `
         font-size: 0.875rem; /* text-sm (14px) */
         line-height: 1.25rem; /* default line height for sm */
       }
+
+      .bg-red-500 {
+        background-color: #ef4444; /* bg-red-500 */
+      }
+
+      .font-semibold {
+        font-weight: 600; /* font-semibold */
+      }
+
+      .relative {
+        position: relative; /* relative */
+      }
+
+      .overflow-x-auto {
+        overflow-x: auto; /* overflow-x-auto */
+      }
+
+      .w-full {
+        width: 100%; /* w-full */
+      }
+
+      .text-sm {
+        font-size: 0.875rem; /* text-sm (14px) */
+        line-height: 1.25rem; /* default line height for sm */
+      }
+
+      .text-left {
+        text-align: left; /* text-left */
+      }
+
+      .text-right {
+        text-align: right; /* text-right */
+      }
+
+      .text-gray-500 {
+        color: #6b7280; /* text-gray-500 */
+      }
+
+      .text-xs {
+        font-size: 0.75rem; /* text-xs (12px) */
+        line-height: 1rem; /* default line height for xs */
+      }
+
+      .text-gray-700 {
+        color: #374151; /* text-gray-700 */
+      }
+
+      .uppercase {
+        text-transform: uppercase; /* uppercase */
+      }
+
+      .bg-gray-50 {
+        background-color: #f9fafb; /* bg-gray-50 */
+      }
+
+      .bg-white {
+        background-color: white; /* bg-white */
+      }
+
+      .border-b {
+        border-bottom-width: 1px; /* border-b */
+        border-bottom-style: solid; /* default border style */
+        border-bottom-color: currentColor; /* uses current text color */
+      }
+
+      .px-6 {
+        padding-left: 1.5rem; /* padding-left (24px) */
+        padding-right: 1.5rem; /* padding-right (24px) */
+      }
+
+      .py-3 {
+        padding-top: 0.75rem; /* padding-top (12px) */
+        padding-bottom: 0.75rem; /* padding-bottom (12px) */
+      }
+
+      .py-4 {
+        padding-top: 1rem; /* padding-top (16px) */
+        padding-bottom: 1rem; /* padding-bottom (16px) */
+      }
+
+      .font-medium {
+        font-weight: 500; /* font-medium */
+      }
+
+      .text-gray-900 {
+        color: #111827; /* text-gray-900 */
+      }
+
+      .whitespace-nowrap {
+        white-space: nowrap; /* whitespace-nowrap */
+      }
+
+      .shadow-md {
+        box-shadow:
+          0 4px 6px rgba(0, 0, 0, 0.1),
+          0 1px 3px rgba(0, 0, 0, 0.1); /* shadow-md */
+      }
+
+      .bg-gray-800 {
+        background-color: #1f2937; /* bg-gray-800 */
+      }
+
+      .leading-0-6 {
+        line-height: 0.6; /* leading-[0.6] */
+      }
+
+      .mb-10 {
+        margin-bottom: 2.5rem; /* mb-10 (40px) */
+      }
+
+      .mb-5 {
+        margin-bottom: 1.25rem; /* mb-5 (20px) */
+      }
+
+      .whitespace-nowrap {
+        white-space: nowrap;
+      }
     </style>
   </head>
   <body class="bg-gray-100 p-4">
     <!-- Main Container -->
     <table class="container bg-white shadow-lg mx-auto my-8 p-6 rounded-lg">
       <tr>
-        <td class="p-4 text-center bg-blue-500 rounded-t-lg">
-          <h1 class="text-2xl text-white font-bold">Invoice for Your Purchase</h1>
+        <td class="p-4 text-center">
+          <img
+            src="https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/logo.png"
+            width="100"
+            alt="Cyber Kitty"
+            style="display: block; margin: 0 auto; margin-bottom: 15px"
+          />
+        </td>
+      </tr>
+
+      <tr>
+        <td class="p-4 bg-black rounded-lg" style="background-color: #374151">
+          <h1 class="text-2xl text-center text-white font-bold mb-10">Subscription Invoice</h1>
+          <ul style="list-style-type: circle">
+            <li class="text-white">
+              <p class="text-base text-white leading-0-6"><span class="font-semibold">Store Name:</span> Root Drinks</p>
+            </li>
+            <li class="text-white">
+              <p class="text-base text-white leading-0-6">
+                <span class="font-semibold">Invoice Number:</span> 1E2F36AC-0001
+              </p>
+            </li>
+            <li class="text-white">
+              <p class="text-base text-white leading-0-6">
+                <span class="font-semibold">Subscription ID:</span> sub_1Q55YaJVIk5LKvIEuURHa5X3
+              </p>
+            </li>
+            <li class="text-white">
+              <p class="text-base text-white leading-0-6"><span class="font-semibold">Enroll Status:</span> Purchase</p>
+            </li>
+            <li class="text-white">
+              <p class="text-base text-white leading-0-6"><span class="font-semibold">Balance:</span> 4.5 CAD</p>
+            </li>
+            <li class="text-white">
+              <p class="text-base text-white leading-0-6">
+                <span class="font-semibold">Subscription Period:</span> Oct 01 - Oct 31
+              </p>
+            </li>
+            <li class="text-white">
+              <p class="text-base text-white leading-0-6">
+                <span class="font-semibold">Purchased At:</span> 01 Oct 2024, 06:51 PM
+              </p>
+            </li>
+          </ul>
         </td>
       </tr>
 
       <!-- Body Section -->
       <tr>
         <td class="p-6">
-          <p class="text-gray-700 text-lg">Hello,</p>
+          <p class="text-gray-700 text-lg font-semibold">Hello Anisuzzaman,</p>
           <p class="text-gray-600 mt-4">Thank you for your purchase! Below is a summary of your recent order.</p>
 
           <!-- Invoice Table -->
-          <table class="min-w-full mt-6">
-            <thead>
-              <tr class="bg-gray-200">
-                <th class="text-left p-2 text-gray-600">Item</th>
-                <th class="text-right p-2 text-gray-600">Quantity</th>
-                <th class="text-right p-2 text-gray-600">Price</th>
-                <th class="text-right p-2 text-gray-600">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              <!-- Example row -->
-              <tr>
-                <td class="p-2 text-gray-700 border-t">Product 1</td>
-                <td class="p-2 text-right text-gray-700 border-t">2</td>
-                <td class="p-2 text-right text-gray-700 border-t">$20.00</td>
-                <td class="p-2 text-right text-gray-700 border-t">$40.00</td>
-              </tr>
-              <tr>
-                <td class="p-2 text-gray-700 border-t">Product 2</td>
-                <td class="p-2 text-right text-gray-700 border-t">1</td>
-                <td class="p-2 text-right text-gray-700 border-t">$15.00</td>
-                <td class="p-2 text-right text-gray-700 border-t">$15.00</td>
-              </tr>
-              <!-- Add more rows as necessary -->
-              <tr class="bg-gray-200">
-                <td class="p-2 text-gray-700 font-bold" colspan="3">Subtotal</td>
-                <td class="p-2 text-right text-gray-700 font-bold">$55.00</td>
-              </tr>
-              <tr class="bg-gray-200">
-                <td class="p-2 text-gray-700 font-bold" colspan="3">Tax</td>
-                <td class="p-2 text-right text-gray-700 font-bold">$5.50</td>
-              </tr>
-              <tr class="bg-gray-200">
-                <td class="p-2 text-gray-700 font-bold" colspan="3">Total</td>
-                <td class="p-2 text-right text-gray-700 font-bold">$60.50</td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="relative overflow-x-auto rounded-lg" style="border: 1px solid #e2e8f0">
+            <table class="w-full text-sm text-left text-gray-500">
+              <thead class="text-xs text-gray-700 uppercase" style="background-color: #374151">
+                <tr>
+                  <th scope="col" class="px-6 py-3 text-white whitespace-nowrap">Description</th>
+                  <th scope="col" class="px-6 py-3 text-white whitespace-nowrap">Quantity</th>
+                  <th scope="col" class="px-6 py-3 text-white whitespace-nowrap">Unit Price (CAD)</th>
+                  <th scope="col" class="px-6 py-3 text-white text-end whitespace-nowrap">Amount (CAD)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                  <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                    Location Based Push Notification Add-on
+                  </th>
+                  <td class="px-6 py-4 text-center">1</td>
+                  <td class="px-6 py-4 text-end">5.00</td>
+                  <td class="px-6 py-4 text-end">5.00</td>
+                </tr>
+                <tr class="bg-white dark:bg-gray-800">
+                  <th
+                    scope="row"
+                    class="px-6 py-4 text-gray-900 whitespace-nowrap font-semibold"
+                    style="border-bottom: 1px solid #cbd5e1"
+                  >
+                    Subtotal
+                  </th>
+                  <td class="px-6 py-4" style="border-bottom: 1px solid #cbd5e1"></td>
+                  <td class="px-6 py-4" style="border-bottom: 1px solid #cbd5e1"></td>
+                  <td class="px-6 py-4 text-end font-semibold" style="border-bottom: 1px solid #cbd5e1">5.00</td>
+                </tr>
+                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                  <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                    VAT (2%)
+                  </th>
+                  <td class="px-6 py-4"></td>
+                  <td class="px-6 py-4"></td>
+                  <td class="px-6 py-4 text-end">0.10</td>
+                </tr>
+                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                  <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                    Coupon (10%)
+                  </th>
+                  <td class="px-6 py-4"></td>
+                  <td class="px-6 py-4"></td>
+                  <td class="px-6 py-4 text-end">- 0.50</td>
+                </tr>
+                <tr class="bg-white dark:bg-gray-800">
+                  <th scope="row" class="px-6 py-4 text-gray-900 whitespace-nowrap font-semibold">Total</th>
+                  <td class="px-6 py-4"></td>
+                  <td class="px-6 py-4"></td>
+                  <td class="px-6 py-4 text-end font-semibold">$4.60</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
           <p class="text-gray-600 mt-6">
             If you have any questions regarding your order, feel free to contact us. Thank you for choosing us!
           </p>
 
-          <p class="text-gray-700 mt-6">Best regards,<br />The Billing Team</p>
+          <p class="text-gray-700 mt-6"><span class="font-semibold">Best regards,</span></p>
+          <p class="text-base leading-0-6">StampEzee Team</p>
         </td>
       </tr>
 
       <!-- Footer Section -->
       <tr>
-        <td class="bg-gray-100 text-center p-4 rounded-b-lg">
+        <td class="bg-gray-100 text-center p-4 rounded-lg">
           <p class="text-gray-500 text-sm">
-            &copy; 2024 Our Company. All rights reserved.
+            &copy; 2024 StampEzee | All rights reserved.
             <br />
-            1234 Street Name, City, Country
+            <br />
+            NexGen Mobility<br />
+            International FZE<br />
+            Bosco Edwin
           </p>
         </td>
       </tr>
