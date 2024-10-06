@@ -70,9 +70,25 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
     customerBody.token = token;
     customerBody.password = await bcrypt.hash("123456", 10);
 
-    const customer: any = existingCustomer ?? (await Customer.create(customerBody));
+    if (existingCustomer) {
+      const customer: IUser = await Customer.findByIdAndUpdate(
+        existingCustomer._id,
+        {
+          token,
+        },
+        {
+          new: true,
+        }
+      );
 
-    return apiResponse(res, 201, true, "Login successfully!", { token, ...customer._doc });
+      const data = exclude(customer._doc, ["password", "otp", "otpExpiry"]);
+
+      apiResponse(res, 201, true, "Login successfully!", data);
+    } else {
+      const customer: any = await Customer.create(customerBody);
+      const data = exclude(customer._doc, ["password", "otp", "otpExpiry"]);
+      return apiResponse(res, 201, true, "Login successfully!", data);
+    }
   } else {
     customerBody.provider = provider;
     customerBody.password = await bcrypt.hash(customerBody.password, 10);
@@ -369,11 +385,13 @@ export const updateLocationDeviceToken = asyncHandler(async (req: IApiRequest, r
   if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
 
   const id = req.user._id;
-  const { deviceToken, address, longitude, latitude } = result.value;
+  const { deviceToken, address, longitude, latitude, country } = result.value;
 
   const finalQuery: any = {};
 
   if (deviceToken) finalQuery.deviceToken = deviceToken;
+  if (country) finalQuery.country = country;
+
   if (address)
     finalQuery.address = {
       loc: { type: "Point", coordinates: [longitude, latitude] },

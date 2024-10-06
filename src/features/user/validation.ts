@@ -108,6 +108,7 @@ export const verifyOtpSchema = Joi.object({
 });
 
 export const locationTokenSchema = Joi.object({
+  country: stringField("country"),
   address: stringField("address"),
   deviceToken: stringField("deviceToken"),
   longitude: updateLongitude,
