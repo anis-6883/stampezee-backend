@@ -104,8 +104,9 @@ export interface IJWTQuery {
 }
 
 export interface IRetailerScanQuery {
-  retailerId: mongoose.Types.ObjectId;
+  retailerId?: mongoose.Types.ObjectId;
   customerId?: object;
+  rewardCollected?: boolean;
 }
 
 export interface ISuperAdminScanQuery {
