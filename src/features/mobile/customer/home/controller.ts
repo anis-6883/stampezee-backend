@@ -13,7 +13,7 @@ import CollectStamp from "../search/model";
 export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Response) => {
   const collectedStamps = await CollectStamp.aggregate([
     {
-      $match: { customerId: req.user._id },
+      $match: { customerId: req.user._id, softDeleted: false },
     },
     {
       $lookup: {
@@ -118,6 +118,12 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
   return apiResponse(res, 200, true, "Collected stamps fetched successfully!", collectedStamps);
 });
 
+/**
+ * Get Single Collected Stamps
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
 export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Response) => {
   const collectedStamp = await CollectStamp.aggregate([
     {
@@ -224,6 +230,7 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
         "retailer._id": "$branch.retailer._id",
         "retailer.storeName": "$branch.retailer.storeName",
         "retailer.image": "$branch.retailer.image",
+        "retailer.website": "$branch.retailer.website",
         noOfStampsToCollect: "$stamp.noOfStampsToCollect",
       },
     },
@@ -242,4 +249,20 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
   collectedStamp[0].stampCollectionDate = stampCollectionDate;
   delete collectedStamp[0].stampsTaken;
   return apiResponse(res, 200, true, "Collected stamps fetched successfully!", collectedStamp[0]);
+});
+
+/**
+ * Delete Collected Stamp
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const deleteCollectedStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
+  if (!mongoose.Types.ObjectId.isValid(req?.params?.id)) throw "Please, provide valid id!";
+
+  await CollectStamp.findByIdAndUpdate(req?.params?.id, {
+    softDeleted: true,
+  });
+
+  return apiResponse(res, 200, true, "Delete collected stamp successfully!");
 });

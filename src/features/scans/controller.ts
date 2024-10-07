@@ -5,6 +5,12 @@ import OrderStamp from "../mobile/sub-admin/home/model";
 import Customer from "../user/customer/model";
 import Retailer from "../user/retailer/model";
 
+/**
+ * Stamp scan details for retailer
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
 export const stampScanDetailsForRetailer = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { page = 1, limit = 10, search }: any = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
