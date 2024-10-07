@@ -396,7 +396,7 @@ export const getAllRetailerCustomers = asyncHandler(async (req: IApiRequest, res
     ])
   )[0];
 
-  query._id = { $in: collectStamp.customerIds };
+  query._id = { $in: collectStamp?.customerIds ?? [] };
 
   const [docs, total] = await Promise.all([
     Customer.aggregate([

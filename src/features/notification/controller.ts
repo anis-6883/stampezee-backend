@@ -246,7 +246,7 @@ export const getAllNotificationsForRetailer = asyncHandler(async (req: IApiReque
         },
       },
     ]),
-    Notification.find(query).countDocuments(),
+    Notification.countDocuments(query),
     EnrollSubscription.find({
       retailerId: req.user._id,
       "planSnapshot.type": "addon",
