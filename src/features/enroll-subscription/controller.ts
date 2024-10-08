@@ -8,6 +8,7 @@ import { invoiceTemplate } from "../../templates/invoice";
 import { IApiRequest, IEnrollSubscriptionBody, ILineItem } from "../../types";
 import Branch from "../branch/model";
 import Coupon from "../coupon/model";
+import CriticalPayment from "../critical-payment/model";
 import CurrencyExchange from "../currency-exchange/model";
 import Payment from "../payment/model";
 import Refund from "../refund/model";
@@ -608,7 +609,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       taxValue = (finalPrice * taxCost) / 100;
       finalPrice += taxValue;
     }
-    console.log({ coupon });
 
     const enrollSubscription: any = await EnrollSubscription.create({
       retailerId: req.user._id,
@@ -810,14 +810,15 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
  */
 const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, stripe: Stripe): Promise<void> => {
   try {
-    const [payment, invoice, retailer, freeTrailSubscription] = await Promise.all<[any, any, any, any]>([
+    const [checkoutSession, retailer, freeTrailSubscription] = await Promise.all<[any, any, any]>([
       stripe.checkout.sessions.retrieve(eventObject.id),
-      stripe.invoices.retrieve(eventObject.invoice as string, {
-        expand: ["payment_intent.payment_method"],
-      }),
       Retailer.findOne({ email: eventObject.customer_email }),
       Subscription.findOne({ slug: "trial" }),
     ]);
+
+    const invoice: any = await stripe.invoices.retrieve(eventObject.invoice as string, {
+      expand: ["payment_intent.payment_method"],
+    });
 
     if (invoice.payment_intent.status !== "succeeded") return;
 
@@ -839,7 +840,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
 
     let subscriptionId;
     let updateSubscriptions = [];
-    const purchasedSubscription = await EnrollSubscription.findById(payment.metadata["planEnrollmentId"]);
+    const purchasedSubscription = await EnrollSubscription.findById(checkoutSession.metadata["planEnrollmentId"]);
 
     // Deactivate last previous active plan
     if (purchasedSubscription.planSnapshot.type === "subscription") {
@@ -859,32 +860,32 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       }
 
       // Update expiration for already created branch
-      if ("planEnrollmentId" in payment.metadata) {
+      if ("planEnrollmentId" in checkoutSession.metadata) {
         updateSubscriptions.push(
           Branch.updateMany(
             {
               retailerId: retailer._id,
               source: "subscription",
             },
-            { enrollSubscriptionId: payment.metadata["planEnrollmentId"] }
+            { enrollSubscriptionId: checkoutSession.metadata["planEnrollmentId"] }
           )
         );
       }
     }
 
-    for (let key in payment.metadata) {
+    for (let key in checkoutSession.metadata) {
       if (key !== "planEnrollmentId") {
         const now = moment();
-        const expireDate = moment().add(payment.metadata[key], "days");
+        const expireDate = moment().add(checkoutSession.metadata[key], "days");
         subscriptionId = key;
 
         updateSubscriptions.push(
           EnrollSubscription.findByIdAndUpdate(key, {
             paymentStatus: "completed",
             stripe: {
-              subscriptionId: payment.subscription,
-              customerId: payment.customer,
-              paymentMethodId: invoice.payment_intent.payment_method.id,
+              subscriptionId: checkoutSession?.subscription,
+              customerId: checkoutSession?.customer,
+              paymentMethodId: invoice?.payment_intent?.payment_method?.id,
               renewCancelAt: null,
               renewCanceledAtByCustomer: null,
             },
@@ -897,17 +898,25 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     }
 
     // Store Payment Info
-    updateSubscriptions.push(
-      Payment.create({
-        retailerId: retailer._id,
-        enrollSubscriptionId: subscriptionId,
-        invoiceNumber: invoice.number,
-        invoicePdf: invoice.invoice_pdf,
-        paymentIntentId: invoice.payment_intent.id,
-        paymentStatus: invoice.payment_intent.status,
-        amountTotal: payment.amount_total,
-      })
-    );
+    const payment = await Payment.create({
+      retailerId: retailer?._id,
+      enrollSubscriptionId: subscriptionId,
+      invoiceNumber: invoice?.number,
+      invoicePdf: invoice?.invoice_pdf,
+      paymentIntentId: invoice?.payment_intent?.id,
+      paymentStatus: invoice?.payment_intent?.status,
+      amountTotal: checkoutSession?.amount_total,
+      paymentMethodDetails: invoice?.payment_intent?.payment_method, // Kind of Log Store
+    });
+
+    // Handle Critical Payment (if payment method id is missing)
+    if (!invoice?.payment_intent?.payment_method?.id) {
+      await CriticalPayment.create({
+        paymentId: payment._id,
+        stripeInvoiceId: eventObject.invoice,
+        status: "pending",
+      });
+    }
 
     // @TODO: Send Subscription Invoice
 

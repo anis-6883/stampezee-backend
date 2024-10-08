@@ -32,6 +32,10 @@ const PaymentSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    paymentMethodDetails: {
+      type: mongoose.Schema.Types.Mixed,
+      required: true,
+    },
   },
   {
     timestamps: true,
