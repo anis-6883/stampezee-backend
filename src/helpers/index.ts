@@ -2314,10 +2314,12 @@ export const htmlToPdf = async () => {
     const page = await browser.newPage();
     await page.setViewport({ width: 1600, height: 1800 });
     const template = invoiceTemplate;
-    await page.setContent(template, { waitUntil: "domcontentloaded" });
+    await page.setContent(template, { waitUntil: "networkidle2" });
     await page.pdf({
       path: path.join(process.cwd(), "/src/features/enroll-subscription/temp/invoice.pdf"),
       printBackground: true,
+      omitBackground: true,
+      waitForFonts: true,
       format: "A4",
     });
     await browser.close();

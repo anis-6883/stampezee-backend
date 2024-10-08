@@ -30,7 +30,7 @@ export const invoiceTemplate = `<!doctype html>
       }
       .container {
         width: 100%;
-        max-width: 600px;
+        max-width: 860px;
         margin: 0 auto;
         background-color: white;
         border-radius: 8px;
@@ -38,11 +38,6 @@ export const invoiceTemplate = `<!doctype html>
 
       .bg-gray-100 {
         background-color: #f3f4f6;
-      }
-
-      .container {
-        width: 100%;
-        max-width: 860px; /* Approximating Tailwind's container size */
       }
 
       .bg-white {
@@ -523,23 +518,23 @@ export const invoiceTemplate = `<!doctype html>
                   <td></td>
                 </tr>
                 <tr>
-                  <td style="padding-left: 287px" colspan="3" class="title">Subtotal</td>
+                  <td style="padding-left: 250px" colspan="3" class="title">Subtotal</td>
                   <td class="text-right pr-45">$30.00</td>
                 </tr>
                 <tr>
-                  <td style="padding-left: 287px" colspan="3" class="title">Remaining Amount</td>
+                  <td style="padding-left: 250px" colspan="3" class="title">Remaining Amount</td>
                   <td class="text-right pr-45">($5.00)</td>
                 </tr>
                 <tr>
-                  <td style="padding-left: 287px" colspan="3" class="title">Plan Change Cost</td>
+                  <td style="padding-left: 250px" colspan="3" class="title">Plan Change Cost</td>
                   <td class="text-right pr-45">$1.00</td>
                 </tr>
                 <tr>
-                  <td style="padding-left: 287px" colspan="3" class="title">Coupon (10%)</td>
+                  <td style="padding-left: 250px" colspan="3" class="title">Coupon (10%)</td>
                   <td class="text-right pr-45">($3.00)</td>
                 </tr>
                 <tr>
-                  <td style="padding-left: 287px" colspan="3" class="title">Tax (2%)</td>
+                  <td style="padding-left: 250px" colspan="3" class="title">Tax (2%)</td>
                   <td class="text-right pr-45">$0.60</td>
                 </tr>
                 <tr>
