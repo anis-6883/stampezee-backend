@@ -1,13 +1,22 @@
-export const invoiceTemplate = `
-<!doctype html>
+export const invoiceTemplate = `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,900&display=swap"
+      rel="stylesheet"
+    />
     <title>Invoice</title>
     <style>
+      @font-face {
+        font-family: tannimbus;
+        src: url("../../public/fonts/TAN-NIMBUS.ttf");
+      }
       body {
-        font-family: "Arial", sans-serif;
+        font-family: "Livvic", sans-serif;
         background-color: #f3f4f6;
         padding: 0;
         margin: 0;
@@ -15,6 +24,9 @@ export const invoiceTemplate = `
       table {
         width: 100%;
         border-spacing: 0;
+      }
+      .relative {
+        position: relative;
       }
       .container {
         width: 100%;
@@ -30,7 +42,7 @@ export const invoiceTemplate = `
 
       .container {
         width: 100%;
-        max-width: 600px; /* Approximating Tailwind's container size */
+        max-width: 860px; /* Approximating Tailwind's container size */
       }
 
       .bg-white {
@@ -63,6 +75,10 @@ export const invoiceTemplate = `
 
       .p-4 {
         padding: 1rem; /* p-4 */
+      }
+
+      .pl-2 {
+        padding-left: 2rem;
       }
 
       .text-center {
@@ -252,6 +268,12 @@ export const invoiceTemplate = `
         border-bottom-color: currentColor; /* uses current text color */
       }
 
+      .border-b-2 {
+        border-bottom-width: 2px; /* border-b */
+        border-bottom-style: solid; /* default border style */
+        border-bottom-color: currentColor; /* uses current text color */
+      }
+
       .px-6 {
         padding-left: 1.5rem; /* padding-left (24px) */
         padding-right: 1.5rem; /* padding-right (24px) */
@@ -304,143 +326,271 @@ export const invoiceTemplate = `
       .whitespace-nowrap {
         white-space: nowrap;
       }
+      .sub-container {
+        width: 80%;
+        margin: 0 auto;
+      }
+
+      tbody td {
+        padding: 8px;
+        border-bottom: 1px solid #ddd;
+      }
+
+      tfoot {
+        margin-top: 40px; /* Adds space above the footer */
+      }
+
+      tfoot td {
+        padding: 8px;
+        border-bottom: none;
+      }
+
+      tfoot .title {
+        font-weight: bold;
+        padding-right: 45px;
+      }
+
+      tfoot .pr-45 {
+        padding-right: 45px;
+      }
+
+      tfoot .text-right {
+        text-align: right;
+      }
+
+      tfoot .total-row {
+        background-color: red;
+        color: white;
+        position: absolute;
+        left: 41%;
+        width: 100%;
+        padding-left: 18px;
+      }
+
+      tfoot .total-label {
+        padding-right: 20px;
+      }
+
+      tfoot .total-amount {
+        font-size: 1.5em;
+        padding: 10px 68px;
+      }
+
+      .footer-section {
+        margin-top: 40px;
+      }
+
+      .payment-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .thank-you h1 {
+        font-family: "Cursive", sans-serif;
+        font-size: 48px;
+        margin: 0;
+      }
+
+      .payment-info {
+        max-width: 205px;
+      }
+
+      .payment-info h2 {
+        font-weight: bold;
+        font-size: 18px;
+        margin-bottom: 5px;
+      }
+
+      .payment-info p {
+        margin: 5px 0;
+      }
+
+      .company-info .company-title {
+        font-family: tannimbus, sans-serif;
+        font-weight: bold;
+        font-size: 17px;
+        text-align: end;
+      }
+
+      .company-info p {
+        font-size: 16px;
+        margin-top: 5px;
+        text-align: end;
+      }
+
+      /* Responsive Design */
+      @media (max-width: 768px) {
+        .footer-section {
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+        }
+
+        .thank-you,
+        .payment-info,
+        .company-info {
+          margin-bottom: 20px;
+        }
+      }
+      .overflow-hidden {
+        overflow: hidden;
+      }
     </style>
   </head>
   <body class="bg-gray-100 p-4">
     <!-- Main Container -->
-    <table class="container bg-white shadow-lg mx-auto my-8 p-6 rounded-lg">
+    <table class="container overflow-hidden">
       <tr>
-        <td class="p-4 text-center">
-          <img
-            src="https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/logo.png"
-            width="100"
-            alt="Cyber Kitty"
-            style="display: block; margin: 0 auto; margin-bottom: 15px"
-          />
+        <td style="border-bottom: none" class="p-4">
+          <div class="sub-container" style="display: flex; align-items: center; justify-content: space-between">
+            <div>
+              <img
+                src="https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/logo.png"
+                width="150"
+                alt="Cyber Kitty"
+                style="margin-bottom: 15px"
+              />
+            </div>
+            <h1 style="font-family: tannimbus; font-size: 40px; font-weight: bold">Invoice</h1>
+          </div>
         </td>
       </tr>
 
       <tr>
-        <td class="p-4 bg-black rounded-lg" style="background-color: #374151">
-          <h1 class="text-2xl text-center text-white font-bold mb-10">Subscription Invoice</h1>
-          <ul style="list-style-type: circle">
-            <li class="text-white">
-              <p class="text-base text-white leading-0-6"><span class="font-semibold">Store Name:</span> Root Drinks</p>
-            </li>
-            <li class="text-white">
-              <p class="text-base text-white leading-0-6">
-                <span class="font-semibold">Invoice Number:</span> 1E2F36AC-0001
-              </p>
-            </li>
-            <li class="text-white">
-              <p class="text-base text-white leading-0-6">
-                <span class="font-semibold">Subscription ID:</span> sub_1Q55YaJVIk5LKvIEuURHa5X3
-              </p>
-            </li>
-            <li class="text-white">
-              <p class="text-base text-white leading-0-6"><span class="font-semibold">Enroll Status:</span> Purchase</p>
-            </li>
-            <li class="text-white">
-              <p class="text-base text-white leading-0-6"><span class="font-semibold">Balance:</span> 4.5 CAD</p>
-            </li>
-            <li class="text-white">
-              <p class="text-base text-white leading-0-6">
-                <span class="font-semibold">Subscription Period:</span> Oct 01 - Oct 31
-              </p>
-            </li>
-            <li class="text-white">
-              <p class="text-base text-white leading-0-6">
-                <span class="font-semibold">Purchased At:</span> 01 Oct 2024, 06:51 PM
-              </p>
-            </li>
-          </ul>
+        <td style="border-bottom: none" class="p-2">
+          <div class="sub-container" style="display: flex; align-items: center; justify-content: space-between">
+            <div style="display: flex; flex-direction: column">
+              <span class="font-bold mb-3">Billed to:</span>
+              <span>Estelle Darcy</span>
+              <span>+123-456-7890123</span>
+              <span>Anywhere St., Any City, ST 12345</span>
+            </div>
+            <div style="display: flex; flex-direction: column">
+              <span>Invoice No. 12345</span>
+              <span>26 September 2024</span>
+            </div>
+          </div>
         </td>
       </tr>
 
       <!-- Body Section -->
-      <tr>
-        <td class="p-6">
-          <p class="text-gray-700 text-lg font-semibold">Hello Anisuzzaman,</p>
-          <p class="text-gray-600 mt-4">Thank you for your purchase! Below is a summary of your recent order.</p>
 
+      <tr>
+        <td style="padding-left: 10px; border-bottom: none" class="py-6">
           <!-- Invoice Table -->
-          <div class="relative overflow-x-auto rounded-lg" style="border: 1px solid #e2e8f0">
-            <table class="w-full text-sm text-left text-gray-500">
-              <thead class="text-xs text-gray-700 uppercase" style="background-color: #374151">
+          <div class="sub-container">
+            <table class="w-full border-collapse border-spacing-0 relative">
+              <thead>
                 <tr>
-                  <th scope="col" class="px-6 py-3 text-white whitespace-nowrap">Description</th>
-                  <th scope="col" class="px-6 py-3 text-white whitespace-nowrap">Quantity</th>
-                  <th scope="col" class="px-6 py-3 text-white whitespace-nowrap">Unit Price (CAD)</th>
-                  <th scope="col" class="px-6 py-3 text-white text-end whitespace-nowrap">Amount (CAD)</th>
+                  <td class="border-b-2 py-3 border-main pb-3 text-left font-bold text-main">Item</td>
+                  <td class="border-b-2 py-3 border-main pb-3 text-center font-bold text-main">Quantity</td>
+                  <td class="border-b-2 py-3 border-main pb-3 text-center font-bold text-main">Unit Price</td>
+                  <td class="border-b-2 py-3 border-main pb-3 text-center font-bold text-main">Total</td>
                 </tr>
               </thead>
               <tbody>
-                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                  <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                    Location Based Push Notification Add-on
-                  </th>
-                  <td class="px-6 py-4 text-center">1</td>
-                  <td class="px-6 py-4 text-end">5.00</td>
-                  <td class="px-6 py-4 text-end">5.00</td>
+                <tr>
+                  <td class="border-b py-3">Advanced Plan</td>
+
+                  <td class="border-b py-3 text-center">1</td>
+
+                  <td class="border-b py-3 text-center">$30.00</td>
+                  <td class="border-b py-3 pr-3 text-center">$30.00</td>
                 </tr>
-                <tr class="bg-white dark:bg-gray-800">
-                  <th
-                    scope="row"
-                    class="px-6 py-4 text-gray-900 whitespace-nowrap font-semibold"
-                    style="border-bottom: 1px solid #cbd5e1"
-                  >
-                    Subtotal
-                  </th>
-                  <td class="px-6 py-4" style="border-bottom: 1px solid #cbd5e1"></td>
-                  <td class="px-6 py-4" style="border-bottom: 1px solid #cbd5e1"></td>
-                  <td class="px-6 py-4 text-end font-semibold" style="border-bottom: 1px solid #cbd5e1">5.00</td>
+                <!-- <tr>
+                  <td class="border-b py-3">Custom Stamp Creation - Add On</td>
+
+                  <td class="border-b py-3 text-center">1</td>
+
+                  <td class="border-b py-3 text-center">$5.00</td>
+                  <td class="border-b py-3 pr-3 text-center">$5.00</td>
                 </tr>
-                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                  <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                    VAT (2%)
-                  </th>
-                  <td class="px-6 py-4"></td>
-                  <td class="px-6 py-4"></td>
-                  <td class="px-6 py-4 text-end">0.10</td>
-                </tr>
-                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                  <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                    Coupon (10%)
-                  </th>
-                  <td class="px-6 py-4"></td>
-                  <td class="px-6 py-4"></td>
-                  <td class="px-6 py-4 text-end">- 0.50</td>
-                </tr>
-                <tr class="bg-white dark:bg-gray-800">
-                  <th scope="row" class="px-6 py-4 text-gray-900 whitespace-nowrap font-semibold">Total</th>
-                  <td class="px-6 py-4"></td>
-                  <td class="px-6 py-4"></td>
-                  <td class="px-6 py-4 text-end font-semibold">$4.60</td>
-                </tr>
+
+                <tr>
+                  <td class="border-b py-3">Push Notification - Add on</td>
+
+                  <td class="border-b py-3 text-center">2</td>
+
+                  <td class="border-b py-3 text-center">$5.00</td>
+                  <td class="border-b py-3 text-center">$10.00</td>
+                </tr> -->
               </tbody>
+              <div style="margin-top: 25px"></div>
+              <!-- Footer Section -->
+              <tfoot>
+                <tr>
+                  <td></td>
+                </tr>
+                <tr>
+                  <td style="padding-left: 287px" colspan="3" class="title">Subtotal</td>
+                  <td class="text-right pr-45">$30.00</td>
+                </tr>
+                <tr>
+                  <td style="padding-left: 287px" colspan="3" class="title">Remaining Amount</td>
+                  <td class="text-right pr-45">($5.00)</td>
+                </tr>
+                <tr>
+                  <td style="padding-left: 287px" colspan="3" class="title">Plan Change Cost</td>
+                  <td class="text-right pr-45">$1.00</td>
+                </tr>
+                <tr>
+                  <td style="padding-left: 287px" colspan="3" class="title">Coupon (10%)</td>
+                  <td class="text-right pr-45">($3.00)</td>
+                </tr>
+                <tr>
+                  <td style="padding-left: 287px" colspan="3" class="title">Tax (2%)</td>
+                  <td class="text-right pr-45">$0.60</td>
+                </tr>
+                <tr>
+                  <td></td>
+                </tr>
+                <tr class="total-row">
+                  <td
+                    colspan="3"
+                    style="font-weight: 700; font-size: x-large"
+                    colspan="3"
+                    class="text-right total-label title"
+                  >
+                    Total
+                  </td>
+                  <td colspan="3" style="font-weight: 700; font-size: x-large" class="total-amount text-right">
+                    $24.44
+                  </td>
+                </tr>
+                <tr>
+                  <td></td>
+                </tr>
+                <tr>
+                  <td></td>
+                </tr>
+                <tr>
+                  <td colspan="3">
+                    <div style="padding-top: 40px">
+                      <img src="/public/images/thank-you.jpg" width="250" alt="thank-you" style="margin-bottom: 15px" />
+                    </div>
+                  </td>
+                </tr>
+                <tr style="width: 100%">
+                  <td colspan="2">
+                    <div class="payment-info">
+                      <h2>Payment Information</h2>
+                      <p>Fauget Bank</p>
+                      <p>Account Name: Juliana Silva</p>
+                      <p>Account No: 123-456-7890</p>
+                      <p>Pay by: 10 July 2025</p>
+                    </div>
+                  </td>
+                  <td colspan="2">
+                    <div class="company-info">
+                      <h2 class="company-title">StampEzee</h2>
+                      <p>123 Anywhere St., Any City, ST 12345</p>
+                    </div>
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           </div>
-
-          <p class="text-gray-600 mt-6">
-            If you have any questions regarding your order, feel free to contact us. Thank you for choosing us!
-          </p>
-
-          <p class="text-gray-700 mt-6"><span class="font-semibold">Best regards,</span></p>
-          <p class="text-base leading-0-6">StampEzee Team</p>
-        </td>
-      </tr>
-
-      <!-- Footer Section -->
-      <tr>
-        <td class="bg-gray-100 text-center p-4 rounded-lg">
-          <p class="text-gray-500 text-sm">
-            &copy; 2024 StampEzee | All rights reserved.
-            <br />
-            <br />
-            NexGen Mobility<br />
-            International FZE<br />
-            Bosco Edwin
-          </p>
         </td>
       </tr>
     </table>

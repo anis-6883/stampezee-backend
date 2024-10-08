@@ -3,7 +3,7 @@ import moment from "moment";
 import nodemailer from "nodemailer";
 import Stripe from "stripe";
 import { PACKAGES } from "../../configs/constants";
-import { apiResponse, asyncHandler, calculateBalanceAmount, checkPlanChange } from "../../helpers";
+import { apiResponse, asyncHandler, calculateBalanceAmount, checkPlanChange, htmlToPdf } from "../../helpers";
 import { invoiceTemplate } from "../../templates/invoice";
 import { IApiRequest, IEnrollSubscriptionBody, ILineItem } from "../../types";
 import Branch from "../branch/model";
@@ -948,7 +948,7 @@ export const testEmailPDF = asyncHandler(async (req: IApiRequest, res: Response)
 
   const mailOptions = {
     from: settings?.mail?.username,
-    to: "anisuzzaman.rootdevs@gmail.com",
+    to: "rakibiuaece@gmail.com",
     subject: "Demo Account Registration",
     html: invoiceTemplate,
     attachments: [
@@ -962,6 +962,7 @@ export const testEmailPDF = asyncHandler(async (req: IApiRequest, res: Response)
 
   try {
     await transporter.sendMail(mailOptions);
+    await htmlToPdf();
     console.log("Demo email sent successfully!");
   } catch (error) {
     console.error("Error sending verification email:", error);

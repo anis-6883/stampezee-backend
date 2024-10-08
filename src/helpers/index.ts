@@ -3,7 +3,10 @@ import { Request, Response } from "express";
 import Joi from "joi";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import path from "path";
+import puppeteer from "puppeteer";
 import { APP_SECRET } from "../configs/constants";
+import { invoiceTemplate } from "../templates/invoice";
 
 const objectIdExtension = (Joi: any) => ({
   type: "objectId",
@@ -2302,3 +2305,23 @@ export const countryData = [
     currency: "SRD",
   },
 ];
+
+export const htmlToPdf = async () => {
+  try {
+    const browser = await puppeteer.launch({
+      headless: true,
+    });
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1600, height: 1800 });
+    const template = invoiceTemplate;
+    await page.setContent(template, { waitUntil: "domcontentloaded" });
+    await page.pdf({
+      path: path.join(process.cwd(), "/src/features/enroll-subscription/temp/invoice.pdf"),
+      printBackground: true,
+      format: "A4",
+    });
+    await browser.close();
+  } catch (error) {
+    throw error;
+  }
+};
