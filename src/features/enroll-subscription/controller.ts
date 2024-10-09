@@ -13,6 +13,7 @@ import CurrencyExchange from "../currency-exchange/model";
 import Payment from "../payment/model";
 import Refund from "../refund/model";
 import Settings from "../settings/model";
+import Stamp from "../stamp/model";
 import Subscription from "../subscription/model";
 import Retailer from "../user/retailer/model";
 import EnrollSubscription from "./model";
@@ -122,7 +123,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     abortEarly: false,
   });
 
-  const { slug, code, branchIds, currency }: IEnrollSubscriptionBody = result;
+  const { slug, code, branchIds, stampIds, currency }: IEnrollSubscriptionBody = result;
 
   if (slug === PACKAGES.TRIAL && code) {
     throw "You can't take additional packages or coupon in free trial!";
@@ -381,16 +382,18 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     //////// Plan Downgrade ///////
     ///////////////////////////////
     if (changeMode < 0) {
-      if (coupon) {
-        throw `Coupon is not allowed in plan downgrade!`;
-      }
+      if (coupon) throw `Coupon is not allowed in plan downgrade!`;
 
       const downgradeBranchLimit = pickSubscriptionPlan?.allowTotalBranch;
+      const downgradeStampLimit = pickSubscriptionPlan?.allowTotalStamp;
+
       const branches = await Branch.find({ retailerId: req.user._id, source: "subscription", softDeleted: false });
+      const stamps = await Stamp.find({ retailerId: req.user._id, softDeleted: false });
+
       const disabledBySystemBranch = branches.filter((branch) => !branch.disabledBySystem).length;
 
       if (branches.length > downgradeBranchLimit && disabledBySystemBranch > downgradeBranchLimit) {
-        if (!branchIds) throw "branchIds field is required!";
+        if (!branchIds) throw "branchIds is required!";
 
         if (branchIds && branchIds.length !== disabledBySystemBranch - downgradeBranchLimit) {
           throw `You have to inactive ${disabledBySystemBranch - downgradeBranchLimit} subscription branch/s before downgrade!`;
@@ -400,6 +403,17 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           await Branch.updateMany(
             { retailerId: req.user._id, _id: { $in: branchIds } },
             { disabledBySystem: true, status: false }
+          );
+        }
+      }
+
+      if (stamps.length > downgradeStampLimit) {
+        if (!stampIds) throw "stampIds is required!";
+
+        if (stampIds) {
+          await Stamp.updateMany(
+            { retailerId: req.user._id, _id: { $in: stampIds } },
+            { softDeleted: true, status: false }
           );
         }
       }
