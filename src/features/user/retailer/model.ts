@@ -111,6 +111,10 @@ const schema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    businessCurrency: {
+      type: String,
+      default: "CAD",
+    },
     softDeleted: {
       type: Boolean,
       default: false,

@@ -24,6 +24,7 @@ export const retailerSchema = Joi.object({
   status: Joi.boolean().default(true),
   about: stringField("about"),
   website: stringField("website"),
+  businessCurrency: stringField("businessCurrency"),
 });
 
 // Without Password
@@ -42,6 +43,7 @@ export const retailerSchemaUpdate = Joi.object({
   status: Joi.boolean().default(true),
   about: stringField("about"),
   website: stringField("website"),
+  businessCurrency: stringField("businessCurrency"),
 });
 
 export const retailerStatusSchema = Joi.object({
