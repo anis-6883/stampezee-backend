@@ -77,6 +77,8 @@ const schema = new mongoose.Schema(
   }
 );
 
+schema.index({ title: 1 });
+
 const Coupon = mongoose.model("Coupon", schema);
 
 export default Coupon;

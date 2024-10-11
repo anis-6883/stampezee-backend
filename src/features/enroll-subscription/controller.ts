@@ -383,6 +383,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     ///////////////////////////////
     if (changeMode < 0) {
       if (coupon) throw `Coupon is not allowed in plan downgrade!`;
+      if (!enrolled?.stripe?.paymentMethodId) throw `Something went wrong on your payment method!`;
 
       const downgradeBranchLimit = pickSubscriptionPlan?.allowTotalBranch;
       const downgradeStampLimit = pickSubscriptionPlan?.allowTotalStamp;
@@ -448,7 +449,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         });
 
         //  Cancel Previous Subscription from Stripe
-        await stripe.subscriptions.cancel(enrolled.stripe.subscriptionId);
+        await stripe.subscriptions.cancel(enrolled?.stripe?.subscriptionId);
 
         //  Create New Subscription from Stripe
         const stripeSubscription = await stripe.subscriptions.create({
@@ -458,7 +459,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               price: price.id,
             },
           ],
-          default_payment_method: enrolled.stripe.paymentMethodId,
+          default_payment_method: enrolled?.stripe?.paymentMethodId,
         });
 
         //  Create New Enrollment
@@ -466,8 +467,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           retailerId: req.user._id,
           stripe: {
             subscriptionId: stripeSubscription.id,
-            customerId: enrolled.stripe.customerId,
-            paymentMethodId: enrolled.stripe.paymentMethodId,
+            customerId: enrolled?.stripe?.customerId,
+            paymentMethodId: enrolled?.stripe?.paymentMethodId,
           },
           planSnapshot: pickSubscriptionPlan,
           taxSnapshot: {
@@ -927,6 +928,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     if (!invoice?.payment_intent?.payment_method?.id) {
       await CriticalPayment.create({
         paymentId: payment._id,
+        enrollSubscriptionId: subscriptionId,
         stripeInvoiceId: eventObject.invoice,
         status: "pending",
       });
