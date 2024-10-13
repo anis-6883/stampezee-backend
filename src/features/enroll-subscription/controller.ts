@@ -59,27 +59,6 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
         },
       },
       {
-        $lookup: {
-          from: "subscriptions",
-          localField: "applicablePackage",
-          foreignField: "_id",
-          as: "applicablePackage",
-          pipeline: [
-            {
-              $project: {
-                slug: 1,
-              },
-            },
-          ],
-        },
-      },
-      {
-        $unwind: {
-          path: "$applicablePackage",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
         $project: {
           _id: 1,
           title: 1,
@@ -87,7 +66,7 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
           discount: 1,
           allowFor: 1,
           allowedRetailers: 1,
-          applicablePackage: 1,
+          applicablePackages: 1,
           limit: 1,
         },
       },
@@ -95,7 +74,14 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
   )[0];
 
   if (!coupon) throw "Provided invalid coupon code!";
-  if (coupon.applicablePackage.slug !== slug) throw "Provided invalid coupon code!";
+
+  const subscriptions = await Subscription.find({
+    _id: { $in: coupon?.applicablePackages || [] },
+    slug: { $ne: "trial" },
+  });
+
+  const applicablePackages = subscriptions.map((subscription) => subscription.slug);
+  if (!applicablePackages.includes(slug)) throw "Provided invalid coupon code!";
 
   if (coupon.allowFor === "specific") {
     if (!coupon.allowedRetailers.includes(req.user._id as any)) throw "Provided invalid coupon code!";
@@ -192,36 +178,14 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           },
         },
         {
-          $lookup: {
-            from: "subscriptions",
-            localField: "applicablePackage",
-            foreignField: "_id",
-            as: "applicablePackage",
-            pipeline: [
-              {
-                $project: {
-                  slug: 1,
-                },
-              },
-            ],
-          },
-        },
-        {
-          $unwind: {
-            path: "$applicablePackage",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-        {
           $project: {
             _id: 1,
             title: 1,
-            code: 1,
             discountType: 1,
             discount: 1,
             allowFor: 1,
             allowedRetailers: 1,
-            applicablePackage: 1,
+            applicablePackages: 1,
             limit: 1,
           },
         },
@@ -229,17 +193,24 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     )[0];
 
     if (!coupon) throw "Provided invalid coupon code!";
-    if (coupon.applicablePackage.slug !== slug) throw "Provided invalid coupon code!";
+
+    const subscriptions = await Subscription.find({
+      _id: { $in: coupon?.applicablePackages || [] },
+      slug: { $ne: "trial" },
+    });
+
+    const applicablePackages = subscriptions.map((subscription) => subscription.slug);
+    if (!applicablePackages.includes(slug)) throw "Provided invalid coupon code!";
 
     if (coupon.allowFor === "specific") {
       if (!coupon.allowedRetailers.includes(req.user._id as any)) throw "Provided invalid coupon code!";
     }
 
-    const alreadyApplied = await EnrollSubscription.find({
+    const alreadyApplied = await EnrollSubscription.countDocuments({
       retailerId: req.user._id,
       "couponSnapshot._id": coupon._id,
       paymentStatus: "completed",
-    }).countDocuments();
+    });
 
     if (alreadyApplied >= coupon.limit) throw "Your coupon limit is over!";
   }
