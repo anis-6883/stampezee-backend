@@ -5,6 +5,7 @@ import { uploadFileToS3Bucket } from "../../../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, formatErrorMsg, makePaginateForMobile } from "../../../../helpers";
 import { IApiRequest, INumberObject, Object } from "../../../../types";
 import Branch from "../../../branch/model";
+import Retailer from "../../../user/retailer/model";
 import CollectStamp from "../../customer/search/model";
 import { stampCollected } from "../../socket/socket";
 import OrderStamp from "./model";
@@ -31,83 +32,86 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
     }
   }
 
-  const stampIsCollected = await CollectStamp.aggregate([
-    {
-      $match: {
-        _id: mongoose.Types.ObjectId.createFromHexString(collectStampId),
-        branchId: req?.user?.branchId,
-      },
-    },
-    {
-      $lookup: {
-        from: "stamps",
-        localField: "stampId",
-        foreignField: "_id",
-        as: "stamps",
-        pipeline: [
-          {
-            $match: {
-              startedAt: { $lte: new Date() },
-              expiredAt: { $gte: new Date() },
-            },
-          },
-          {
-            $project: {
-              _id: 1,
-              noOfStampsToCollect: 1,
-              minPurchaseAmount: 1,
-              rewardType: 1,
-              promotionReward: 1,
-              discountReward: 1,
-            },
-          },
-        ],
-      },
-    },
-    {
-      $lookup: {
-        from: "orderstamps",
-        localField: "_id",
-        foreignField: "collectStampId",
-        as: "rewardCollected",
-        pipeline: [
-          {
-            $match: {
-              rewardCollected: true,
-            },
-          },
-        ],
-      },
-    },
-    {
-      $lookup: {
-        from: "orderstamps",
-        localField: "_id",
-        foreignField: "collectStampId",
-        as: "stampTaken",
-        pipeline: [
-          {
-            $count: "totalStampTaken",
-          },
-        ],
-      },
-    },
-    {
-      $addFields: {
-        totalStampTaken: {
-          $ifNull: [{ $arrayElemAt: ["$stampTaken.totalStampTaken", 0] }, 0],
-        },
-        rewardTaken: {
-          $ifNull: [{ $arrayElemAt: ["$rewardCollected", 0] }, false],
+  const [stampIsCollected, retailer] = await Promise.all([
+    CollectStamp.aggregate([
+      {
+        $match: {
+          _id: mongoose.Types.ObjectId.createFromHexString(collectStampId),
+          branchId: req?.user?.branchId,
         },
       },
-    },
-    {
-      $project: {
-        rewardCollected: 0,
-        stampTaken: 0,
+      {
+        $lookup: {
+          from: "stamps",
+          localField: "stampId",
+          foreignField: "_id",
+          as: "stamps",
+          pipeline: [
+            {
+              $match: {
+                startedAt: { $lte: new Date() },
+                expiredAt: { $gte: new Date() },
+              },
+            },
+            {
+              $project: {
+                _id: 1,
+                noOfStampsToCollect: 1,
+                minPurchaseAmount: 1,
+                rewardType: 1,
+                promotionReward: 1,
+                discountReward: 1,
+              },
+            },
+          ],
+        },
       },
-    },
+      {
+        $lookup: {
+          from: "orderstamps",
+          localField: "_id",
+          foreignField: "collectStampId",
+          as: "rewardCollected",
+          pipeline: [
+            {
+              $match: {
+                rewardCollected: true,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: "orderstamps",
+          localField: "_id",
+          foreignField: "collectStampId",
+          as: "stampTaken",
+          pipeline: [
+            {
+              $count: "totalStampTaken",
+            },
+          ],
+        },
+      },
+      {
+        $addFields: {
+          totalStampTaken: {
+            $ifNull: [{ $arrayElemAt: ["$stampTaken.totalStampTaken", 0] }, 0],
+          },
+          rewardTaken: {
+            $ifNull: [{ $arrayElemAt: ["$rewardCollected", 0] }, false],
+          },
+        },
+      },
+      {
+        $project: {
+          rewardCollected: 0,
+          stampTaken: 0,
+        },
+      },
+    ]),
+    Retailer.findById(req?.user?.retailerId, { businessCurrency: 1 }),
   ]);
 
   if (stampIsCollected.length < 1) throw "Invalid QR Code";
@@ -124,6 +128,7 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
     customerId: stampIsCollected[0].customerId,
     subAdminId: req?.user?._id,
     stamp: "",
+    amountCurrency: retailer?.businessCurrency,
   };
 
   const response: Object = {
@@ -179,33 +184,37 @@ export const uploadInvoice = asyncHandler(async (req: IApiRequest, res: Response
   const { amount } = req?.body;
   const orderStampId = req?.params?.orderStampId;
 
-  const orderIsAvailable = await OrderStamp.aggregate([
-    {
-      $match: {
-        _id: mongoose.Types.ObjectId.createFromHexString(orderStampId),
+  const [orderIsAvailable, retailer] = await Promise.all([
+    OrderStamp.aggregate([
+      {
+        $match: {
+          _id: mongoose.Types.ObjectId.createFromHexString(orderStampId),
+        },
       },
-    },
-    {
-      $lookup: {
-        from: "subadmins",
-        localField: "subAdminId",
-        foreignField: "_id",
-        as: "subAdmin",
-        pipeline: [
-          {
-            $match: {
-              branchId: req?.user?.branchId,
+      {
+        $lookup: {
+          from: "subadmins",
+          localField: "subAdminId",
+          foreignField: "_id",
+          as: "subAdmin",
+          pipeline: [
+            {
+              $match: {
+                branchId: req?.user?.branchId,
+              },
             },
-          },
-        ],
+          ],
+        },
       },
-    },
+    ]),
+    Retailer.findById(req?.user?.retailerId, { businessCurrency: 1 }),
   ]);
 
   if (orderIsAvailable.length < 1) throw "Invalid Order";
   if (orderIsAvailable[0].subAdmin.length < 1) return apiResponse(res, 401, false, "Unauthorized Request!");
 
   const updatedBody: any = { amount };
+  updatedBody.amountCurrency = retailer?.businessCurrency;
 
   if (req?.file) {
     const { status, message } = fileValidation(req.file, undefined, ["image/jpeg", "image/png", "image/jpg"]);

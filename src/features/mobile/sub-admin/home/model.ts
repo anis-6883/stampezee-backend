@@ -35,6 +35,10 @@ const schema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    amountCurrency: {
+      type: String,
+      default: "CAD",
+    },
     invoice: {
       type: String,
       default: null,

@@ -325,6 +325,7 @@ export const getSingleCustomerScanList = asyncHandler(async (req: IApiRequest, r
           "scan.rewardCollected": "$rewardCollected",
           "scan.stampNumber": "$number",
           "scan.amount": "$amount",
+          "scan.amountCurrency": "$amountCurrency",
           "scan.invoice": "$invoice",
           branch: "$collectstamp.branch",
           offer: "$collectstamp.stamp",
