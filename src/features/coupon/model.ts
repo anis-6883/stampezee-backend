@@ -47,9 +47,8 @@ const schema = new mongoose.Schema(
       type: [mongoose.Types.ObjectId],
       default: [],
     },
-    applicablePackage: {
-      type: "ObjectId", // mongoose.Types.ObjectId
-      ref: "Subscription",
+    applicablePackages: {
+      type: [mongoose.Types.ObjectId],
       required: true,
     },
     status: {
@@ -76,6 +75,8 @@ const schema = new mongoose.Schema(
     versionKey: false,
   }
 );
+
+schema.index({ title: 1 });
 
 const Coupon = mongoose.model("Coupon", schema);
 

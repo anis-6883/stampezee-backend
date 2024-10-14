@@ -21,23 +21,25 @@ export const createCoupon = asyncHandler(async (req: IApiRequest, res: Response)
   const { softDeleted, ...createBody } = result;
   createBody.createdBy = req.user._id;
 
-  const [existingCoupon, subscription] = await Promise.all([
+  const [existingCoupon, subscriptions] = await Promise.all([
     Coupon.findOne({
       code: createBody.code,
       startedAt: { $lte: createBody.expiredAt },
       expiredAt: { $gte: createBody.startedAt },
       softDeleted: false,
     }),
-    Subscription.findOne({ _id: createBody.applicablePackage, slug: { $ne: "trial" } }),
+    Subscription.find({ _id: { $in: createBody?.applicablePackages || [] }, slug: { $ne: "trial" } }),
   ]);
 
   if (existingCoupon) throw "Coupon already exists within date range!";
-  if (!subscription) throw "Provide invalid coupon code!";
+  if (subscriptions.length === 0) throw "Provided invalid packages!";
 
   if (createBody.discountType === "flat") {
-    if (subscription.price / 2 <= createBody.discount) {
-      throw `Discount must be less than ${Number(subscription.price / 2).toFixed(2)} CAD of the package price!`;
-    }
+    subscriptions.forEach((subscription: any) => {
+      if (createBody.discount >= subscription.price / 2) {
+        throw `Discount must be less than ${Number(subscription.price / 2).toFixed(2)} CAD of the package price!`;
+      }
+    });
   }
 
   const settings = await Settings.findOne(null, { "general.timezone": 1 });
@@ -50,6 +52,8 @@ export const createCoupon = asyncHandler(async (req: IApiRequest, res: Response)
   createBody.expiredAt = expireTime;
 
   const coupon = await Coupon.create(createBody);
+
+  // @TODO: Send Coupon Email for Specific Retailer/s
 
   return apiResponse(res, 201, true, "Coupon created successfully!", coupon);
 });
@@ -106,27 +110,6 @@ export const getAllCoupons = asyncHandler(async (req: IApiRequest, res: Response
       {
         $limit: Number(limit),
       },
-      {
-        $lookup: {
-          from: "subscriptions",
-          localField: "applicablePackage",
-          foreignField: "_id",
-          as: "applicablePackage",
-          pipeline: [
-            {
-              $project: {
-                title: 1,
-              },
-            },
-          ],
-        },
-      },
-      {
-        $unwind: {
-          path: "$applicablePackage",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
     ]),
     Coupon.countDocuments(query),
   ]);
@@ -168,7 +151,7 @@ export const updateCoupon = asyncHandler(async (req: IApiRequest, res: Response)
   const coupon = await Coupon.findOne({ _id: id });
   if (!coupon) return apiResponse(res, 404, false, "Coupon not found!");
 
-  const [existingCoupon, subscription] = await Promise.all([
+  const [existingCoupon, subscriptions] = await Promise.all([
     Coupon.findOne({
       _id: { $ne: id },
       code: updatedBody.code,
@@ -176,16 +159,18 @@ export const updateCoupon = asyncHandler(async (req: IApiRequest, res: Response)
       expiredAt: { $gte: updatedBody.startedAt },
       softDeleted: false,
     }),
-    Subscription.findOne({ _id: updatedBody.applicablePackage, slug: { $ne: "trial" } }),
+    Subscription.find({ _id: { $in: updatedBody?.applicablePackages || [] }, slug: { $ne: "trial" } }),
   ]);
 
   if (existingCoupon) throw "Coupon already exists within date range!";
-  if (!subscription) throw "Provide invalid coupon code!";
+  if (subscriptions.length === 0) throw "Provided invalid packages!";
 
   if (updatedBody.discountType === "flat") {
-    if (subscription.price / 2 <= updatedBody.discount) {
-      throw "Discount must be less than 50% of the package price!";
-    }
+    subscriptions.forEach((subscription: any) => {
+      if (updatedBody.discount >= subscription.price / 2) {
+        throw `Discount must be less than ${Number(subscription.price / 2).toFixed(2)} CAD of the package price!`;
+      }
+    });
   }
 
   const settings = await Settings.findOne(null, { "general.timezone": 1 });

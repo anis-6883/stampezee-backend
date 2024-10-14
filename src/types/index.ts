@@ -12,7 +12,8 @@ export interface IEnrollPayment {
 }
 export interface IEnrollSubscriptionBody {
   slug: string;
-  branchIds: string[];
+  branchIds?: string[];
+  stampIds?: string[];
   code: string;
   currency: string;
 }

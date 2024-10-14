@@ -3,6 +3,7 @@ import { ROLE } from "../configs/constants";
 import categoryRoutes from "../features/category/route";
 import contactRoutes from "../features/contact/route";
 import couponRoutes from "../features/coupon/route";
+import criticalPaymentRoutes from "../features/critical-payment/route";
 import currencyExchangeRoutes from "../features/currency-exchange/route";
 import manageCustomerRoutes from "../features/customer/routes/super-admin";
 import dashboardRoutes from "../features/dashboard/routes/super-admin";
@@ -41,6 +42,7 @@ router.use("/super-admin/notification", notificationRoutes);
 router.use("/super-admin/subscription", subscriptionRoutes);
 router.use("/super-admin/manage-retailer", manageRetailerRoutes);
 router.use("/super-admin/manage-customer", manageCustomerRoutes);
+router.use("/super-admin/critical-payment", criticalPaymentRoutes);
 router.use("/super-admin/currency-exchange", currencyExchangeRoutes);
 
 export default router;

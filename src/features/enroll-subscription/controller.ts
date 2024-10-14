@@ -13,6 +13,7 @@ import CurrencyExchange from "../currency-exchange/model";
 import Payment from "../payment/model";
 import Refund from "../refund/model";
 import Settings from "../settings/model";
+import Stamp from "../stamp/model";
 import Subscription from "../subscription/model";
 import Retailer from "../user/retailer/model";
 import EnrollSubscription from "./model";
@@ -58,27 +59,6 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
         },
       },
       {
-        $lookup: {
-          from: "subscriptions",
-          localField: "applicablePackage",
-          foreignField: "_id",
-          as: "applicablePackage",
-          pipeline: [
-            {
-              $project: {
-                slug: 1,
-              },
-            },
-          ],
-        },
-      },
-      {
-        $unwind: {
-          path: "$applicablePackage",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
         $project: {
           _id: 1,
           title: 1,
@@ -86,7 +66,7 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
           discount: 1,
           allowFor: 1,
           allowedRetailers: 1,
-          applicablePackage: 1,
+          applicablePackages: 1,
           limit: 1,
         },
       },
@@ -94,7 +74,14 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
   )[0];
 
   if (!coupon) throw "Provided invalid coupon code!";
-  if (coupon.applicablePackage.slug !== slug) throw "Provided invalid coupon code!";
+
+  const subscriptions = await Subscription.find({
+    _id: { $in: coupon?.applicablePackages || [] },
+    slug: { $ne: "trial" },
+  });
+
+  const applicablePackages = subscriptions.map((subscription) => subscription.slug);
+  if (!applicablePackages.includes(slug)) throw "Provided invalid coupon code!";
 
   if (coupon.allowFor === "specific") {
     if (!coupon.allowedRetailers.includes(req.user._id as any)) throw "Provided invalid coupon code!";
@@ -122,7 +109,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     abortEarly: false,
   });
 
-  const { slug, code, branchIds, currency }: IEnrollSubscriptionBody = result;
+  const { slug, code, branchIds, stampIds, currency }: IEnrollSubscriptionBody = result;
 
   if (slug === PACKAGES.TRIAL && code) {
     throw "You can't take additional packages or coupon in free trial!";
@@ -191,36 +178,14 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           },
         },
         {
-          $lookup: {
-            from: "subscriptions",
-            localField: "applicablePackage",
-            foreignField: "_id",
-            as: "applicablePackage",
-            pipeline: [
-              {
-                $project: {
-                  slug: 1,
-                },
-              },
-            ],
-          },
-        },
-        {
-          $unwind: {
-            path: "$applicablePackage",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-        {
           $project: {
             _id: 1,
             title: 1,
-            code: 1,
             discountType: 1,
             discount: 1,
             allowFor: 1,
             allowedRetailers: 1,
-            applicablePackage: 1,
+            applicablePackages: 1,
             limit: 1,
           },
         },
@@ -228,17 +193,24 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     )[0];
 
     if (!coupon) throw "Provided invalid coupon code!";
-    if (coupon.applicablePackage.slug !== slug) throw "Provided invalid coupon code!";
+
+    const subscriptions = await Subscription.find({
+      _id: { $in: coupon?.applicablePackages || [] },
+      slug: { $ne: "trial" },
+    });
+
+    const applicablePackages = subscriptions.map((subscription) => subscription.slug);
+    if (!applicablePackages.includes(slug)) throw "Provided invalid coupon code!";
 
     if (coupon.allowFor === "specific") {
       if (!coupon.allowedRetailers.includes(req.user._id as any)) throw "Provided invalid coupon code!";
     }
 
-    const alreadyApplied = await EnrollSubscription.find({
+    const alreadyApplied = await EnrollSubscription.countDocuments({
       retailerId: req.user._id,
       "couponSnapshot._id": coupon._id,
       paymentStatus: "completed",
-    }).countDocuments();
+    });
 
     if (alreadyApplied >= coupon.limit) throw "Your coupon limit is over!";
   }
@@ -381,16 +353,19 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     //////// Plan Downgrade ///////
     ///////////////////////////////
     if (changeMode < 0) {
-      if (coupon) {
-        throw `Coupon is not allowed in plan downgrade!`;
-      }
+      if (coupon) throw `Coupon is not allowed in plan downgrade!`;
+      if (!enrolled?.stripe?.paymentMethodId) throw `Something went wrong on your payment method!`;
 
       const downgradeBranchLimit = pickSubscriptionPlan?.allowTotalBranch;
+      const downgradeStampLimit = pickSubscriptionPlan?.allowTotalStamp;
+
       const branches = await Branch.find({ retailerId: req.user._id, source: "subscription", softDeleted: false });
+      const stamps = await Stamp.find({ retailerId: req.user._id, softDeleted: false });
+
       const disabledBySystemBranch = branches.filter((branch) => !branch.disabledBySystem).length;
 
       if (branches.length > downgradeBranchLimit && disabledBySystemBranch > downgradeBranchLimit) {
-        if (!branchIds) throw "branchIds field is required!";
+        if (!branchIds) throw "branchIds is required!";
 
         if (branchIds && branchIds.length !== disabledBySystemBranch - downgradeBranchLimit) {
           throw `You have to inactive ${disabledBySystemBranch - downgradeBranchLimit} subscription branch/s before downgrade!`;
@@ -400,6 +375,17 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           await Branch.updateMany(
             { retailerId: req.user._id, _id: { $in: branchIds } },
             { disabledBySystem: true, status: false }
+          );
+        }
+      }
+
+      if (stamps.length > downgradeStampLimit) {
+        if (!stampIds) throw "stampIds is required!";
+
+        if (stampIds) {
+          await Stamp.updateMany(
+            { retailerId: req.user._id, _id: { $in: stampIds } },
+            { softDeleted: true, status: false }
           );
         }
       }
@@ -434,7 +420,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         });
 
         //  Cancel Previous Subscription from Stripe
-        await stripe.subscriptions.cancel(enrolled.stripe.subscriptionId);
+        await stripe.subscriptions.cancel(enrolled?.stripe?.subscriptionId);
 
         //  Create New Subscription from Stripe
         const stripeSubscription = await stripe.subscriptions.create({
@@ -444,7 +430,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               price: price.id,
             },
           ],
-          default_payment_method: enrolled.stripe.paymentMethodId,
+          default_payment_method: enrolled?.stripe?.paymentMethodId,
         });
 
         //  Create New Enrollment
@@ -452,8 +438,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           retailerId: req.user._id,
           stripe: {
             subscriptionId: stripeSubscription.id,
-            customerId: enrolled.stripe.customerId,
-            paymentMethodId: enrolled.stripe.paymentMethodId,
+            customerId: enrolled?.stripe?.customerId,
+            paymentMethodId: enrolled?.stripe?.paymentMethodId,
           },
           planSnapshot: pickSubscriptionPlan,
           taxSnapshot: {
@@ -913,6 +899,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     if (!invoice?.payment_intent?.payment_method?.id) {
       await CriticalPayment.create({
         paymentId: payment._id,
+        enrollSubscriptionId: subscriptionId,
         stripeInvoiceId: eventObject.invoice,
         status: "pending",
       });

@@ -1,11 +1,5 @@
 import Joi from "joi";
-import {
-  objectIdField,
-  requiredBooleanField,
-  requiredObjectIdField,
-  requiredStringField,
-  stringField,
-} from "../../helpers";
+import { requiredBooleanField, requiredStringField, stringField } from "../../helpers";
 
 const startedAt = Joi.date().messages({
   "date.base": "startedAt must be date!",
@@ -61,6 +55,10 @@ const allowedRetailers = Joi.array().items(Joi.string().allow(null)).messages({
   "array.base": "allowedRetailers must be array!",
 });
 
+const applicablePackages = Joi.array().items(Joi.string().allow(null)).messages({
+  "array.base": "applicablePackages must be array!",
+});
+
 export const couponSchema = Joi.object({
   title: requiredStringField("title"),
   description: stringField("description"),
@@ -85,8 +83,10 @@ export const couponSchema = Joi.object({
   allowFor: allowFor.required().messages({
     "any.required": "allowFor is required!",
   }),
+  applicablePackages: applicablePackages.required().messages({
+    "any.required": "applicablePackages is required!",
+  }),
   allowedRetailers,
-  applicablePackage: requiredObjectIdField("applicablePackage"),
 });
 
 export const updateCouponSchema = Joi.object({
@@ -100,7 +100,7 @@ export const updateCouponSchema = Joi.object({
   limit,
   allowFor,
   allowedRetailers,
-  applicablePackage: objectIdField("applicablePackage"),
+  applicablePackages,
 });
 
 export const couponStatusSchema = Joi.object({

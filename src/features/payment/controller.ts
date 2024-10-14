@@ -1,9 +1,12 @@
 import { Response } from "express";
 import mongoose from "mongoose";
+import Stripe from "stripe";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
 import EnrollSubscription from "../enroll-subscription/model";
+import Settings from "../settings/model";
 import Retailer from "../user/retailer/model";
+import { portalSchema } from "./validation";
 
 /**
  * Get All Subscription Payments
@@ -151,4 +154,31 @@ export const getSingleSubscriptionPayment = asyncHandler(async (req: IApiRequest
   if (enrollSubscription.length <= 0) throw "No Subscription Found!";
 
   return apiResponse(res, 200, true, "Get single subscription payment successfully!", enrollSubscription[0]);
+});
+
+/**
+ * Retailer Billing Portal
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const getRetailerBillingPortal = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await portalSchema.validateAsync(req.body, {
+    abortEarly: false,
+  });
+
+  const { customerId, returnUrl } = result;
+
+  const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
+  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+
+  const { stripeSecretKey } = paymentMetadata?.stripe;
+  const stripe = new Stripe(stripeSecretKey);
+
+  const portalSession = await stripe.billingPortal.sessions.create({
+    customer: customerId,
+    return_url: returnUrl,
+  });
+
+  return apiResponse(res, 200, true, "Get Retailer Billing Portal!", { url: portalSession.url });
 });

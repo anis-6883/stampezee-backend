@@ -9,7 +9,7 @@ const PaymentSchema = new mongoose.Schema(
     },
     enrollSubscriptionId: {
       type: "ObjectId", // mongoose.Types.ObjectId
-      ref: "Retailer",
+      ref: "EnrollSubscription",
       required: true,
     },
     paymentIntentId: {
