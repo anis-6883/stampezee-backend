@@ -330,12 +330,20 @@ export const getAllNotificationsForSuperAdmin = asyncHandler(async (req: IApiReq
         },
       },
       {
-        $unwind: "$retailer",
+        $unwind: {
+          path: "$retailer",
+          preserveNullAndEmptyArrays: true, // Keeps documents where the retailer is null
+        },
       },
       {
         $project: {
-          retailerId: 0,
-          updatedAt: 0,
+          retailer: {
+            $ifNull: ["$retailer", null], // If retailer is not found, set to null
+          },
+          createdAt: 1, // Include other fields as necessary
+          title: 1,
+          description: 1,
+          image: 1,
         },
       },
     ]),
