@@ -9,10 +9,10 @@ import Settings from "../settings/model";
 import Customer from "../user/customer/model";
 import Retailer from "../user/retailer/model";
 import Notification from "./model";
-import { notificationBasedOnLocationSchema, notificationSchema } from "./validation";
+import { notificationBasedOnLocationSchema, notificationSchema, superAdminNotificationSchema } from "./validation";
 
 /**
- * Send A Notification to All Customers
+ * Send A Notification to All Customers (Retailer)
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -90,7 +90,7 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
 });
 
 /**
- * Send Location Based Notification to All Customers
+ * Send Location Based Notification to All Customers (Retailer)
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -345,4 +345,109 @@ export const getAllNotificationsForSuperAdmin = asyncHandler(async (req: IApiReq
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
   return apiResponse(res, 200, true, "Notifications fetched successfully!", data);
+});
+
+/**
+ * Send A Notification to Customers (Super Admin)
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const sendNotificationBySuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await superAdminNotificationSchema.validateAsync(req.body);
+  const { title, description, imageType, image, radius, longitude, latitude, address, type } = result;
+  let notificationObj = { title, description, image };
+
+  const settings = await Settings.findOne().select("notification");
+
+  // File Validation
+  if (req.file) {
+    const { status, message } = fileValidation(req.file, undefined, ["image/jpeg", "image/png", "image/jpg"]);
+    if (!status) return apiResponse(res, 400, false, "Invalid Request!", { image: message });
+  }
+
+  // Upload File to S3 Bucket
+  if (req.file) {
+    const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "notification");
+    if (status) {
+      notificationObj.image = `${process.env.S3_BASE_URL}/${key}`;
+    }
+  }
+
+  if (imageType == "url" && image) {
+    notificationObj.image = image;
+  }
+
+  // Function to send notifications
+  const sendNotification = async (tokens: string[] = []) => {
+    await notification.sendNotification({
+      title,
+      description,
+      imageUrl: notificationObj.image,
+      data: { image: notificationObj.image },
+      topic: settings.notification.firebaseTopics,
+      tokens, // Will be empty if not using location-based notifications
+    });
+  };
+
+  if (type === "location") {
+    const earthRadiusInMiles = 3959;
+    const radiusInMiles = radius ** 0.621371;
+
+    const deviceTokens = await Customer.aggregate([
+      {
+        $match: {
+          "address.loc": {
+            $geoWithin: {
+              $centerSphere: [[Number(longitude), Number(latitude)], radiusInMiles / earthRadiusInMiles],
+            },
+          },
+          isVerified: true,
+          deviceToken: { $ne: null },
+        },
+      },
+      {
+        $project: {
+          deviceToken: 1,
+        },
+      },
+    ]);
+
+    const tokens: string[] = [];
+    const ids: string[] = [];
+
+    deviceTokens.forEach(({ _id, deviceToken }) => {
+      tokens.push(deviceToken);
+      ids.push(_id);
+    });
+
+    // Send location-based notifications
+    await sendNotification(tokens);
+
+    await Notification.create({
+      title,
+      description,
+      type,
+      image: notificationObj.image,
+      sentTo: ids,
+      address: {
+        loc: { type: "Point", coordinates: [longitude, latitude] },
+        name: address,
+      },
+      retailerId: null,
+      radius,
+    });
+  } else {
+    // Send non-location-based notifications
+    await sendNotification();
+
+    await Notification.create({
+      title,
+      description,
+      image: notificationObj.image,
+      retailerId: null,
+    });
+  }
+
+  return apiResponse(res, 200, true, "Notification sent successfully!");
 });
