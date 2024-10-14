@@ -219,6 +219,7 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
       },
     },
     {
+      // Lookup for the subscription type "plan"
       $lookup: {
         from: "enrollsubscriptions",
         localField: "_id",
@@ -229,6 +230,38 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
             $match: {
               "planSnapshot.type": "subscription",
               status: true,
+            },
+          },
+        ],
+      },
+    },
+    {
+      // Lookup for the subscription type "addon"
+      $lookup: {
+        from: "enrollsubscriptions",
+        localField: "_id",
+        foreignField: "retailerId",
+        as: "addonSubscriptions",
+        pipeline: [
+          {
+            $match: {
+              "planSnapshot.type": "addon", // Add-on specific condition
+              status: true,
+            },
+          },
+          {
+            $group: {
+              _id: "$planSnapshot.slug",
+              count: { $sum: 1 },
+              title: { $first: "$planSnapshot.title" },
+            },
+          },
+          {
+            $project: {
+              slug: "$_id", // Rename _id to slug
+              title: 1,
+              count: 1,
+              _id: 0,
             },
           },
         ],
