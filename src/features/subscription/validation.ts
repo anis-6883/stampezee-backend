@@ -7,15 +7,18 @@ import {
   stringField,
 } from "../../helpers";
 
-const type = Joi.string().trim().required().lowercase().valid("addon", "subscription").messages({
-  "any.required": "type is required!",
+const type = Joi.string().trim().lowercase().valid("addon", "subscription").messages({
   "string.base": "type must be string!",
   "any.only": "type must be [addon, subscription]",
 });
 
-const duration = Joi.string().trim().valid("7", "30").messages({
-  "string.base": "type must be string!",
-  "any.only": "type must be [7, 30]",
+// const duration = Joi.string().trim().valid("7", "30").messages({
+//   "string.base": "type must be string!",
+//   "any.only": "type must be [7, 30]",
+// });
+
+const duration = Joi.number().messages({
+  "number.base": "duration must be number!",
 });
 
 const descriptions = Joi.array()
@@ -32,7 +35,9 @@ const descriptions = Joi.array()
 export const subscriptionSchema = Joi.object({
   title: requiredStringField("title"),
   slug: requiredStringField("slug"),
-  type,
+  type: type.required().messages({
+    "any.required": "type is required!",
+  }),
   duration,
   descriptions: descriptions.required().messages({
     "any.required": "descriptions is required!",
