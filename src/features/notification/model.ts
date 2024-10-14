@@ -45,14 +45,13 @@ const schema = new mongoose.Schema(
     retailerId: {
       type: "ObjectId", // mongoose.Types.ObjectId
       ref: "Retailer",
-      required: true,
+      default: null,
     },
   },
   { timestamps: true, versionKey: false }
 );
 
 schema.index({ "address.loc": "2dsphere" });
-schema.index({ retailerId: 1 });
 schema.index({ sentTo: 1 });
 schema.index({ createdAt: -1 });
 schema.index({ type: 1 });
