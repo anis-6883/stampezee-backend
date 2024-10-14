@@ -202,6 +202,24 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
     },
     {
       $lookup: {
+        from: "subadmins",
+        localField: "_id",
+        foreignField: "retailerId",
+        as: "subadmins",
+        pipeline: [
+          {
+            $project: {
+              firstName: 1,
+              lastName: 1,
+              fullName: 1,
+              email: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $lookup: {
         from: "enrollsubscriptions",
         localField: "_id",
         foreignField: "retailerId",
@@ -337,6 +355,7 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
           },
         },
         totalActiveBranch: { $size: "$branches" },
+        totalSubAdmin: { $size: "$subadmins" },
         totalActiveStamp: { $size: "$stamps" },
         totalCustomer: { $sum: "$branches.totalCustomer" },
         totalOrder: { $sum: "$branches.totalOrder" },
