@@ -2312,13 +2312,19 @@ export const htmlToPdf = async () => {
       headless: true,
     });
     const page = await browser.newPage();
-    await page.setViewport({ width: 1600, height: 1800 });
+
     const template = invoiceTemplate;
     await page.setContent(template, { waitUntil: "networkidle2" });
+
+    // await page.waitForFunction("document.fonts.ready");
+
+    await page.evaluate(() => {
+      document.body.style.backgroundColor = "#ffffff"; // Change to the desired color
+    });
+
     await page.pdf({
       path: path.join(process.cwd(), "/src/features/enroll-subscription/temp/invoice.pdf"),
       printBackground: true,
-      omitBackground: true,
       waitForFonts: true,
       format: "A4",
     });

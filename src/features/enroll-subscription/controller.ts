@@ -972,7 +972,7 @@ export const testEmailPDF = asyncHandler(async (req: IApiRequest, res: Response)
   try {
     await transporter.sendMail(mailOptions);
     await htmlToPdf();
-    console.log("Demo email sent successfully!");
+    console.log("Demo PDF created successfully!");
   } catch (error) {
     console.error("Error sending verification email:", error);
     throw new Error("Error sending verification email!");

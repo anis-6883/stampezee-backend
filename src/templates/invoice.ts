@@ -13,11 +13,18 @@ export const invoiceTemplate = `<!doctype html>
     <style>
       @font-face {
         font-family: tannimbus;
-        src: url("../../public/fonts/TAN-NIMBUS.ttf");
+        src: url("${process.env.BACKEND_URL}/fonts/TAN-NIMBUS.ttf");
       }
+      @page {
+        size: A4;
+        margin: 0;
+      }
+
       body {
         font-family: "Livvic", sans-serif;
         background-color: #f3f4f6;
+        width: 210mm;
+        height: 297mm;
         padding: 0;
         margin: 0;
       }
@@ -518,23 +525,23 @@ export const invoiceTemplate = `<!doctype html>
                   <td></td>
                 </tr>
                 <tr>
-                  <td style="padding-left: 250px" colspan="3" class="title">Subtotal</td>
+                  <td style="padding-left: 247px" colspan="3" class="title">Subtotal</td>
                   <td class="text-right pr-45">$30.00</td>
                 </tr>
                 <tr>
-                  <td style="padding-left: 250px" colspan="3" class="title">Remaining Amount</td>
+                  <td style="padding-left: 247px" colspan="3" class="title">Remaining Amount</td>
                   <td class="text-right pr-45">($5.00)</td>
                 </tr>
                 <tr>
-                  <td style="padding-left: 250px" colspan="3" class="title">Plan Change Cost</td>
+                  <td style="padding-left: 247px" colspan="3" class="title">Plan Change Cost</td>
                   <td class="text-right pr-45">$1.00</td>
                 </tr>
                 <tr>
-                  <td style="padding-left: 250px" colspan="3" class="title">Coupon (10%)</td>
+                  <td style="padding-left: 247px" colspan="3" class="title">Coupon (10%)</td>
                   <td class="text-right pr-45">($3.00)</td>
                 </tr>
                 <tr>
-                  <td style="padding-left: 250px" colspan="3" class="title">Tax (2%)</td>
+                  <td style="padding-left: 247px" colspan="3" class="title">Tax (2%)</td>
                   <td class="text-right pr-45">$0.60</td>
                 </tr>
                 <tr>
@@ -562,7 +569,7 @@ export const invoiceTemplate = `<!doctype html>
                 <tr>
                   <td colspan="3">
                     <div style="padding-top: 40px">
-                      <img src="/public/images/thank-you.jpg" width="250" alt="thank-you" style="margin-bottom: 15px" />
+                      <img src="https://stamp.holafootball.site/images/thank-you.jpg" width="250" alt="thank-you" style="margin-bottom: 15px" />
                     </div>
                   </td>
                 </tr>
