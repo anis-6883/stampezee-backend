@@ -47,7 +47,7 @@ const schema = new mongoose.Schema(
       ref: "Retailer",
       default: null,
     },
-    scheduleAtUTC: {
+    scheduleAt: {
       type: Date,
       default: null,
     },
