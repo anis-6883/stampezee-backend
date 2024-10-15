@@ -1,8 +1,9 @@
 import { Response } from "express";
+import schedule from "node-schedule";
 import { PACKAGES } from "../../configs/constants";
 import notification from "../../configs/fcm";
 import { uploadFileToS3Bucket } from "../../configs/s3Bucket";
-import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
+import { apiResponse, asyncHandler, fileValidation, getUTC, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
 import EnrollSubscription from "../enroll-subscription/model";
 import Settings from "../settings/model";
@@ -344,6 +345,7 @@ export const getAllNotificationsForSuperAdmin = asyncHandler(async (req: IApiReq
           title: 1,
           description: 1,
           image: 1,
+          type: 1,
         },
       },
     ]),
@@ -363,10 +365,11 @@ export const getAllNotificationsForSuperAdmin = asyncHandler(async (req: IApiReq
  */
 export const sendNotificationBySuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await superAdminNotificationSchema.validateAsync(req.body);
-  const { title, description, imageType, image, radius, longitude, latitude, address, type } = result;
-  let notificationObj = { title, description, image };
+  const { title, description, imageType, image, radius, longitude, latitude, address, type, scheduleAt } = result;
+  let notificationObj: any = { title, description, image };
 
-  const settings = await Settings.findOne().select("notification");
+  const settings = await Settings.findOne({}, { notification: 1, "general.timezone": 1 });
+  if (!settings?.general?.timezone) throw "Setup TimeZone First!";
 
   // File Validation
   if (req.file) {
@@ -396,6 +399,20 @@ export const sendNotificationBySuperAdmin = asyncHandler(async (req: IApiRequest
       topic: settings.notification.firebaseTopics,
       tokens, // Will be empty if not using location-based notifications
     });
+  };
+
+  // Scheduling logic for notifications
+  const scheduleNotification = async (tokens: string[] = []) => {
+    if (scheduleAt) {
+      const isoDateString = `${scheduleAt.replace(" ", "T")}:00.000Z`;
+      const localTime = new Date(isoDateString);
+      const scheduleAtUTC = getUTC(localTime, Number(settings.general.timezone.value));
+      notificationObj.scheduleAtUTC = scheduleAtUTC;
+
+      schedule.scheduleJob(scheduleAtUTC, async () => await sendNotification(tokens));
+    } else {
+      await sendNotification(tokens);
+    }
   };
 
   if (type === "location") {
@@ -429,8 +446,7 @@ export const sendNotificationBySuperAdmin = asyncHandler(async (req: IApiRequest
       ids.push(_id);
     });
 
-    // Send location-based notifications
-    await sendNotification(tokens);
+    await scheduleNotification(tokens);
 
     await Notification.create({
       title,
@@ -442,17 +458,18 @@ export const sendNotificationBySuperAdmin = asyncHandler(async (req: IApiRequest
         loc: { type: "Point", coordinates: [longitude, latitude] },
         name: address,
       },
-      retailerId: null,
       radius,
+      scheduleAtUTC: notificationObj.scheduleAtUTC ?? null,
+      retailerId: null,
     });
   } else {
-    // Send non-location-based notifications
-    await sendNotification();
+    await scheduleNotification();
 
     await Notification.create({
       title,
       description,
       image: notificationObj.image,
+      scheduleAtUTC: notificationObj.scheduleAtUTC ?? null,
       retailerId: null,
     });
   }
