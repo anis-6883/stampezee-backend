@@ -13,6 +13,7 @@ export const superAdminNotificationSchema = Joi.object({
   description: requiredStringField("description"),
   imageType: stringField("imageType"),
   image: stringField("image"),
+  scheduleAt: stringField("scheduleAt"),
   type: Joi.string().required().trim().lowercase().valid("all", "location").messages({
     "any.required": "type is required!",
     "string.base": "type must be string!",
