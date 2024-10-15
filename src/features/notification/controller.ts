@@ -408,7 +408,7 @@ export const sendNotificationBySuperAdmin = asyncHandler(async (req: IApiRequest
       const isoDateString = `${scheduleAt.replace(" ", "T")}:00.000Z`;
       const localTime = new Date(isoDateString);
       const scheduleAtUTC = getUTC(localTime, Number(settings.general.timezone.value));
-      notificationObj.scheduleAtUTC = scheduleAtUTC;
+      notificationObj.scheduleAt = scheduleAtUTC;
 
       schedule.scheduleJob(scheduleAtUTC, async () => await sendNotification(tokens));
     } else {
@@ -460,7 +460,7 @@ export const sendNotificationBySuperAdmin = asyncHandler(async (req: IApiRequest
         name: address,
       },
       radius,
-      scheduleAtUTC: notificationObj.scheduleAtUTC ?? null,
+      scheduleAt: notificationObj.scheduleAt ?? null,
       retailerId: null,
     });
   } else {
@@ -470,7 +470,7 @@ export const sendNotificationBySuperAdmin = asyncHandler(async (req: IApiRequest
       title,
       description,
       image: notificationObj.image,
-      scheduleAtUTC: notificationObj.scheduleAtUTC ?? null,
+      scheduleAt: notificationObj.scheduleAt ?? null,
       retailerId: null,
     });
   }
