@@ -344,6 +344,7 @@ export const getAllNotificationsForSuperAdmin = asyncHandler(async (req: IApiReq
           createdAt: 1, // Include other fields as necessary
           title: 1,
           description: 1,
+          scheduleAtUTC: 1,
           image: 1,
           type: 1,
         },
