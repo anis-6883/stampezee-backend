@@ -15,16 +15,16 @@
         font-family: tannimbus;
         src: url("../../public/fonts/TAN-NIMBUS.ttf");
       }
-      @page {
+      /* @page {
         size: A4;
-        margin: 0;
-      }
+        margin: 0 auto;
+      } */
 
       body {
         font-family: "Livvic", sans-serif;
         background-color: #f3f4f6;
-        width: 210mm;
-        height: 297mm;
+        /* width: 210mm;
+        height: 297mm; */
         padding: 0;
         margin: 0;
       }
@@ -347,24 +347,24 @@
         border-bottom: none;
       }
 
-      tfoot .title {
+      tbody .title {
         font-weight: bold;
         padding-right: 45px;
       }
 
-      tfoot .pr-45 {
+      tbody .pr-45 {
         padding-right: 45px;
       }
 
-      tfoot .text-right {
+      tbody .text-right {
         text-align: right;
       }
 
-      tfoot .total-row {
+      tbody .total-row {
         background-color: red;
         color: white;
         position: absolute;
-        left: 41%;
+        left: 37%;
         width: 100%;
         padding-left: 18px;
       }
@@ -443,6 +443,55 @@
   <body class="bg-gray-100 p-4">
     <!-- Main Container -->
     <table class="container overflow-hidden">
+      <!-- <tr>
+        <td style="padding-left: 10px; border-bottom: none" class="py-6">
+         
+          <div class="sub-container">
+            <table class="w-full border-collapse border-spacing-0 relative">
+              <div style="margin-top: 25px"></div>
+              
+              <tfoot>
+                <tr style="width: 100%">
+                  <td colspan="2">
+                    <div>
+                      <img
+                        src="https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/logo.png"
+                        width="150"
+                        alt="Cyber Kitty"
+                        style="margin-bottom: 15px"
+                      />
+                    </div>
+                  </td>
+                  <td colspan="2">
+                    <div>
+                      <h1 style="font-family: tannimbus; font-size: 40px; font-weight: bold; text-align: end">
+                        Invoice
+                      </h1>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr style="width: 100%">
+                  <td colspan="2">
+                    <div>
+                      <p class="font-bold mb-3">Billed to:</p>
+                      <p>Estelle Darcy</p>
+                      <p>+123-456-7890123</p>
+                      <p>Anywhere St., Any City, ST 12345</p>
+                    </div>
+                  </td>
+                  <td colspan="2">
+                    <div style="text-align: end">
+                      <p>Invoice No. 12345</p>
+                      <p>26 September 2024</p>
+                    </div>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </td>
+      </tr> -->
       <tr>
         <td style="border-bottom: none" class="p-4">
           <div class="sub-container" style="display: flex; align-items: center; justify-content: space-between">
@@ -500,7 +549,7 @@
                   <td class="border-b py-3 text-center">$30.00</td>
                   <td class="border-b py-3 pr-3 text-center">$30.00</td>
                 </tr>
-                <!-- <tr>
+                <tr>
                   <td class="border-b py-3">Custom Stamp Creation - Add On</td>
 
                   <td class="border-b py-3 text-center">1</td>
@@ -516,12 +565,94 @@
 
                   <td class="border-b py-3 text-center">$5.00</td>
                   <td class="border-b py-3 text-center">$10.00</td>
-                </tr> -->
+                </tr>
+                <tr>
+                  <td class="border-b py-3">Push Notification - Add on</td>
+
+                  <td class="border-b py-3 text-center">2</td>
+
+                  <td class="border-b py-3 text-center">$5.00</td>
+                  <td class="border-b py-3 text-center">$10.00</td>
+                </tr>
+                <tr>
+                  <td class="border-b py-3">Push Notification - Add on</td>
+
+                  <td class="border-b py-3 text-center">2</td>
+
+                  <td class="border-b py-3 text-center">$5.00</td>
+                  <td class="border-b py-3 text-center">$10.00</td>
+                </tr>
+                <tr>
+                  <td class="border-b py-3">Push Notification - Add on</td>
+
+                  <td class="border-b py-3 text-center">2</td>
+
+                  <td class="border-b py-3 text-center">$5.00</td>
+                  <td class="border-b py-3 text-center">$10.00</td>
+                </tr>
+                <tr>
+                  <td class="border-b py-3">Push Notification - Add on</td>
+
+                  <td class="border-b py-3 text-center">2</td>
+
+                  <td class="border-b py-3 text-center">$5.00</td>
+                  <td class="border-b py-3 text-center">$10.00</td>
+                </tr>
+
+                <tr>
+                  <td style="border-bottom: none"></td>
+                </tr>
+                <tr>
+                  <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Subtotal</td>
+                  <td style="border-bottom: none" class="text-right pr-45">$30.00</td>
+                </tr>
+                <tr>
+                  <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Remaining Amount</td>
+                  <td style="border-bottom: none" class="text-right pr-45">($5.00)</td>
+                </tr>
+                <tr>
+                  <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Plan Change Cost</td>
+                  <td style="border-bottom: none" class="text-right pr-45">$1.00</td>
+                </tr>
+                <tr>
+                  <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Coupon (10%)</td>
+                  <td style="border-bottom: none" class="text-right pr-45">($3.00)</td>
+                </tr>
+                <tr>
+                  <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Tax (2%)</td>
+                  <td style="border-bottom: none" class="text-right pr-45">$0.60</td>
+                </tr>
+                <tr>
+                  <td style="border-bottom: none"></td>
+                </tr>
+                <tr class="total-row">
+                  <td
+                    colspan="3"
+                    style="font-weight: 700; font-size: x-large; border-bottom: none"
+                    colspan="3"
+                    class="text-right total-label title"
+                  >
+                    Total
+                  </td>
+                  <td
+                    colspan="3"
+                    style="font-weight: 700; font-size: x-large; border-bottom: none"
+                    class="total-amount text-right"
+                  >
+                    $24.44
+                  </td>
+                </tr>
+                <tr>
+                  <td style="border-bottom: none"></td>
+                </tr>
+                <tr>
+                  <td style="border-bottom: none"></td>
+                </tr>
               </tbody>
               <div style="margin-top: 25px"></div>
               <!-- Footer Section -->
               <tfoot>
-                <tr>
+                <!-- <tr>
                   <td></td>
                 </tr>
                 <tr>
@@ -565,11 +696,16 @@
                 </tr>
                 <tr>
                   <td></td>
-                </tr>
+                </tr> -->
                 <tr>
                   <td colspan="3">
                     <div style="padding-top: 40px">
-                      <img src="/public/images/thank-you.jpg" width="250" alt="thank-you" style="margin-bottom: 15px" />
+                      <img
+                        src="https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/thank-you.jpg"
+                        width="250"
+                        alt="thank-you"
+                        style="margin-bottom: 15px"
+                      />
                     </div>
                   </td>
                 </tr>

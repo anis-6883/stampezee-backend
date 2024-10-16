@@ -932,6 +932,8 @@ export const testEmailPDF = asyncHandler(async (req: IApiRequest, res: Response)
     }
   );
 
+  await htmlToPdf();
+
   const transporter = nodemailer.createTransport({
     host: settings?.mail?.host,
     port: Number(settings?.mail?.port),
@@ -949,7 +951,7 @@ export const testEmailPDF = asyncHandler(async (req: IApiRequest, res: Response)
     html: invoiceTemplate,
     attachments: [
       {
-        path: __dirname + "/temp/1.pdf",
+        path: __dirname + "/temp/invoice.pdf",
         filename: "invoice.pdf",
         contentType: "contentType",
       },
@@ -958,7 +960,6 @@ export const testEmailPDF = asyncHandler(async (req: IApiRequest, res: Response)
 
   try {
     await transporter.sendMail(mailOptions);
-    await htmlToPdf();
     console.log("Demo PDF created successfully!");
   } catch (error) {
     console.error("Error sending verification email:", error);
