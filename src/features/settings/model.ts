@@ -2,13 +2,13 @@ import mongoose from "mongoose";
 
 const general = new mongoose.Schema({
   companyName: { type: String, default: "", trim: true },
-  dialCode: { type: String, trim: true, required: true },
-  phone: { type: String, trim: true, required: true },
-  country: { type: String, trim: true, required: true },
-  province: { type: String, trim: true, required: true },
-  city: { type: String, trim: true, required: true },
-  postalCode: { type: String, trim: true, required: true },
-  address: { type: String, trim: true, required: true },
+  dialCode: { type: String, trim: true },
+  phone: { type: String, trim: true },
+  country: { type: String, trim: true },
+  province: { type: String, trim: true },
+  city: { type: String, trim: true },
+  postalCode: { type: String, trim: true },
+  address: { type: String, trim: true },
   contactEmail: { type: String, default: "", trim: true },
   timezone: {
     label: { type: String, default: "", trim: true },
