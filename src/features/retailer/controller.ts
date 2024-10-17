@@ -208,11 +208,27 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
         as: "subadmins",
         pipeline: [
           {
+            $lookup: {
+              from: "branches",
+              localField: "branchId",
+              foreignField: "_id",
+              as: "branch",
+            },
+          },
+          {
+            $unwind: {
+              path: "$branch",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
             $project: {
               firstName: 1,
               lastName: 1,
               fullName: 1,
               email: 1,
+              branchName: "$branch.name",
+              branchAddress: "$branch.address.name",
             },
           },
         ],
