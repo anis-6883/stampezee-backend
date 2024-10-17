@@ -3,22 +3,116 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,900&display=swap"
-      rel="stylesheet"
-    />
-    <title>Invoice</title>
+    <title>Invoice for Email Template</title>
     <style>
-      @font-face {
+      @import url("https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,900&family=Londrina+Sketch&display=swap");
+      @import url("https://stamp.holafootball.site/fonts/TAN-NIMBUS.ttf");
+
+      /* @font-face {
         font-family: tannimbus;
         src: url("../../public/fonts/TAN-NIMBUS.ttf");
-      }
+      } */
+
       /* @page {
         size: A4;
         margin: 0 auto;
       } */
+
+      .livvic-thin {
+        font-family: "Livvic", sans-serif;
+        font-weight: 100;
+        font-style: normal;
+      }
+
+      .livvic-extralight {
+        font-family: "Livvic", sans-serif;
+        font-weight: 200;
+        font-style: normal;
+      }
+
+      .livvic-light {
+        font-family: "Livvic", sans-serif;
+        font-weight: 300;
+        font-style: normal;
+      }
+
+      .livvic-regular {
+        font-family: "Livvic", sans-serif;
+        font-weight: 400;
+        font-style: normal;
+      }
+
+      .livvic-medium {
+        font-family: "Livvic", sans-serif;
+        font-weight: 500;
+        font-style: normal;
+      }
+
+      .livvic-semibold {
+        font-family: "Livvic", sans-serif;
+        font-weight: 600;
+        font-style: normal;
+      }
+
+      .livvic-bold {
+        font-family: "Livvic", sans-serif;
+        font-weight: 700;
+        font-style: normal;
+      }
+
+      .livvic-black {
+        font-family: "Livvic", sans-serif;
+        font-weight: 900;
+        font-style: normal;
+      }
+
+      .livvic-thin-italic {
+        font-family: "Livvic", sans-serif;
+        font-weight: 100;
+        font-style: italic;
+      }
+
+      .livvic-extralight-italic {
+        font-family: "Livvic", sans-serif;
+        font-weight: 200;
+        font-style: italic;
+      }
+
+      .livvic-light-italic {
+        font-family: "Livvic", sans-serif;
+        font-weight: 300;
+        font-style: italic;
+      }
+
+      .livvic-regular-italic {
+        font-family: "Livvic", sans-serif;
+        font-weight: 400;
+        font-style: italic;
+      }
+
+      .livvic-medium-italic {
+        font-family: "Livvic", sans-serif;
+        font-weight: 500;
+        font-style: italic;
+      }
+
+      .livvic-semibold-italic {
+        font-family: "Livvic", sans-serif;
+        font-weight: 600;
+        font-style: italic;
+      }
+
+      .livvic-bold-italic {
+        font-family: "Livvic", sans-serif;
+        font-weight: 700;
+        font-style: italic;
+      }
+
+      .livvic-black-italic {
+        font-family: "Livvic", sans-serif;
+        font-weight: 900;
+        font-style: italic;
+      }
 
       body {
         font-family: "Livvic", sans-serif;
@@ -41,6 +135,11 @@
         margin: 0 auto;
         background-color: white;
         border-radius: 8px;
+      }
+      .invoice {
+        font-family: tannimbus;
+        font-weight: bold;
+        font-size: x-large;
       }
 
       .bg-gray-100 {
@@ -347,20 +446,20 @@
         border-bottom: none;
       }
 
-      tbody .title {
+      tfoot .title {
         font-weight: bold;
         padding-right: 45px;
       }
 
-      tbody .pr-45 {
+      tfoot .pr-45 {
         padding-right: 45px;
       }
 
-      tbody .text-right {
+      tfoot .text-right {
         text-align: right;
       }
 
-      tbody .total-row {
+      tfoot .total-row {
         background-color: red;
         color: white;
         position: absolute;
@@ -375,7 +474,7 @@
 
       tfoot .total-amount {
         font-size: 1.5em;
-        padding: 10px 68px;
+        padding: 10px 200px;
       }
 
       .footer-section {
@@ -409,7 +508,7 @@
       }
 
       .company-info .company-title {
-        font-family: tannimbus, sans-serif;
+        font-family: tannimbus;
         font-weight: bold;
         font-size: 17px;
         text-align: end;
@@ -443,16 +542,16 @@
   <body class="bg-gray-100 p-4">
     <!-- Main Container -->
     <table class="container overflow-hidden">
-      <!-- <tr>
-        <td style="padding-left: 10px; border-bottom: none" class="py-6">
-         
+      <tr>
+        <td style="padding-left: 10px; border: none" class="py-6">
+          <!-- Invoice Table -->
           <div class="sub-container">
             <table class="w-full border-collapse border-spacing-0 relative">
               <div style="margin-top: 25px"></div>
-              
+              <!-- Footer Section -->
               <tfoot>
                 <tr style="width: 100%">
-                  <td colspan="2">
+                  <td style="border: none" colspan="2">
                     <div>
                       <img
                         src="https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/logo.png"
@@ -462,11 +561,9 @@
                       />
                     </div>
                   </td>
-                  <td colspan="2">
+                  <td style="border: none" colspan="2">
                     <div>
-                      <h1 style="font-family: tannimbus; font-size: 40px; font-weight: bold; text-align: end">
-                        Invoice
-                      </h1>
+                      <h1 style="font-family: Verdana; font-size: 60px; font-weight: bold; text-align: end">Invoice</h1>
                     </div>
                   </td>
                 </tr>
@@ -489,38 +586,6 @@
                 </tr>
               </tfoot>
             </table>
-          </div>
-        </td>
-      </tr> -->
-      <tr>
-        <td style="border-bottom: none" class="p-4">
-          <div class="sub-container" style="display: flex; align-items: center; justify-content: space-between">
-            <div>
-              <img
-                src="https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/logo.png"
-                width="150"
-                alt="Cyber Kitty"
-                style="margin-bottom: 15px"
-              />
-            </div>
-            <h1 style="font-family: tannimbus; font-size: 40px; font-weight: bold">Invoice</h1>
-          </div>
-        </td>
-      </tr>
-
-      <tr>
-        <td style="border-bottom: none" class="p-2">
-          <div class="sub-container" style="display: flex; align-items: center; justify-content: space-between">
-            <div style="display: flex; flex-direction: column">
-              <span class="font-bold mb-3">Billed to:</span>
-              <span>Estelle Darcy</span>
-              <span>+123-456-7890123</span>
-              <span>Anywhere St., Any City, ST 12345</span>
-            </div>
-            <div style="display: flex; flex-direction: column">
-              <span>Invoice No. 12345</span>
-              <span>26 September 2024</span>
-            </div>
           </div>
         </td>
       </tr>
@@ -590,69 +655,11 @@
                   <td class="border-b py-3 text-center">$5.00</td>
                   <td class="border-b py-3 text-center">$10.00</td>
                 </tr>
-                <tr>
-                  <td class="border-b py-3">Push Notification - Add on</td>
-
-                  <td class="border-b py-3 text-center">2</td>
-
-                  <td class="border-b py-3 text-center">$5.00</td>
-                  <td class="border-b py-3 text-center">$10.00</td>
-                </tr>
-
-                <tr>
-                  <td style="border-bottom: none"></td>
-                </tr>
-                <tr>
-                  <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Subtotal</td>
-                  <td style="border-bottom: none" class="text-right pr-45">$30.00</td>
-                </tr>
-                <tr>
-                  <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Remaining Amount</td>
-                  <td style="border-bottom: none" class="text-right pr-45">($5.00)</td>
-                </tr>
-                <tr>
-                  <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Plan Change Cost</td>
-                  <td style="border-bottom: none" class="text-right pr-45">$1.00</td>
-                </tr>
-                <tr>
-                  <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Coupon (10%)</td>
-                  <td style="border-bottom: none" class="text-right pr-45">($3.00)</td>
-                </tr>
-                <tr>
-                  <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Tax (2%)</td>
-                  <td style="border-bottom: none" class="text-right pr-45">$0.60</td>
-                </tr>
-                <tr>
-                  <td style="border-bottom: none"></td>
-                </tr>
-                <tr class="total-row">
-                  <td
-                    colspan="3"
-                    style="font-weight: 700; font-size: x-large; border-bottom: none"
-                    colspan="3"
-                    class="text-right total-label title"
-                  >
-                    Total
-                  </td>
-                  <td
-                    colspan="3"
-                    style="font-weight: 700; font-size: x-large; border-bottom: none"
-                    class="total-amount text-right"
-                  >
-                    $24.44
-                  </td>
-                </tr>
-                <tr>
-                  <td style="border-bottom: none"></td>
-                </tr>
-                <tr>
-                  <td style="border-bottom: none"></td>
-                </tr>
               </tbody>
               <div style="margin-top: 25px"></div>
               <!-- Footer Section -->
               <tfoot>
-                <!-- <tr>
+                <tr>
                   <td></td>
                 </tr>
                 <tr>
@@ -696,7 +703,7 @@
                 </tr>
                 <tr>
                   <td></td>
-                </tr> -->
+                </tr>
                 <tr>
                   <td colspan="3">
                     <div style="padding-top: 40px">
@@ -721,7 +728,7 @@
                   </td>
                   <td colspan="2">
                     <div class="company-info">
-                      <h2 class="company-title">StampEzee</h2>
+                      <h2 class="company-title livvic-bold-italic">StampEzee</h2>
                       <p>123 Anywhere St., Any City, ST 12345</p>
                     </div>
                   </td>

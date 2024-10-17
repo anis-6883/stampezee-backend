@@ -6,7 +6,7 @@ import mongoose from "mongoose";
 import path from "path";
 import puppeteer from "puppeteer";
 import { APP_SECRET } from "../configs/constants";
-import { invoiceTemplate } from "../templates/invoice";
+import { invoiceTemplatePdf } from "../templates/invoice";
 
 const objectIdExtension = (Joi: any) => ({
   type: "objectId",
@@ -2313,7 +2313,7 @@ export const htmlToPdf = async () => {
     });
     const page = await browser.newPage();
 
-    const template = invoiceTemplate;
+    const template = invoiceTemplatePdf;
     await page.setContent(template, { waitUntil: "networkidle2" });
 
     // await page.waitForFunction("document.fonts.ready");
