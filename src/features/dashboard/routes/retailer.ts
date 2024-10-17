@@ -1,8 +1,8 @@
 import express from "express";
-import { retailerDashboard } from "../controller";
+import { retailerDashboardCardStats } from "../controller";
 
 const router = express.Router();
 
-router.get("/calc", retailerDashboard);
+router.get("/calc", retailerDashboardCardStats);
 
 export default router;

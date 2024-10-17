@@ -1,10 +1,16 @@
 import express from "express";
-import { CustomerStatsWithCountryWise, fetchDashboardSuperAdmin, retailerStatsWithCountryWise } from "../controller";
+import {
+  customerStatsWithCountryWise,
+  retailerStatsWithCountryWise,
+  superAdminDashboardCardStats,
+  superAdminDashboardRevenue,
+} from "../controller";
 
 const router = express.Router();
 
-router.get("/calc", fetchDashboardSuperAdmin);
+router.get("/calc", superAdminDashboardCardStats);
+router.get("/revenue-stats", superAdminDashboardRevenue);
 router.get("/country-wise-retailer-stats", retailerStatsWithCountryWise);
-router.get("/country-wise-customer-stats", CustomerStatsWithCountryWise);
+router.get("/country-wise-customer-stats", customerStatsWithCountryWise);
 
 export default router;

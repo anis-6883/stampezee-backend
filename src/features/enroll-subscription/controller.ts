@@ -686,6 +686,10 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
       console.log("Handling Renew Subscription!");
       const invoicePaymentEvent = event.data.object;
 
+      const invoice: any = await stripe.invoices.retrieve(invoicePaymentEvent?.id as string, {
+        expand: ["payment_intent.payment_method"],
+      });
+
       if (
         invoicePaymentEvent.billing_reason === "subscription_update" ||
         invoicePaymentEvent.billing_reason === "subscription_cycle"
@@ -711,6 +715,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
           invoicePdf: invoicePaymentEvent.invoice_pdf,
           paymentStatus: "succeeded",
           amountTotal: invoicePaymentEvent.total,
+          paymentMethodDetails: invoice?.payment_intent?.payment_method, // Kind of Log Store
         });
       }
       break;

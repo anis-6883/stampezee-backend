@@ -1,13 +1,23 @@
 import { Response } from "express";
+import moment from "moment";
 import { apiResponse, asyncHandler, countryData, generateRandomColor } from "../../helpers";
 import { IApiRequest } from "../../types";
+import EnrollSubscription from "../enroll-subscription/model";
 import Stamp from "../stamp/model";
 import Customer from "../user/customer/model";
 import Retailer from "../user/retailer/model";
 
-export const fetchDashboardSuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-  const endOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
+/**
+ * Get Super Admin Dashboard Card Stats
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const superAdminDashboardCardStats = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const currentDate = moment();
+
+  const startOfMonth = currentDate.clone().startOf("month");
+  const endOfMonth = currentDate.clone().endOf("month");
 
   const [
     totalVerifiedRetailer,
@@ -47,16 +57,141 @@ export const fetchDashboardSuperAdmin = asyncHandler(async (req: IApiRequest, re
     signup,
   };
 
-  return apiResponse(res, 200, true, "Dashboard fetched successfully!", data);
+  return apiResponse(res, 200, true, "Super admin dashboard card stats fetched successfully!", data);
 });
 
 /**
- * Get Single Subscription Payment
+ * Get Super Admin Dashboard Revenue
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const retailerDashboard = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const superAdminDashboardRevenue = asyncHandler(async (req: IApiRequest, res: Response) => {
+  // Convert payment to base currency
+  // Rules: amount * (baseCurrencyRatio / convertCurrencyRatio)
+
+  const revenueStats = await EnrollSubscription.aggregate([
+    {
+      $match: {
+        paymentStatus: "completed", // Filter by completed payments
+      },
+    },
+    {
+      $lookup: {
+        from: "payments",
+        localField: "_id",
+        foreignField: "enrollSubscriptionId",
+        as: "payments",
+      },
+    },
+    {
+      $unwind: "$payments", // Unwind the payments array to process each payment
+    },
+    {
+      $addFields: {
+        convertedAmount: {
+          // Convert payment to base currency (CAD)
+          $multiply: ["$payments.amountTotal", { $divide: [1, "$balanceInfo.currencyRate"] }],
+        },
+      },
+    },
+    {
+      $facet: {
+        totalRevenue: [
+          {
+            $group: {
+              _id: null, // Group by null to aggregate all documents
+              totalInCents: { $sum: "$convertedAmount" }, // Sum the converted payment amounts for all types
+            },
+          },
+          {
+            $addFields: {
+              totalRevenueInCAD: {
+                $round: [{ $divide: ["$totalInCents", 100] }, 2], // Round to 2 decimal places
+              },
+            },
+          },
+        ],
+        totalSubscriptionRevenue: [
+          {
+            $match: {
+              "planSnapshot.type": "subscription", // Filter for subscription plans
+            },
+          },
+          {
+            $group: {
+              _id: null, // Group by null to aggregate all subscription-type payments
+              totalSubscriptionInCents: { $sum: "$convertedAmount" }, // Sum the subscription payments
+            },
+          },
+          {
+            $addFields: {
+              totalSubscriptionRevenueInCAD: {
+                $round: [{ $divide: ["$totalSubscriptionInCents", 100] }, 2], // Round to 2 decimal places
+              },
+            },
+          },
+        ],
+        totalAddonRevenue: [
+          {
+            $match: {
+              "planSnapshot.type": "addon", // Filter for addon plans
+            },
+          },
+          {
+            $group: {
+              _id: null, // Group by null to aggregate all addon-type payments
+              totalAddonInCents: { $sum: "$convertedAmount" }, // Sum the addon payments
+            },
+          },
+          {
+            $addFields: {
+              totalAddonRevenueInCAD: {
+                $round: [{ $divide: ["$totalAddonInCents", 100] }, 2], // Round to 2 decimal places
+              },
+            },
+          },
+        ],
+      },
+    },
+    {
+      $project: {
+        totalRevenueInCAD: { $arrayElemAt: ["$totalRevenue.totalRevenueInCAD", 0] },
+        totalSubscriptionRevenueInCAD: { $arrayElemAt: ["$totalSubscriptionRevenue.totalSubscriptionRevenueInCAD", 0] },
+        totalAddonRevenueInCAD: { $arrayElemAt: ["$totalAddonRevenue.totalAddonRevenueInCAD", 0] },
+      },
+    },
+  ]);
+
+  if (!revenueStats || revenueStats.length === 0) {
+    return apiResponse(res, 200, true, "No revenue stats available.", {});
+  }
+
+  const { totalRevenueInCAD = 0, totalSubscriptionRevenueInCAD = 0, totalAddonRevenueInCAD = 0 } = revenueStats[0];
+
+  // Calculate percentages only if totalRevenueInCAD > 0
+  const subscriptionPercentage =
+    totalRevenueInCAD > 0 ? ((totalSubscriptionRevenueInCAD / totalRevenueInCAD) * 100).toFixed(2) : 0;
+  const addonPercentage = totalRevenueInCAD > 0 ? ((totalAddonRevenueInCAD / totalRevenueInCAD) * 100).toFixed(2) : 0;
+
+  const data = {
+    totalRevenueInCAD,
+    totalSubscriptionRevenueInCAD,
+    totalAddonRevenueInCAD,
+    subscriptionPercentage,
+    addonPercentage,
+  };
+
+  return apiResponse(res, 200, true, "Super admin revenue stats fetched successfully!", data);
+});
+
+/**
+ * Get Retailer Admin Dashboard Card Stats
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, res: Response) => {
   const retailer = await Retailer.aggregate([
     {
       $match: { _id: req?.user?._id },
@@ -197,7 +332,7 @@ export const retailerDashboard = asyncHandler(async (req: IApiRequest, res: Resp
 
   if (retailer.length <= 0) return apiResponse(res, 404, false, "Retailer not found!");
 
-  return apiResponse(res, 200, true, "Retailer dashboard fetched successfully!", retailer[0]);
+  return apiResponse(res, 200, true, "Retailer dashboard card stats fetched successfully!", retailer[0]);
 });
 
 /**
@@ -265,7 +400,7 @@ export const retailerStatsWithCountryWise = asyncHandler(async (req: IApiRequest
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const CustomerStatsWithCountryWise = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const customerStatsWithCountryWise = asyncHandler(async (req: IApiRequest, res: Response) => {
   // Perform the aggregation to get country-wise counts and total count
   const customerCounts = await Customer.aggregate([
     {
@@ -305,12 +440,14 @@ export const CustomerStatsWithCountryWise = asyncHandler(async (req: IApiRequest
   const { totalCustomers, countries } = customerCounts[0];
 
   // Map the results to the desired format
-  const formattedResponse = countries.map((c: any) => ({
-    country: countryData?.find((item: any) => item?.country === c.country)?.code?.toLocaleLowerCase(),
-    name: c.country,
-    value: Math.round((c.count / totalCustomers) * 100), // Percentage value
-    style: generateRandomColor(), // Random color for background
-  }));
+  const formattedResponse = countries
+    .map((c: any) => ({
+      country: countryData?.find((item: any) => item?.country === c.country)?.code?.toLocaleLowerCase(),
+      name: c.country,
+      value: Math.round((c.count / totalCustomers) * 100), // Percentage value
+      style: generateRandomColor(), // Random color for background
+    }))
+    .filter((c: any) => c.name !== null);
 
   return apiResponse(res, 200, true, "Customer countries fetched successfully!", {
     totalCustomers,
