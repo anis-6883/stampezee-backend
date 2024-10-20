@@ -97,7 +97,7 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
 
     const token = generateSignature({ email: customerBody.email, role: ROLE.CUSTOMER, ott: true }, "15m"); // 15 min
 
-    sendVerificationEmail(customerBody.email, customerBody.otp, "mobile");
+    sendVerificationEmail(customerBody.email, customerBody.otp);
 
     if (existingCustomer) {
       await Customer.updateOne(
@@ -164,7 +164,7 @@ export const customerResendOtp = asyncHandler(async (req: IApiRequest, res: Resp
 
   await Customer.updateOne({ email: req.user.email }, { $set: { otp, otpExpiry } });
 
-  sendVerificationEmail(req.user.email, otp, "mobile");
+  sendVerificationEmail(req.user.email, otp);
 
   return apiResponse(res, 200, true, "Otp resend successfully!");
 });
@@ -309,7 +309,7 @@ export const customerForgetPassword = asyncHandler(async (req: IApiRequest, res:
   const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER, ott: true }, "15m"); // 15 min
 
   // Send Otp to Email
-  sendVerificationEmail(customer.email, otp, "mobile");
+  sendVerificationEmail(customer.email, otp);
 
   return apiResponse(res, 200, true, "Otp sent successfully!", { token });
 });
