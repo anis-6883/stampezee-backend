@@ -1,3 +1,5 @@
+import moment from "moment";
+
 export const invoiceTemplate = `<!doctype html>
 <html lang="en">
   <head>
@@ -703,7 +705,50 @@ export const invoiceTemplate = `<!doctype html>
 </html>
 `;
 
-export const invoiceTemplatePdf = `<!doctype html>
+const customerInfo = {
+  name: "Estelle Darcy",
+  phone: "+123-456-7890123",
+  address: "Anywhere St., Any City, ST 12345",
+};
+const purchasedItems = [{ title: "Advanced Plan", quantity: 1, unitPrice: 30, total: 30 }];
+
+const invoiceMetadata = {
+  invoiceNo: 1234,
+  subtotal: 30,
+  remainingAmount: 5,
+  planChangeCost: 1,
+  couponDiscount: 3,
+  taxDiscount: 0.6,
+  coupon: {
+    title: "Eid Coupon",
+    discountType: "percentage",
+    discount: 10,
+  },
+  tax: {
+    taxTitle: "VAT",
+    taxCost: 2,
+  },
+  total: 24.44,
+};
+
+const paymentInfo = {
+  bankName: "Fauget Bank",
+  accountName: "Juliana Silva",
+  accountNo: "123-456-7890",
+};
+
+export const getInvoiceTemplatePdf = ({
+  customerInfo = {},
+  purchasedItems = [],
+  invoiceMetadata = {},
+  paymentInfo = {},
+}: {
+  customerInfo: any;
+  purchasedItems: any;
+  invoiceMetadata: any;
+  paymentInfo: any;
+}) => {
+  return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -1171,13 +1216,13 @@ export const invoiceTemplatePdf = `<!doctype html>
           <div class="sub-container" style="display: flex; align-items: center; justify-content: space-between">
             <div style="display: flex; flex-direction: column">
               <span class="font-bold mb-3">Billed to:</span>
-              <span>Estelle Darcy</span>
-              <span>+123-456-7890123</span>
-              <span>Anywhere St., Any City, ST 12345</span>
+              <span>${customerInfo?.name}</span>
+              <span>${customerInfo?.phone}</span>
+              <span>${customerInfo?.address}</span>
             </div>
             <div style="display: flex; flex-direction: column">
-              <span>Invoice No. 12345</span>
-              <span>26 September 2024</span>
+              <span>Invoice No. ${invoiceMetadata?.invoiceNo}</span>
+              <span>${moment(new Date()).format("DD MMMM YYYY")}</span>
             </div>
           </div>
         </td>
@@ -1199,36 +1244,39 @@ export const invoiceTemplatePdf = `<!doctype html>
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td class="border-b py-3">Advanced Plan</td>
+                ${purchasedItems?.map(
+                  (item: any) =>
+                    `<tr>
+                  <td class="border-b py-3">${item?.title}</td>
 
-                  <td class="border-b py-3 text-center">1</td>
+                  <td class="border-b py-3 text-center">${item?.quantity}</td>
 
-                  <td class="border-b py-3 text-center">$30.00</td>
-                  <td class="border-b py-3 pr-3 text-center">$30.00</td>
-                </tr>
+                  <td class="border-b py-3 text-center">$${item?.unitPrice}</td>
+                  <td class="border-b py-3 pr-3 text-center">$${item?.total}</td>
+                </tr>`
+                )}
                 <tr>
                   <td style="border-bottom: none"></td>
                 </tr>
                 <tr>
                   <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Subtotal</td>
-                  <td style="border-bottom: none" class="text-right pr-45">$30.00</td>
+                  <td style="border-bottom: none" class="text-right pr-45">$${invoiceMetadata?.subtotal}</td>
                 </tr>
                 <tr>
                   <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Remaining Amount</td>
-                  <td style="border-bottom: none" class="text-right pr-45">($5.00)</td>
+                  <td style="border-bottom: none" class="text-right pr-45">-$${invoiceMetadata?.remainingAmount}</td>
                 </tr>
                 <tr>
                   <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Plan Change Cost</td>
-                  <td style="border-bottom: none" class="text-right pr-45">$1.00</td>
+                  <td style="border-bottom: none" class="text-right pr-45">$${invoiceMetadata?.planChangeCost}</td>
                 </tr>
                 <tr>
-                  <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Coupon (10%)</td>
-                  <td style="border-bottom: none" class="text-right pr-45">($3.00)</td>
+                  <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Coupon (${invoiceMetadata?.coupon?.discount}%)</td>
+                  <td style="border-bottom: none" class="text-right pr-45">-$${invoiceMetadata?.couponDiscount}</td>
                 </tr>
                 <tr>
-                  <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Tax (2%)</td>
-                  <td style="border-bottom: none" class="text-right pr-45">$0.60</td>
+                  <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Tax (${invoiceMetadata?.tax?.taxCost}%)</td>
+                  <td style="border-bottom: none" class="text-right pr-45">$${invoiceMetadata?.taxDiscount}</td>
                 </tr>
                 <tr>
                   <td style="border-bottom: none"></td>
@@ -1247,7 +1295,7 @@ export const invoiceTemplatePdf = `<!doctype html>
                     style="font-weight: 700; font-size: x-large; border-bottom: none"
                     class="total-amount text-right"
                   >
-                    $24.44
+                    $${invoiceMetadata?.total}
                   </td>
                 </tr>
                 <tr>
@@ -1276,10 +1324,10 @@ export const invoiceTemplatePdf = `<!doctype html>
                   <td colspan="2">
                     <div class="payment-info">
                       <h2>Payment Information</h2>
-                      <p>Fauget Bank</p>
-                      <p>Account Name: Juliana Silva</p>
-                      <p>Account No: 123-456-7890</p>
-                      <p>Pay by: 10 July 2025</p>
+                      <p>${paymentInfo?.bankName}</p>
+                      <p>Account Name: ${paymentInfo?.accountName}</p>
+                      <p>Account No: ${paymentInfo?.accountNo}</p>
+                      <p>Pay by: ${moment(new Date("10 July 2025")).format("DD MMMM YYYY")}</p>
                     </div>
                   </td>
                   <td colspan="2">
@@ -1298,3 +1346,6 @@ export const invoiceTemplatePdf = `<!doctype html>
   </body>
 </html>
 `;
+};
+
+export const invoiceTemplatePdf = getInvoiceTemplatePdf({ customerInfo, purchasedItems, invoiceMetadata, paymentInfo });

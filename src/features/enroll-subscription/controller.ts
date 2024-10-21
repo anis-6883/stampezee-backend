@@ -181,6 +181,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           $project: {
             _id: 1,
             title: 1,
+            code: 1,
             discountType: 1,
             discount: 1,
             allowFor: 1,
@@ -911,6 +912,8 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     }
 
     // @TODO: Send Subscription Invoice
+
+    console.log({ retailer, purchasedSubscription });
 
     await Promise.all(updateSubscriptions);
   } catch (err) {
