@@ -6,7 +6,7 @@ import mongoose from "mongoose";
 import path from "path";
 import puppeteer from "puppeteer";
 import { APP_SECRET } from "../configs/constants";
-import { invoiceTemplatePdf } from "../templates/invoice";
+import { getInvoiceTemplatePdf } from "../templates/invoice";
 
 const objectIdExtension = (Joi: any) => ({
   type: "objectId",
@@ -2306,14 +2306,24 @@ export const countryData = [
   },
 ];
 
-export const htmlToPdf = async () => {
+export const htmlToPdf = async ({
+  customerInfo = {},
+  purchasedItems = [],
+  invoiceMetadata = {},
+  paymentInfo = {},
+}: {
+  customerInfo: any;
+  purchasedItems: any;
+  invoiceMetadata: any;
+  paymentInfo: any;
+}) => {
   try {
     const browser = await puppeteer.launch({
       headless: true,
     });
     const page = await browser.newPage();
 
-    const template = invoiceTemplatePdf;
+    const template = getInvoiceTemplatePdf({ customerInfo, purchasedItems, invoiceMetadata, paymentInfo });
     await page.setContent(template, { waitUntil: "networkidle2" });
 
     // await page.waitForFunction("document.fonts.ready");

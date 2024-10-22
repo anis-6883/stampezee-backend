@@ -4,7 +4,7 @@ import nodemailer from "nodemailer";
 import Stripe from "stripe";
 import { PACKAGES } from "../../configs/constants";
 import { apiResponse, asyncHandler, calculateBalanceAmount, checkPlanChange, htmlToPdf } from "../../helpers";
-import { invoiceTemplate } from "../../templates/invoice";
+import { getInvoiceTemplate } from "../../templates/invoice";
 import { IApiRequest, IEnrollSubscriptionBody, ILineItem } from "../../types";
 import Branch from "../branch/model";
 import Coupon from "../coupon/model";
@@ -17,6 +17,7 @@ import Stamp from "../stamp/model";
 import Subscription from "../subscription/model";
 import Retailer from "../user/retailer/model";
 import EnrollSubscription from "./model";
+import { sendInvoiceToEmail } from "./service";
 import { couponSchema, enrollSubscriptionSchema } from "./validation";
 
 /**
@@ -709,7 +710,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
         );
 
         Payment.create({
-          retailerId: updatedSubscription.retailerId,
+          retailerId: updatedSubscription?.retailerId,
           enrollSubscriptionId: updatedSubscription._id,
           paymentIntentId: invoicePaymentEvent.payment_intent,
           invoiceNumber: invoicePaymentEvent.number,
@@ -913,7 +914,79 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
 
     // @TODO: Send Subscription Invoice
 
-    console.log({ retailer, purchasedSubscription });
+    const customerInfo = {
+      name: retailer?.fullName,
+      phone: `${retailer?.dialCode}-${retailer?.phone}`,
+      address: `${retailer?.address}, ${retailer?.city}, ${retailer?.postalCode}`,
+    };
+    const purchasedItems = [
+      {
+        title: purchasedSubscription?.planSnapshot?.title,
+        quantity: 1,
+        unitPrice: `${Number(purchasedSubscription?.planSnapshot?.price * purchasedSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
+        total: `${Number(purchasedSubscription?.planSnapshot?.price * purchasedSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
+      },
+    ];
+
+    let taxValue = 0;
+    let couponValue = 0;
+
+    // Check coupon eligibility & apply
+    if (purchasedSubscription?.couponSnapshot) {
+      couponValue =
+        purchasedSubscription?.couponSnapshot?.discountType === "percentage"
+          ? (purchasedSubscription?.balanceInfo?.planCurrentPrice * purchasedSubscription?.couponSnapshot?.discount) /
+            100
+          : purchasedSubscription?.balanceInfo?.currencyRate * purchasedSubscription?.couponSnapshot?.discount;
+      couponValue = Number(couponValue.toFixed(2));
+    }
+
+    // Only tax apply
+    if (purchasedSubscription?.taxSnapshot) {
+      taxValue =
+        (purchasedSubscription?.balanceInfo?.planCurrentPrice * purchasedSubscription?.taxSnapshot?.taxCost) / 100;
+    }
+
+    const invoiceMetadata = {
+      invoiceNo: invoice?.number,
+      subtotal: `${Number(purchasedSubscription?.planSnapshot?.price * purchasedSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
+      remainingAmount:
+        purchasedSubscription?.enrollStatus === "purchase"
+          ? null
+          : `${purchasedSubscription?.balanceInfo?.currentBalance?.toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
+      planChangeCost:
+        purchasedSubscription?.enrollStatus === "purchase"
+          ? null
+          : `${purchasedSubscription?.planChangeCost.toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
+      couponDiscount: purchasedSubscription?.couponSnapshot
+        ? `${couponValue.toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`
+        : null,
+      taxDiscount: purchasedSubscription?.taxSnapshot
+        ? `${taxValue?.toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`
+        : null,
+      coupon: purchasedSubscription?.couponSnapshot
+        ? {
+            title: purchasedSubscription?.couponSnapshot?.title,
+            discountType: purchasedSubscription?.couponSnapshot?.discountType,
+            discount: purchasedSubscription?.couponSnapshot?.discount,
+          }
+        : null,
+      tax: purchasedSubscription?.taxSnapshot
+        ? {
+            taxTitle: purchasedSubscription?.taxSnapshot?.taxTitle,
+            taxCost: purchasedSubscription?.taxSnapshot?.taxCost,
+          }
+        : null,
+      total: `${checkoutSession?.amount_total / 100} ${purchasedSubscription?.balanceInfo?.currency}`,
+    };
+
+    const paymentInfo = {
+      bankName: "Fauget Bank",
+      accountName: "Juliana Silva",
+      accountNo: "123-456-7890",
+    };
+
+    await sendInvoiceToEmail({ email: retailer?.email, customerInfo, purchasedItems, invoiceMetadata, paymentInfo });
 
     await Promise.all(updateSubscriptions);
   } catch (err) {
@@ -940,7 +1013,39 @@ export const testEmailPDF = asyncHandler(async (req: IApiRequest, res: Response)
     }
   );
 
-  await htmlToPdf();
+  const customerInfo = {
+    name: "Estelle Darcy",
+    phone: "+123-456-7890123",
+    address: "Anywhere St., Any City, ST 12345",
+  };
+  const purchasedItems = [{ title: "Advanced Plan", quantity: 1, unitPrice: 30.0, total: 30 }];
+
+  const invoiceMetadata = {
+    invoiceNo: 1234,
+    subtotal: 30,
+    remainingAmount: 5,
+    planChangeCost: 1,
+    couponDiscount: 3,
+    taxDiscount: 0.6,
+    coupon: {
+      title: "Eid Coupon",
+      discountType: "percentage",
+      discount: 10,
+    },
+    tax: {
+      taxTitle: "VAT",
+      taxCost: 2,
+    },
+    total: 24.44,
+  };
+
+  const paymentInfo = {
+    bankName: "Fauget Bank",
+    accountName: "Juliana Silva",
+    accountNo: "123-456-7890",
+  };
+
+  await htmlToPdf({ customerInfo, purchasedItems, invoiceMetadata, paymentInfo });
 
   const transporter = nodemailer.createTransport({
     host: settings?.mail?.host,
@@ -955,8 +1060,8 @@ export const testEmailPDF = asyncHandler(async (req: IApiRequest, res: Response)
   const mailOptions = {
     from: settings?.mail?.username,
     to: "rakibiuaece@gmail.com",
-    subject: "Demo Account Registration",
-    html: invoiceTemplate,
+    subject: "Subscription Invoice",
+    html: getInvoiceTemplate({ customerInfo, purchasedItems, invoiceMetadata, paymentInfo }),
     attachments: [
       {
         path: __dirname + "/temp/invoice.pdf",
