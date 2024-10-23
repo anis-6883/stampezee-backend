@@ -511,7 +511,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           },
           paymentStatus: "pending",
           enrollStatus: "downgrade",
-          status: false,
+          status: true,
         });
 
         enrollIdDuration["planEnrollmentId"] = String(enrollSubscription._id);
@@ -536,7 +536,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         const applyCoupon = await stripe.coupons.create({
           name: "Current Balance",
           amount_off:
-            selectCurrency?.name === "JPY" ? Math.round(Number(totalAmount)) : Math.round(Number(totalAmount * 100)),
+            selectCurrency?.name === "JPY"
+              ? Math.round(Number(balanceAmount))
+              : Math.round(Number(balanceAmount * 100)),
           currency,
           duration: "once",
         });
