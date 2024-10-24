@@ -152,6 +152,17 @@ export const superAdminDashboardRevenue = asyncHandler(async (req: IApiRequest, 
             },
           },
         ],
+        activeSubscription: [
+          {
+            $match: {
+              "planSnapshot.type": "subscription",
+              status: true,
+            },
+          },
+          {
+            $count: "activeSubscription", // Count the active subscription plans
+          },
+        ],
       },
     },
     {
@@ -159,6 +170,7 @@ export const superAdminDashboardRevenue = asyncHandler(async (req: IApiRequest, 
         totalRevenueInCAD: { $arrayElemAt: ["$totalRevenue.totalRevenueInCAD", 0] },
         totalSubscriptionRevenueInCAD: { $arrayElemAt: ["$totalSubscriptionRevenue.totalSubscriptionRevenueInCAD", 0] },
         totalAddonRevenueInCAD: { $arrayElemAt: ["$totalAddonRevenue.totalAddonRevenueInCAD", 0] },
+        activeSubscription: { $arrayElemAt: ["$activeSubscription.activeSubscription", 0] },
       },
     },
   ]);
@@ -167,7 +179,12 @@ export const superAdminDashboardRevenue = asyncHandler(async (req: IApiRequest, 
     return apiResponse(res, 200, true, "No revenue stats available.", {});
   }
 
-  const { totalRevenueInCAD = 0, totalSubscriptionRevenueInCAD = 0, totalAddonRevenueInCAD = 0 } = revenueStats[0];
+  const {
+    totalRevenueInCAD = 0,
+    totalSubscriptionRevenueInCAD = 0,
+    totalAddonRevenueInCAD = 0,
+    activeSubscription = 0,
+  } = revenueStats[0];
 
   // Calculate percentages only if totalRevenueInCAD > 0
   const subscriptionPercentage =
@@ -175,6 +192,7 @@ export const superAdminDashboardRevenue = asyncHandler(async (req: IApiRequest, 
   const addonPercentage = totalRevenueInCAD > 0 ? ((totalAddonRevenueInCAD / totalRevenueInCAD) * 100).toFixed(2) : 0;
 
   const data = {
+    activeSubscription,
     totalRevenueInCAD,
     totalSubscriptionRevenueInCAD,
     totalAddonRevenueInCAD,
