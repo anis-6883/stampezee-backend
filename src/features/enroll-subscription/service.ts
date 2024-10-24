@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 
+import path from "path";
 import { htmlToPdf } from "../../helpers";
 import { getInvoiceTemplate } from "../../templates/invoice";
 import Settings from "../settings/model";
@@ -47,7 +48,7 @@ export const sendInvoiceToEmail = async ({
     html: getInvoiceTemplate({ customerInfo, purchasedItems, invoiceMetadata, paymentInfo }),
     attachments: [
       {
-        path: __dirname + "/temp/invoice.pdf",
+        path: path.join(process.cwd(), "/src/features/enroll-subscription/temp/invoice.pdf"),
         filename: "invoice.pdf",
         contentType: "contentType",
       },
