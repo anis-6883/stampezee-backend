@@ -988,9 +988,9 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       accountNo: "123-456-7890",
     };
 
-    await sendInvoiceToEmail({ email: retailer?.email, customerInfo, purchasedItems, invoiceMetadata, paymentInfo });
-
     await Promise.all(updateSubscriptions);
+
+    await sendInvoiceToEmail({ email: retailer?.email, customerInfo, purchasedItems, invoiceMetadata, paymentInfo });
   } catch (err) {
     console.log(err);
     // throw err.message || err || "Something went wrong!";
