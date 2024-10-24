@@ -70,10 +70,19 @@ export const superAdminDashboardRevenue = asyncHandler(async (req: IApiRequest, 
   // Convert payment to base currency
   // Rules: amount * (baseCurrencyRatio / convertCurrencyRatio)
 
+  console.log({ query: req.query });
+
   const revenueStats = await EnrollSubscription.aggregate([
     {
       $match: {
         paymentStatus: "completed", // Filter by completed payments
+        ...(req.query.start &&
+          req.query.end && {
+            createdAt: {
+              $gte: new Date(req.query.start as string), // Greater than or equal to start date
+              $lte: new Date(req.query.end as string), // Less than or equal to end date
+            },
+          }),
       },
     },
     {
