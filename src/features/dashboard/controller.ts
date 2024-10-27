@@ -3,6 +3,7 @@ import moment from "moment";
 import { apiResponse, asyncHandler, countryData, generateRandomColor } from "../../helpers";
 import { IApiRequest } from "../../types";
 import EnrollSubscription from "../enroll-subscription/model";
+import OrderStamp from "../mobile/sub-admin/home/model";
 import Stamp from "../stamp/model";
 import Customer from "../user/customer/model";
 import Retailer from "../user/retailer/model";
@@ -479,4 +480,78 @@ export const customerStatsWithCountryWise = asyncHandler(async (req: IApiRequest
     totalCustomers,
     countries: formattedResponse?.sort((a: any, b: any) => b.value - a.value),
   });
+});
+
+/**
+ * Get Top Outlets according to number of sales
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const topOutlets = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const test = await OrderStamp.aggregate([
+    {
+      $addFields: {
+        amountInCAD: {
+          $cond: {
+            if: { $eq: ["$amountCurrency", "CAD"] },
+            then: "$amount",
+            else: { $multiply: ["$amount", "$exchangeRate"] }, // Convert to CAD using exchangeRate if different currency
+          },
+        },
+      },
+    },
+    {
+      $group: {
+        _id: "$branchId", // Group by branchId
+        totalAmountInCAD: { $sum: "$amountInCAD" }, // Sum the converted amountInCAD for each branchId
+        retailerId: { $first: "$retailerId" }, // Capture the retailerId for each branchId
+      },
+    },
+    {
+      $lookup: {
+        from: "retailers", // Lookup to retailers collection
+        localField: "retailerId", // Local field from OrderStamp
+        foreignField: "_id", // Foreign field in retailers collection
+        as: "retailer", // Resulting array field
+      },
+    },
+    {
+      $unwind: "$retailer", // Unwind retailer array if you expect only one retailer per branch
+    },
+    {
+      $lookup: {
+        from: "branches", // Lookup to branches collection
+        localField: "_id", // Use the grouped branchId
+        foreignField: "_id", // Foreign field in branches collection
+        as: "branch", // Resulting array field
+      },
+    },
+    {
+      $unwind: "$branch", // Unwind branch array to get branch details
+    },
+    {
+      $sort: {
+        totalAmountInCAD: -1, // Sort by totalAmount in descending order
+      },
+    },
+    {
+      $project: {
+        _id: 0, // Exclude the default _id field
+        totalAmountInCAD: 1, // Include the totalAmount
+        retailer: {
+          _id: "$retailer._id", // Include specific fields from retailer
+          storeName: "$retailer.storeName", // Include specific fields from retailer
+          email: "$retailer.email",
+        },
+        branch: {
+          _id: "$branch._id",
+          name: "$branch.name", // Include specific fields from branch
+          address: "$branch.address.name", // Include specific fields from branch
+        },
+      },
+    },
+  ]);
+
+  return apiResponse(res, 200, true, "Top Outlets List!", test);
 });

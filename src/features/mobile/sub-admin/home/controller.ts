@@ -5,6 +5,7 @@ import { uploadFileToS3Bucket } from "../../../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, formatErrorMsg, makePaginateForMobile } from "../../../../helpers";
 import { IApiRequest, INumberObject, Object } from "../../../../types";
 import Branch from "../../../branch/model";
+import CurrencyExchange from "../../../currency-exchange/model";
 import Retailer from "../../../user/retailer/model";
 import CollectStamp from "../../customer/search/model";
 import { stampCollected } from "../../socket/socket";
@@ -114,6 +115,8 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
     Retailer.findById(req?.user?.retailerId, { businessCurrency: 1 }),
   ]);
 
+  const currencyExchange = await CurrencyExchange.findOne({ name: retailer?.businessCurrency });
+
   if (stampIsCollected.length < 1) throw "Invalid QR Code";
 
   if (stampIsCollected[0].stamps.length < 1) throw "Stamp Expired";
@@ -129,6 +132,7 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
     subAdminId: req?.user?._id,
     stamp: "",
     amountCurrency: retailer?.businessCurrency,
+    exchangeRate: currencyExchange?.exchangeRate,
   };
 
   const response: Object = {

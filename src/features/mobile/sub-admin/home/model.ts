@@ -39,6 +39,10 @@ const schema = new mongoose.Schema(
       type: String,
       default: "CAD",
     },
+    exchangeRate: {
+      type: Number,
+      default: 1,
+    },
     invoice: {
       type: String,
       default: null,
