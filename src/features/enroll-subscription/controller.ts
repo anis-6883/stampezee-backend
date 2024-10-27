@@ -486,6 +486,90 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
         await Promise.all(updateQueries);
 
+        // @TODO: Send Subscription Invoice
+
+        const retailer = await Retailer.findById(req.user._id);
+
+        const customerInfo = {
+          name: retailer?.fullName,
+          phone: `${retailer?.dialCode}-${retailer?.phone}`,
+          address: `${retailer?.address}, ${retailer?.city}, ${retailer?.postalCode}`,
+        };
+        const purchasedItems = [
+          {
+            title: enrollSubscription?.planSnapshot?.title,
+            quantity: 1,
+            unitPrice: `${Number(enrollSubscription?.planSnapshot?.price * enrollSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
+            total: `${Number(enrollSubscription?.planSnapshot?.price * enrollSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
+          },
+        ];
+
+        let taxAmount = 0;
+        let couponAmount = 0;
+
+        // Check coupon eligibility & apply
+        if (enrollSubscription?.couponSnapshot) {
+          couponAmount =
+            enrollSubscription?.couponSnapshot?.discountType === "percentage"
+              ? (enrollSubscription?.balanceInfo?.planCurrentPrice * enrollSubscription?.couponSnapshot?.discount) / 100
+              : enrollSubscription?.balanceInfo?.currencyRate * enrollSubscription?.couponSnapshot?.discount;
+          couponAmount = Number(couponAmount.toFixed(2));
+        }
+
+        // Only tax apply
+        if (enrollSubscription?.taxSnapshot) {
+          taxAmount =
+            (enrollSubscription?.balanceInfo?.planCurrentPrice * enrollSubscription?.taxSnapshot?.taxCost) / 100;
+        }
+
+        const invoiceMetadata = {
+          invoiceNo: "",
+          subtotal: `${Number(enrollSubscription?.planSnapshot?.price * enrollSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
+          remainingAmount:
+            enrollSubscription?.enrollStatus === "purchase"
+              ? null
+              : `${enrollSubscription?.balanceInfo?.currentBalance?.toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
+          planChangeCost:
+            enrollSubscription?.enrollStatus === "purchase" || enrollSubscription?.enrollStatus === "downgrade"
+              ? null
+              : `${enrollSubscription?.planChangeCost.toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
+          couponDiscount: enrollSubscription?.couponSnapshot
+            ? `${couponAmount.toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`
+            : null,
+          taxDiscount:
+            enrollSubscription?.taxSnapshot && enrollSubscription?.enrollStatus !== "downgrade"
+              ? `${taxAmount?.toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`
+              : null,
+          coupon: enrollSubscription?.couponSnapshot
+            ? {
+                title: enrollSubscription?.couponSnapshot?.title,
+                discountType: enrollSubscription?.couponSnapshot?.discountType,
+                discount: enrollSubscription?.couponSnapshot?.discount,
+              }
+            : null,
+          tax:
+            enrollSubscription?.taxSnapshot && enrollSubscription?.enrollStatus !== "downgrade"
+              ? {
+                  taxTitle: enrollSubscription?.taxSnapshot?.taxTitle,
+                  taxCost: enrollSubscription?.taxSnapshot?.taxCost,
+                }
+              : null,
+          total: `${Math.abs(totalAmount).toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
+        };
+
+        const paymentInfo = {
+          bankName: "Fauget Bank",
+          accountName: "Juliana Silva",
+          accountNo: "123-456-7890",
+        };
+
+        await sendInvoiceToEmail({
+          email: retailer?.email,
+          customerInfo,
+          purchasedItems,
+          invoiceMetadata,
+          paymentInfo,
+        });
         return apiResponse(res, 200, true, `Your plan successfully downgraded!`, {
           plan: pickSubscriptionPlan?.slug,
           planStartAt: moment(),
@@ -979,7 +1063,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
             taxCost: purchasedSubscription?.taxSnapshot?.taxCost,
           }
         : null,
-      total: `${checkoutSession?.amount_total / 100} ${purchasedSubscription?.balanceInfo?.currency}`,
+      total: `${(checkoutSession?.amount_total / 100).toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
     };
 
     const paymentInfo = {

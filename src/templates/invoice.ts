@@ -1330,7 +1330,7 @@ export const getInvoiceTemplate = ({
                   </td>
                   <td colspan="2">
                     <div style="text-align: end;font-family:Tahoma; font-size:15px">
-                      <p>Invoice No. ${invoiceMetadata?.invoiceNo}</p>
+                    ${invoiceMetadata?.invoiceNo ? `<p>Invoice No. ${invoiceMetadata?.invoiceNo}</p>` : ""}
                       <p>${moment(new Date()).format("DD MMMM YYYY")}</p>
                     </div>
                   </td>
@@ -1403,10 +1403,14 @@ export const getInvoiceTemplate = ({
                 </tr>`
                     : ""
                 }
-                <tr>
+                ${
+                  invoiceMetadata?.taxDiscount
+                    ? `<tr>
                   <td style="padding-left: 250px" colspan="3" class="title">Tax (${invoiceMetadata?.tax?.taxCost}%)</td>
                   <td class="text-right pr-45">${invoiceMetadata?.taxDiscount}</td>
-                </tr>
+                </tr>`
+                    : ""
+                }
                 <tr>
                   <td></td>
                 </tr>
@@ -1417,7 +1421,7 @@ export const getInvoiceTemplate = ({
                     colspan="3"
                     class="text-right total-label title"
                   >
-                    Total
+                    ${invoiceMetadata?.invoiceNo ? "Total" : "Refund"}
                   </td>
                   <td colspan="3" style="font-weight: 700; font-size: x-large" class="total-amount text-right">
                     ${invoiceMetadata?.total}
@@ -1942,7 +1946,7 @@ export const getInvoiceTemplatePdf = ({
               <span>${customerInfo?.address}</span>
             </div>
             <div style="display: flex; flex-direction: column">
-              <span>Invoice No. ${invoiceMetadata?.invoiceNo}</span>
+              ${invoiceMetadata?.invoiceNo ? `<span>Invoice No. ${invoiceMetadata?.invoiceNo}</span>` : ""}
               <span>${moment(new Date()).format("DD MMMM YYYY")}</span>
             </div>
           </div>
@@ -2007,10 +2011,14 @@ export const getInvoiceTemplatePdf = ({
                 </tr>`
                    : ""
                }
-                <tr>
+                ${
+                  invoiceMetadata?.taxDiscount
+                    ? `<tr>
                   <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Tax (${invoiceMetadata?.tax?.taxCost}%)</td>
                   <td style="border-bottom: none" class="text-right pr-45">${invoiceMetadata?.taxDiscount}</td>
-                </tr>
+                </tr>`
+                    : ""
+                }
                 <tr>
                   <td style="border-bottom: none"></td>
                 </tr>
@@ -2021,7 +2029,7 @@ export const getInvoiceTemplatePdf = ({
                     colspan="3"
                     class="text-right total-label title"
                   >
-                    Total
+                  ${invoiceMetadata?.invoiceNo ? "Total" : "Refund"}
                   </td>
                   <td
                     colspan="3"
