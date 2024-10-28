@@ -489,7 +489,7 @@ export const customerStatsWithCountryWise = asyncHandler(async (req: IApiRequest
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const topOutlets = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const test = await OrderStamp.aggregate([
+  const outlets = await OrderStamp.aggregate([
     {
       $addFields: {
         amountInCAD: {
@@ -510,48 +510,48 @@ export const topOutlets = asyncHandler(async (req: IApiRequest, res: Response) =
     },
     {
       $lookup: {
-        from: "retailers", // Lookup to retailers collection
-        localField: "retailerId", // Local field from OrderStamp
-        foreignField: "_id", // Foreign field in retailers collection
-        as: "retailer", // Resulting array field
+        from: "retailers",
+        localField: "retailerId",
+        foreignField: "_id",
+        as: "retailer",
       },
     },
     {
-      $unwind: "$retailer", // Unwind retailer array if you expect only one retailer per branch
+      $unwind: "$retailer",
     },
     {
       $lookup: {
-        from: "branches", // Lookup to branches collection
-        localField: "_id", // Use the grouped branchId
-        foreignField: "_id", // Foreign field in branches collection
-        as: "branch", // Resulting array field
+        from: "branches",
+        localField: "_id",
+        foreignField: "_id",
+        as: "branch",
       },
     },
     {
-      $unwind: "$branch", // Unwind branch array to get branch details
+      $unwind: "$branch",
     },
     {
       $sort: {
-        totalAmountInCAD: -1, // Sort by totalAmount in descending order
+        totalAmountInCAD: -1,
       },
     },
     {
       $project: {
-        _id: 0, // Exclude the default _id field
-        totalAmountInCAD: 1, // Include the totalAmount
+        _id: 0,
+        totalAmountInCAD: 1,
         retailer: {
-          _id: "$retailer._id", // Include specific fields from retailer
-          storeName: "$retailer.storeName", // Include specific fields from retailer
+          _id: "$retailer._id",
+          storeName: "$retailer.storeName",
           email: "$retailer.email",
         },
         branch: {
           _id: "$branch._id",
-          name: "$branch.name", // Include specific fields from branch
-          address: "$branch.address.name", // Include specific fields from branch
+          name: "$branch.name",
+          address: "$branch.address.name",
         },
       },
     },
   ]);
 
-  return apiResponse(res, 200, true, "Top Outlets List!", test);
+  return apiResponse(res, 200, true, "Top Outlets List!", outlets);
 });
