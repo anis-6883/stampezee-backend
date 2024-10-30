@@ -1,11 +1,9 @@
 import bcrypt from "bcrypt";
 import { Response } from "express";
-import { PACKAGES } from "../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, makePaginate } from "../../helpers";
 import { IApiRequest } from "../../types";
 import Branch from "../branch/model";
-import EnrollSubscription from "../enroll-subscription/model";
 import SubAdmin from "../user/sub-admin/model";
 import { sendRegistrationMail } from "./service";
 import { subAdminSchema, subAdminSchema2, subAdminStatusSchema } from "./validation";
@@ -22,45 +20,13 @@ export const createSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
   const { softDeleted, retailerId, password, ...createBody } = result;
   createBody.retailerId = req.user._id;
 
-  // Check Subscription & Addon Enrollment
-  const [subscription, addons, retailerTotalSubAdmin] = await Promise.all([
-    EnrollSubscription.findOne({
-      retailerId: req.user._id,
-      "planSnapshot.type": "subscription",
-      paymentStatus: { $in: ["completed", "trial"] },
-      validityTo: { $gt: new Date() },
-      status: true,
-    }),
-    EnrollSubscription.find({
-      retailerId: req.user._id,
-      "planSnapshot.type": "addon",
-      "planSnapshot.slug": PACKAGES.BRANCH,
-      paymentStatus: "completed",
-      validityTo: { $gt: new Date() },
-      status: true,
-    }),
-    SubAdmin.find({ retailerId: createBody.retailerId, softDeleted: false }),
-  ]);
-
-  if (!subscription) {
-    throw "No one is allowed to create a sub-admin without a plan!";
-  }
-
-  const allowTotalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addons.length;
-
-  if (retailerTotalSubAdmin.length >= allowTotalBranch) {
-    throw "Your limit is over. Take Branch Add-on!";
-  }
-
-  const [branch, existingSubAdmin, engagedSubAdmin]: any = await Promise.all([
+  const [branch, existingSubAdmin]: any = await Promise.all([
     Branch.findOne({ _id: createBody.branchId, retailerId: createBody.retailerId }),
     SubAdmin.findOne({ email: createBody.email }),
-    SubAdmin.findOne({ branchId: createBody.branchId, softDeleted: false }),
   ]);
 
   if (!branch) throw "Branch not found!";
   if (existingSubAdmin) throw "This email already exists!";
-  if (engagedSubAdmin) throw "This branch already has a Sub-Admin!";
 
   let imageKey = null;
 
@@ -202,17 +168,12 @@ export const updateSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
   const { softDeleted, password, ...updatedBody } = result;
 
   if (updatedBody.branchId) {
-    const [branch, alreadyAssign] = await Promise.all([
-      Branch.findOne({ _id: updatedBody.branchId, retailerId: req.user._id }),
-      SubAdmin.findOne({ branchId: updatedBody.branchId, _id: { $ne: id } }),
-    ]);
-
+    const branch = await Branch.findOne({ _id: updatedBody.branchId, retailerId: req.user._id });
     if (!branch) throw "Branch not found!";
-    if (alreadyAssign) throw "Already assign in given branch!";
   }
 
-  const existingSubAdmin = await SubAdmin.findOne({ email: updatedBody.email, _id: { $ne: id } });
-  if (existingSubAdmin) throw "This sub-admin already exists!";
+  const isExist = await SubAdmin.findOne({ email: updatedBody.email, _id: { $ne: id } });
+  if (isExist) throw "This email already exists!";
 
   // Upload File to S3 Bucket
   if (req.file) {
@@ -230,9 +191,7 @@ export const updateSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
     projection: { password: 0, createdAt: 0, updatedAt: 0 },
   });
 
-  if (!subAdmin) {
-    return apiResponse(res, 404, false, "Sub Admin not found!");
-  }
+  if (!subAdmin) return apiResponse(res, 404, false, "Sub Admin not found!");
 
   return apiResponse(res, 200, true, "Sub Admin updated successfully!", subAdmin);
 });
