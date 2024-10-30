@@ -14,6 +14,7 @@ import { IApiRequest, IUser } from "../../../types";
 import CollectStamp from "../../mobile/customer/search/model";
 import OrderStamp from "../../mobile/sub-admin/home/model";
 import { sendVerificationEmail } from "../service";
+import SubAdmin from "../sub-admin/model";
 import {
   customerChangeForgetPasswordSchema,
   customerLoginSchema,
@@ -170,91 +171,183 @@ export const customerResendOtp = asyncHandler(async (req: IApiRequest, res: Resp
 });
 
 /**
- * Customer Login
+ * Customer & Sub Admin Login
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const customerLogin = asyncHandler(async (req: Request, res: Response) => {
+export const customerAndSubAdminLogin = asyncHandler(async (req: Request, res: Response) => {
   const result = customerLoginSchema.validate(req.body);
   if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
 
   const { email, password } = result.value;
 
   const customer: any = await Customer.findOne({ email });
-  if (!customer) return apiResponse(res, 401, false, "Please, complete your registration first!");
-
-  if (!customer.isVerified) {
-    await Customer.deleteOne({ email });
-    return apiResponse(res, 401, false, "Please, complete your registration first!");
-  }
-
-  if (!customer.status) return apiResponse(res, 401, false, "Your account has been blocked by admin!");
-
-  // Switch Account Login Try
-  if (customer.provider != "email") {
-    let message;
-    switch (customer.provider) {
-      case "apple":
-        message = "Your account was registered using Apple. Please log in with Apple!";
-        break;
-      case "google":
-        message = "Your account was registered using Google. Please log in with Google!";
-        break;
-      default:
-        message = "Please log in using the email and password you registered with!";
-        break;
-    }
-    return apiResponse(res, 401, false, message);
-  }
-
-  const isPasswordValid = await bcrypt.compare(password, customer.password);
-  if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
-
-  const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER }, "30 days");
-  await Customer.updateMany({ email: customer.email }, { token, deletionRequest: false });
-
-  // Remove Sensitive Data
-  const data = exclude(customer._doc, [
-    "password",
-    "otp",
-    "otpExpiry",
-    "isVerified",
-    "verifiedAt",
-    "createdAt",
-    "updatedAt",
-    "token",
+  const subAdmin: any = await SubAdmin.aggregate([
+    { $match: { email: email, status: true, softDeleted: false } },
+    {
+      $lookup: {
+        from: "retailers",
+        localField: "retailerId",
+        foreignField: "_id",
+        as: "retailer",
+      },
+    },
+    {
+      $lookup: {
+        from: "branches",
+        localField: "branchId",
+        foreignField: "_id",
+        as: "branch",
+      },
+    },
+    {
+      $unwind: "$retailer",
+    },
+    {
+      $unwind: "$branch",
+    },
+    {
+      $project: {
+        _id: 1,
+        firstName: 1,
+        lastName: 1,
+        fullName: 1,
+        email: 1,
+        image: 1,
+        password: 1,
+        "retailer._id": 1,
+        "retailer.storeName": 1,
+        "retailer.image": 1,
+        "retailer.businessCurrency": 1,
+        "branch._id": 1,
+        "branch.name": 1,
+        "branch.address": "$branch.address.name",
+      },
+    },
   ]);
 
-  return apiResponse(res, 200, true, "Customer Login Successfully!", { token, ...data });
+  if (!customer && !subAdmin[0]) return apiResponse(res, 401, false, "Please, complete your registration first!");
+
+  // Customer Exist Logic
+  if (customer) {
+    if (!customer.isVerified) {
+      await Customer.deleteOne({ email });
+      return apiResponse(res, 401, false, "Please, complete your registration first!");
+    }
+
+    if (!customer.status) return apiResponse(res, 401, false, "Your account has been blocked by admin!");
+
+    // Switch Account Login Try
+    if (customer.provider !== "email") {
+      const providerMessages: any = {
+        apple: "Your account was registered using Apple. Please log in with Apple!",
+        google: "Your account was registered using Google. Please log in with Google!",
+        default: "Please log in using the email and password you registered with!",
+      };
+      return apiResponse(res, 401, false, providerMessages[customer.provider] || providerMessages.default);
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, customer.password);
+    if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
+
+    const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER }, "30 days");
+    await Customer.updateOne({ email: customer.email }, { token, deletionRequest: false });
+
+    // Remove Sensitive Data
+    const data = exclude(customer._doc, ["password", "otp", "otpExpiry", "softDeleted", "deletionRequest"]);
+
+    return apiResponse(res, 200, true, "Customer login successfully!", { ...data, token, role: ROLE.CUSTOMER });
+  }
+
+  // Sub-admin Exist Logic
+  if (subAdmin[0]) {
+    const isPasswordValid = await bcrypt.compare(password, subAdmin[0].password);
+    if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
+
+    const token = generateSignature({ email: subAdmin[0].email, role: ROLE.SUB_ADMIN }, "30 days");
+    await SubAdmin.updateOne({ email: subAdmin[0].email }, { token });
+
+    // Remove Sensitive Data
+    const data = exclude(subAdmin[0], ["password"]);
+
+    return apiResponse(res, 200, true, "Sub admin login successfully!", { ...data, token, role: ROLE.SUB_ADMIN });
+  }
+
+  return apiResponse(res, 401, false, "Please, complete your registration first!");
 });
 
 /**
- * Customer Profile
+ * Fetch Customer & Sub-admin Profile
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const customerProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const customerAndSubAdminProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
   if (!req.user) return apiResponse(res, 401, false, "Unauthorized Request!");
 
-  // Remove Sensitive Data
-  const data = exclude(req.user, [
-    "password",
-    "otp",
-    "otpExpiry",
-    "isVerified",
-    "verifiedAt",
-    "createdAt",
-    "updatedAt",
-  ]);
+  if (req.role === ROLE.CUSTOMER) {
+    const data = exclude(req.user, ["password", "otp", "otpExpiry"]); // Remove Sensitive Data
 
-  [data.totalStamps, data.totalReward] = await Promise.all([
-    CollectStamp.countDocuments({ customerId: req?.user?._id }),
-    OrderStamp.countDocuments({ customerId: req?.user?._id, rewardCollected: true }),
-  ]);
+    [data.totalStamps, data.totalReward] = await Promise.all([
+      CollectStamp.countDocuments({ customerId: req?.user?._id }),
+      OrderStamp.countDocuments({ customerId: req?.user?._id, rewardCollected: true }),
+    ]);
 
-  return apiResponse(res, 200, true, "Customer Profile", data);
+    return apiResponse(res, 200, true, "Fetched Customer Profile!", data);
+  }
+
+  if (req.role === ROLE.SUB_ADMIN) {
+    const subAdmin = await SubAdmin.aggregate([
+      { $match: { email: req.user.email, status: true, softDeleted: false } },
+      {
+        $lookup: {
+          from: "retailers",
+          localField: "retailerId",
+          foreignField: "_id",
+          as: "retailer",
+        },
+      },
+      {
+        $lookup: {
+          from: "branches",
+          localField: "branchId",
+          foreignField: "_id",
+          as: "branch",
+        },
+      },
+      {
+        $unwind: "$retailer",
+      },
+      {
+        $unwind: "$branch",
+      },
+      {
+        $project: {
+          _id: 1,
+          firstName: 1,
+          lastName: 1,
+          fullName: 1,
+          email: 1,
+          image: 1,
+          password: 1,
+          "retailer._id": 1,
+          "retailer.storeName": 1,
+          "retailer.image": 1,
+          "retailer.businessCurrency": 1,
+          "branch._id": 1,
+          "branch.name": 1,
+          "branch.address": "$branch.address.name",
+        },
+      },
+    ]);
+
+    const data = exclude(subAdmin[0], ["password"]); // Remove Sensitive Data
+
+    return apiResponse(res, 200, true, "Fetched Sub Admin Profile! ", data);
+  }
+
+  return apiResponse(res, 500, false, "Something went wrong!");
 });
 
 /**
@@ -282,58 +375,74 @@ export const updateCustomerProfile = asyncHandler(async (req: IApiRequest, res: 
 });
 
 /**
- * Customer Forget Password
+ * Forget Password for Customer & Sub-admin
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const customerForgetPassword = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const forgetPassword = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = forgetPasswordSchema.validate(req.body);
   if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
 
-  const customer = await Customer.findOne({
-    email: result.value.email,
-    status: true,
-    isVerified: true,
-  });
+  const [customer, subAdmin] = await Promise.all([
+    Customer.findOne({ email: result.value.email, status: true, isVerified: true }),
+    SubAdmin.findOne({ email: result.value.email, status: true, softDeleted: false }),
+  ]);
 
-  if (!customer) {
-    return apiResponse(res, 404, false, "Customer not found!");
+  if (!customer && !subAdmin) return apiResponse(res, 404, false, "User not found!");
+
+  if (customer) {
+    const otp = getRandomInteger(100000, 999999);
+    const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
+
+    await Customer.findByIdAndUpdate(customer._id, { otp, otpExpiry });
+
+    const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER, ott: true }, "15m"); // 15 min
+
+    // Send Otp to Email
+    sendVerificationEmail(customer.email, otp);
+
+    return apiResponse(res, 200, true, "Otp sent successfully!", { token });
   }
 
-  const otp = getRandomInteger(100000, 999999);
-  const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
+  if (subAdmin) {
+    const otp = getRandomInteger(100000, 999999);
+    const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
 
-  await Customer.findByIdAndUpdate(customer._id, { otp, otpExpiry });
+    await SubAdmin.findByIdAndUpdate(subAdmin._id, { otp, otpExpiry });
 
-  const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER, ott: true }, "15m"); // 15 min
+    const token = generateSignature({ email: subAdmin.email, role: ROLE.SUB_ADMIN, ott: true }, "15m"); // 15 min
 
-  // Send Otp to Email
-  sendVerificationEmail(customer.email, otp);
+    // Send Otp to Email
+    sendVerificationEmail(subAdmin.email, otp);
 
-  return apiResponse(res, 200, true, "Otp sent successfully!", { token });
+    return apiResponse(res, 200, true, "Otp sent successfully!", { token });
+  }
+
+  return apiResponse(res, 500, true, "Something went wrong!");
 });
 
 /**
- * Customer Forget Password Otp Verify
+ * Customer & Sub-Admin Forget Password Otp Verify
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const customerForgetPasswordOtpVerify = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const customerAndSubAdminForgetPasswordOtpVerify = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = verifyOtpSchema.validate(req.body);
   if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
 
   const isVerified = req.user.otp === Number(result.value.otp) && req.user.otpExpiry > new Date();
   if (!isVerified) return apiResponse(res, 400, false, "Invalid Otp!");
 
-  await Customer.updateOne({ email: req.user.email }, { otp: null, otpExpiry: null });
+  if (req.role === ROLE.CUSTOMER) await Customer.updateOne({ email: req.user.email }, { otp: null, otpExpiry: null });
+  if (req.role === ROLE.SUB_ADMIN) await SubAdmin.updateOne({ email: req.user.email }, { otp: null, otpExpiry: null });
 
   return apiResponse(res, 200, true, "Otp verified successfully!");
 });
 
 /**
- * Customer Forget Password Resend Otp
+ * Customer & Sub-Admin Forget Password Resend Otp
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -342,11 +451,9 @@ export const customerForgetPasswordResendOtp = asyncHandler(async (req: IApiRequ
   const otp = getRandomInteger(100000, 999999);
   const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
 
-  if (req.user.otpExpiry > new Date()) {
-    return apiResponse(res, 400, false, "Wait 2 minutes to resend OTP!");
-  }
-
-  await Customer.updateOne({ email: req.user.email }, { otp, otpExpiry });
+  if (req.user.otpExpiry > new Date()) return apiResponse(res, 400, false, "Wait 2 minutes to resend OTP!");
+  if (req.role === ROLE.CUSTOMER) await Customer.updateOne({ email: req.user.email }, { otp, otpExpiry });
+  if (req.role === ROLE.SUB_ADMIN) await SubAdmin.updateOne({ email: req.user.email }, { otp, otpExpiry });
 
   sendVerificationEmail(req.user.email, otp);
 
@@ -354,22 +461,26 @@ export const customerForgetPasswordResendOtp = asyncHandler(async (req: IApiRequ
 });
 
 /**
- * Customer Changed Forget Password
+ * Customer & Sub-admin Changed Forget Password
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const customerChangeForgetPassword = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = customerChangeForgetPasswordSchema.validate(req.body);
-  if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
+export const customerAndSubAdminChangeForgetPassword = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { error, value } = customerChangeForgetPasswordSchema.validate(req.body);
+  if (error) return apiResponse(res, 400, false, formatErrorMsg(error));
 
-  const customer = await Customer.findById(req.user._id);
+  const userModel: any = req.role === ROLE.CUSTOMER ? Customer : req.role === ROLE.SUB_ADMIN ? SubAdmin : null;
+  if (!userModel) return apiResponse(res, 400, false, "Invalid user role!");
 
-  const isSame = await bcrypt.compare(result.value.password, customer.password);
-  if (isSame) throw "New password cannot be same as old password!";
+  const user = await userModel.findById(req.user._id);
+  if (!user) return apiResponse(res, 404, false, "User not found!");
 
-  const hashedPassword = await bcrypt.hash(result.value.password, 10);
-  await Customer.updateOne({ email: req.user.email }, { password: hashedPassword });
+  const isSamePassword = await bcrypt.compare(value.password, user.password);
+  if (isSamePassword) return apiResponse(res, 400, false, "New password cannot be same as old password!");
+
+  const hashedPassword = await bcrypt.hash(value.password, 10);
+  await userModel.updateOne({ email: req.user.email }, { password: hashedPassword });
 
   return apiResponse(res, 200, true, "Password changed successfully!");
 });
