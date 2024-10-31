@@ -56,7 +56,7 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
   if (retailerTotalStamp >= allowTotalStamp) throw "Your stamp limit is over. Take new Add-on!";
 
   if (!createBody.hasValidity) {
-    createBody.startedAt = new Date();
+    createBody.startedAt = new Date("2020-01-01");
     createBody.expiredAt = new Date("3070-01-01");
   }
 
