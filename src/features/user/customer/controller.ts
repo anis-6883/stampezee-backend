@@ -294,7 +294,7 @@ export const customerAndSubAdminProfile = asyncHandler(async (req: IApiRequest, 
       OrderStamp.countDocuments({ customerId: req?.user?._id, rewardCollected: true }),
     ]);
 
-    return apiResponse(res, 200, true, "Fetched Customer Profile!", data);
+    return apiResponse(res, 200, true, "Fetched Customer Profile!", { ...data, role: ROLE.CUSTOMER });
   }
 
   if (req.role === ROLE.SUB_ADMIN) {
@@ -344,7 +344,7 @@ export const customerAndSubAdminProfile = asyncHandler(async (req: IApiRequest, 
 
     const data = exclude(subAdmin[0], ["password"]); // Remove Sensitive Data
 
-    return apiResponse(res, 200, true, "Fetched Sub Admin Profile! ", data);
+    return apiResponse(res, 200, true, "Fetched Sub Admin Profile! ", { ...data, role: ROLE.SUB_ADMIN });
   }
 
   return apiResponse(res, 500, false, "Something went wrong!");
