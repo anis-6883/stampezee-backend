@@ -152,7 +152,10 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
               },
             },
             {
-              $unwind: "$retailer",
+              $unwind: {
+                path: "$retailer",
+                preserveNullAndEmptyArrays: true,
+              },
             },
           ],
         },
