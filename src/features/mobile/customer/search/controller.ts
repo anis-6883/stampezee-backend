@@ -1,13 +1,13 @@
 import { Response } from "express";
 import mongoose from "mongoose";
 import { apiResponse, asyncHandler, formatErrorMsg, makePaginateForMobile } from "../../../../helpers";
+import Branch from "../../../../models/branch";
+import Category from "../../../../models/category";
+import CollectStamp from "../../../../models/collect-stamp";
+import Retailer from "../../../../models/retailer";
+import Sorting from "../../../../models/sorting";
+import Stamp from "../../../../models/stamp";
 import { IApiRequest } from "../../../../types";
-import Branch from "../../../branch/model";
-import Category from "../../../category/model";
-import Sorting from "../../../sorting/model";
-import Stamp from "../../../stamp/model";
-import Retailer from "../../../user/retailer/model";
-import CollectStamp from "./model";
 import { collectStampSchema } from "./validation";
 
 /**

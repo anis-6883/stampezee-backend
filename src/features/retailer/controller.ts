@@ -3,8 +3,8 @@ import { Response } from "express";
 import mongoose from "mongoose";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, makePaginate } from "../../helpers";
+import Retailer from "../../models/retailer";
 import { IApiRequest } from "../../types";
-import Retailer from "../user/retailer/model";
 import { sendRegistrationMail } from "./service";
 import { retailerSchema, retailerSchemaUpdate, retailerStatusSchema } from "./validation";
 

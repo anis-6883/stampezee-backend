@@ -10,11 +10,12 @@ import {
   generateSignature,
   getRandomInteger,
 } from "../../../helpers";
+import CollectStamp from "../../../models/collect-stamp";
+import Customer from "../../../models/customer";
+import OrderStamp from "../../../models/order-stamp";
+import SubAdmin from "../../../models/sub-admin";
 import { IApiRequest, IUser } from "../../../types";
-import CollectStamp from "../../mobile/customer/search/model";
-import OrderStamp from "../../mobile/sub-admin/home/model";
 import { sendVerificationEmail } from "../service";
-import SubAdmin from "../sub-admin/model";
 import {
   customerChangeForgetPasswordSchema,
   customerLoginSchema,
@@ -24,7 +25,6 @@ import {
   locationTokenSchema,
   verifyOtpSchema,
 } from "../validation";
-import Customer from "./model";
 
 /**
  * Customer Registration & Send Otp

@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import { default as Newsletter } from "../../models/newsletters";
 import { IApiRequest } from "../../types";
-import { default as Newsletter } from "./model";
 import { newsletterSchema } from "./validation";
 
 /**

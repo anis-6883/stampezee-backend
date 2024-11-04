@@ -2,11 +2,11 @@ import bcrypt from "bcrypt";
 import { Response } from "express";
 import mongoose from "mongoose";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import Branch from "../../models/branch";
+import CollectStamp from "../../models/collect-stamp";
+import Customer from "../../models/customer";
+import OrderStamp from "../../models/order-stamp";
 import { IApiRequest, IUser } from "../../types";
-import Branch from "../branch/model";
-import CollectStamp from "../mobile/customer/search/model";
-import OrderStamp from "../mobile/sub-admin/home/model";
-import Customer from "../user/customer/model";
 import { sendRegistrationMail } from "./service";
 import { customerSchema, customerStatusSchema, updateCustomerSchema } from "./validation";
 

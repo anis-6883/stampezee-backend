@@ -1,8 +1,8 @@
 import { Response } from "express";
 import { apiResponse, asyncHandler, makePaginateForMobile } from "../../../../helpers/index";
+import OrderStamp from "../../../../models/order-stamp";
+import Settings from "../../../../models/settings";
 import { IApiRequest, IRetailerScanQuery } from "../../../../types/index";
-import Settings from "../../../settings/model";
-import OrderStamp from "../../sub-admin/home/model";
 
 /**
  * Get All Settings

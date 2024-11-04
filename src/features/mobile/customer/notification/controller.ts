@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { apiResponse, asyncHandler, makePaginateForMobile } from "../../../../helpers/index";
+import Notification from "../../../../models/notification";
 import { IApiRequest } from "../../../../types/index";
-import Notification from "../../../notification/model";
 
 /**
  * Get All Single Notificationes

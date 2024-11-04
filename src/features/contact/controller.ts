@@ -1,8 +1,8 @@
 import Cryptr from "cryptr";
 import { Response } from "express";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import Contact from "../../models/contact";
 import { IApiRequest } from "../../types";
-import Contact from "./model";
 import { contactSchema } from "./validation";
 
 /**

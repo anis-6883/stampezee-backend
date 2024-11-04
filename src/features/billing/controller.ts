@@ -4,10 +4,10 @@ import mongoose from "mongoose";
 import path from "path";
 import Stripe from "stripe";
 import { apiResponse, asyncHandler, htmlToPdf, makePaginate } from "../../helpers";
+import EnrollSubscription from "../../models/enroll-subscription";
+import Payment from "../../models/payment";
+import Settings from "../../models/settings";
 import { IApiRequest } from "../../types";
-import EnrollSubscription from "../enroll-subscription/model";
-import Payment from "../payment/model";
-import Settings from "../settings/model";
 import { portalSchema } from "./validation";
 
 /**

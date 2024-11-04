@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { apiResponse, asyncHandler } from "../../helpers";
+import Sorting from "../../models/sorting";
 import { IApiRequest } from "../../types";
-import Sorting from "./model";
 import { sortingSchema } from "./validation";
 
 /**

@@ -4,9 +4,9 @@ import { Request, Response } from "express";
 import _ from "lodash";
 import moment from "moment";
 import { apiResponse, asyncHandler } from "../../helpers";
-import Branch from "../branch/model";
-import Stamp from "../stamp/model";
-import Retailer from "../user/retailer/model";
+import Branch from "../../models/branch";
+import Retailer from "../../models/retailer";
+import Stamp from "../../models/stamp";
 
 /**
  * Create Retailers

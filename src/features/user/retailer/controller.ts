@@ -3,8 +3,9 @@ import { Request, Response } from "express";
 import { COOKIE_KEY, PACKAGES, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, generateSignature, getRandomInteger } from "../../../helpers";
+import EnrollSubscription from "../../../models/enroll-subscription";
+import Retailer from "../../../models/retailer";
 import { IApiRequest } from "../../../types";
-import EnrollSubscription from "../../enroll-subscription/model";
 import { retailerSchemaUpdate } from "../../retailer/validation";
 import { sendVerificationEmail } from "../service";
 import {
@@ -15,7 +16,6 @@ import {
   retailerRegisterSchema,
   verifyOtpSchema,
 } from "../validation";
-import Retailer from "./model";
 
 const ALARM_EXPIRE_TIME = 60 * 60 * 24 * 29 * 1000; // 29 Days
 

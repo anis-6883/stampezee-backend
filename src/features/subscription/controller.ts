@@ -1,8 +1,8 @@
 import { Response } from "express";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
+import Subscription from "../../models/subscription";
 import { IApiRequest } from "../../types";
-import Subscription from "./model";
 import { subscriptionSchema, subscriptionStatusSchema, updateSubscriptionSchema } from "./validation";
 
 /**

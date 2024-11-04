@@ -1,10 +1,10 @@
 import { Response } from "express";
 import { apiResponse, asyncHandler, getUTC, makePaginate } from "../../helpers";
+import Coupon from "../../models/coupon";
+import Retailer from "../../models/retailer";
+import Settings from "../../models/settings";
+import Subscription from "../../models/subscription";
 import { IApiRequest } from "../../types";
-import Settings from "../settings/model";
-import Subscription from "../subscription/model";
-import Retailer from "../user/retailer/model";
-import Coupon from "./model";
 import { couponSchema, couponStatusSchema, updateCouponSchema } from "./validation";
 
 /**

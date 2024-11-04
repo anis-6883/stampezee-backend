@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { ROLE } from "../../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, generateSignature } from "../../../helpers";
+import SuperAdmin from "../../../models/super-admin";
 import { IApiRequest } from "../../../types";
 import {
   loginSchema,
@@ -10,7 +11,6 @@ import {
   superAdminRegisterSchema,
   superAdminRegisterSchema2,
 } from "../validation";
-import SuperAdmin from "./model";
 
 const ALARM_EXPIRE_TIME = 60 * 60 * 24 * 29 * 1000; // 29 Days
 

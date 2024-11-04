@@ -1,9 +1,9 @@
 import { Response } from "express";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
+import Category from "../../models/category";
+import Sorting from "../../models/sorting";
 import { IApiRequest } from "../../types";
-import Sorting from "../sorting/model";
-import Category from "./model";
 import { categorySchema, categoryStatusSchema, updateCategorySchema } from "./validation";
 
 /**

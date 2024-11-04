@@ -1,12 +1,12 @@
 import { Response } from "express";
 import moment from "moment";
 import { apiResponse, asyncHandler, countryData, generateRandomColor } from "../../helpers";
+import Customer from "../../models/customer";
+import EnrollSubscription from "../../models/enroll-subscription";
+import OrderStamp from "../../models/order-stamp";
+import Retailer from "../../models/retailer";
+import Stamp from "../../models/stamp";
 import { IApiRequest } from "../../types";
-import EnrollSubscription from "../enroll-subscription/model";
-import OrderStamp from "../mobile/sub-admin/home/model";
-import Stamp from "../stamp/model";
-import Customer from "../user/customer/model";
-import Retailer from "../user/retailer/model";
 
 /**
  * Get Super Admin Dashboard Card Stats

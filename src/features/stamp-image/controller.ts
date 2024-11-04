@@ -2,10 +2,10 @@ import { Response } from "express";
 import { PACKAGES, ROLE } from "../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
+import EnrollSubscription from "../../models/enroll-subscription";
+import Sorting from "../../models/sorting";
+import StampImage from "../../models/stamp-image";
 import { IApiRequest } from "../../types";
-import EnrollSubscription from "../enroll-subscription/model";
-import Sorting from "../sorting/model";
-import StampImage from "./model";
 import { stampImageSchema, stampImageStatusSchema, stampImageUpdateSchema } from "./validation";
 
 /**

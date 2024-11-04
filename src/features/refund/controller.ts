@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import Refund from "../../models/refund";
 import { IApiRequest } from "../../types";
-import Refund from "./model";
 
 /**
  * Get Retailer Refunds

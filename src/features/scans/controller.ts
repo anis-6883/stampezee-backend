@@ -1,9 +1,9 @@
 import { Response } from "express";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import Customer from "../../models/customer";
+import OrderStamp from "../../models/order-stamp";
+import Retailer from "../../models/retailer";
 import { IApiRequest, IRetailerScanQuery, ISuperAdminScanQuery } from "../../types";
-import OrderStamp from "../mobile/sub-admin/home/model";
-import Customer from "../user/customer/model";
-import Retailer from "../user/retailer/model";
 
 /**
  * Stamp scan details for retailer
