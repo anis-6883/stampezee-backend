@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { apiResponse, asyncHandler, flattenObject } from "../../helpers";
-import Settings from "./model";
+import Settings from "../../models/settings";
 import { settingsSchema } from "./validation";
 
 /**

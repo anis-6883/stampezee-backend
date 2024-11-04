@@ -1,8 +1,8 @@
 import { Response } from "express";
 import mongoose from "mongoose";
 import { apiResponse, asyncHandler } from "../../../../helpers";
+import CollectStamp from "../../../../models/collect-stamp";
 import { IApiRequest, IStamp } from "../../../../types";
-import CollectStamp from "../search/model";
 
 /**
  * Get All Collected Stamps

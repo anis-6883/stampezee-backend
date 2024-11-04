@@ -2,10 +2,10 @@ import { Response } from "express";
 import mongoose from "mongoose";
 import Stripe from "stripe";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import EnrollSubscription from "../../models/enroll-subscription";
+import Retailer from "../../models/retailer";
+import Settings from "../../models/settings";
 import { IApiRequest } from "../../types";
-import EnrollSubscription from "../enroll-subscription/model";
-import Settings from "../settings/model";
-import Retailer from "../user/retailer/model";
 import { portalSchema } from "./validation";
 
 /**

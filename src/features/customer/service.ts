@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import Settings from "../settings/model";
+import Settings from "../../models/settings";
 
 export const sendRegistrationMail = async (email: string, name: string, password: string) => {
   const settings = await Settings.findOne(

@@ -1,11 +1,11 @@
 import { Response } from "express";
 import { PACKAGES } from "../../configs/constants";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import Branch from "../../models/branch";
+import EnrollSubscription from "../../models/enroll-subscription";
+import Stamp from "../../models/stamp";
+import SubAdmin from "../../models/sub-admin";
 import { IApiRequest } from "../../types";
-import EnrollSubscription from "../enroll-subscription/model";
-import Stamp from "../stamp/model";
-import SubAdmin from "../user/sub-admin/model";
-import Branch from "./model";
 import { branchSchema, branchStatusSchema, updateBranchSchema } from "./validation";
 
 /**

@@ -2,8 +2,8 @@ import nodemailer from "nodemailer";
 
 import path from "path";
 import { htmlToPdf } from "../../helpers";
+import Settings from "../../models/settings";
 import { getInvoiceTemplate } from "../../templates/invoice";
-import Settings from "../settings/model";
 
 export const sendInvoiceToEmail = async ({
   email,

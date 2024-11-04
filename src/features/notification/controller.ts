@@ -4,12 +4,12 @@ import { PACKAGES } from "../../configs/constants";
 import notification from "../../configs/fcm";
 import { uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, getUTC, makePaginate } from "../../helpers";
+import Customer from "../../models/customer";
+import EnrollSubscription from "../../models/enroll-subscription";
+import Notification from "../../models/notification";
+import Retailer from "../../models/retailer";
+import Settings from "../../models/settings";
 import { IApiRequest } from "../../types";
-import EnrollSubscription from "../enroll-subscription/model";
-import Settings from "../settings/model";
-import Customer from "../user/customer/model";
-import Retailer from "../user/retailer/model";
-import Notification from "./model";
 import { notificationBasedOnLocationSchema, notificationSchema, superAdminNotificationSchema } from "./validation";
 
 /**

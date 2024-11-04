@@ -2,11 +2,11 @@ import { NextFunction, Response } from "express";
 import jwt from "jsonwebtoken";
 import { Model } from "mongoose";
 import { COOKIE_KEY, ROLE } from "../configs/constants";
-import Customer from "../features/user/customer/model";
-import Retailer from "../features/user/retailer/model";
-import SubAdmin from "../features/user/sub-admin/model";
-import SuperAdmin from "../features/user/super-admin/model";
 import { apiResponse } from "../helpers";
+import Customer from "../models/customer";
+import Retailer from "../models/retailer";
+import SubAdmin from "../models/sub-admin";
+import SuperAdmin from "../models/super-admin";
 import { IApiRequest, IJWTQuery } from "../types";
 
 export const authAndPermissionCheck =

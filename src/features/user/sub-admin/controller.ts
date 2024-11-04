@@ -9,10 +9,10 @@ import {
   generateSignature,
   getRandomInteger,
 } from "../../../helpers";
+import SubAdmin from "../../../models/sub-admin";
 import { IApiRequest } from "../../../types";
 import { sendVerificationEmail } from "../service";
 import { forgetPasswordSchema, loginSchema, subAdminChangeForgetPasswordSchema, verifyOtpSchema } from "../validation";
-import SubAdmin from "./model";
 
 /**
  * Sub Admin Login

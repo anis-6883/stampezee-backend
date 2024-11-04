@@ -1,8 +1,8 @@
 import { Response } from "express";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import Faq from "../../models/faq";
+import Sorting from "../../models/sorting";
 import { IApiRequest } from "../../types";
-import Sorting from "../sorting/model";
-import Faq from "./model";
 import { faqSchema, faqStatusSchema, updateFaqSchema } from "./validation";
 
 /**

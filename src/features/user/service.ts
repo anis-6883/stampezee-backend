@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
+import Settings from "../../models/settings";
 import { otpTemplate } from "../../templates/otp";
-import Settings from "../settings/model";
 
 export const sendVerificationEmail = async (email: string, verificationCode: number, context: string = "reg") => {
   const settings = await Settings.findOne(

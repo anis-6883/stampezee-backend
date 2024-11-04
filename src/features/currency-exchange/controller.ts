@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import CurrencyExchange from "../../models/currency-exchange";
 import { IApiRequest } from "../../types";
-import CurrencyExchange from "./model";
 import { currencyExchangeSchema, currencyExchangeStatusSchema, updateCurrencyExchangeSchema } from "./validation";
 
 /**

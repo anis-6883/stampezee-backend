@@ -3,13 +3,13 @@ import mongoose from "mongoose";
 import zlib from "zlib";
 import { uploadFileToS3Bucket } from "../../../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, formatErrorMsg, makePaginateForMobile } from "../../../../helpers";
+import Branch from "../../../../models/branch";
+import CollectStamp from "../../../../models/collect-stamp";
+import CurrencyExchange from "../../../../models/currency-exchange";
+import OrderStamp from "../../../../models/order-stamp";
+import Retailer from "../../../../models/retailer";
 import { IApiRequest, INumberObject, Object } from "../../../../types";
-import Branch from "../../../branch/model";
-import CurrencyExchange from "../../../currency-exchange/model";
-import Retailer from "../../../user/retailer/model";
-import CollectStamp from "../../customer/search/model";
 import { stampCollected } from "../../socket/socket";
-import OrderStamp from "./model";
 import { orderStampSchema, updateStampSchema } from "./validation";
 
 /**

@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { apiResponse, asyncHandler, makePaginateForMobile } from "../../../../helpers/index";
+import CollectStamp from "../../../../models/collect-stamp";
 import { IApiRequest } from "../../../../types/index";
-import CollectStamp from "../search/model";
 
 /**
  * Get All Rewards

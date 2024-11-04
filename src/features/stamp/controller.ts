@@ -1,14 +1,14 @@
 import { Response } from "express";
 import { PACKAGES, ROLE } from "../../configs/constants";
 import { apiResponse, asyncHandler, getUTC, makePaginate } from "../../helpers";
+import Branch from "../../models/branch";
+import Category from "../../models/category";
+import EnrollSubscription from "../../models/enroll-subscription";
+import Settings from "../../models/settings";
+import Sorting from "../../models/sorting";
+import Stamp from "../../models/stamp";
+import StampImage from "../../models/stamp-image";
 import { IApiRequest } from "../../types";
-import Branch from "../branch/model";
-import Category from "../category/model";
-import EnrollSubscription from "../enroll-subscription/model";
-import Settings from "../settings/model";
-import Sorting from "../sorting/model";
-import StampImage from "../stamp-image/model";
-import Stamp from "./model";
 import { stampSchema, stampStatusSchema, updateStampSchema } from "./validation";
 
 /**

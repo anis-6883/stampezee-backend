@@ -1,10 +1,10 @@
 import { Response } from "express";
 import Stripe from "stripe";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import CriticalPayment from "../../models/critical-payment";
+import EnrollSubscription from "../../models/enroll-subscription";
+import Settings from "../../models/settings";
 import { IApiRequest } from "../../types";
-import EnrollSubscription from "../enroll-subscription/model";
-import Settings from "../settings/model";
-import CriticalPayment from "./model";
 import { criticalPaymentSchema } from "./validation";
 
 /**
