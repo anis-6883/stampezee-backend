@@ -1,6 +1,7 @@
 import { Document, Schema, model } from "mongoose";
 
 interface ICustomer extends Document {
+  _doc?: unknown;
   fullName: string;
   email: string;
   provider: "email" | "google" | "apple";

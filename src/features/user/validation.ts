@@ -95,7 +95,17 @@ export const loginSchema = Joi.object({
 
 export const customerLoginSchema = Joi.object({
   email: requiredEmailField,
-  password: requiredWeakPasswordField(6),
+  provider: Joi.string().trim().required().lowercase().valid("email", "google", "apple").messages({
+    "any.required": "provider is required!",
+    "string.base": "provider must be string!",
+    "any.only": "provider must be [email, google, apple]",
+    "string.empty": "provider must not be empty!",
+  }),
+  password: Joi.string().when("provider", {
+    is: "email",
+    then: requiredStringField("password"),
+    otherwise: stringField("password"),
+  }),
 });
 
 export const verifyOtpSchema = Joi.object({
