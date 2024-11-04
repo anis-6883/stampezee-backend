@@ -14,7 +14,7 @@ import CollectStamp from "../../../models/collect-stamp";
 import Customer from "../../../models/customer";
 import OrderStamp from "../../../models/order-stamp";
 import SubAdmin from "../../../models/sub-admin";
-import { IApiRequest, IUser } from "../../../types";
+import { IApiRequest } from "../../../types";
 import { sendVerificationEmail } from "../service";
 import {
   customerChangeForgetPasswordSchema,
@@ -38,7 +38,7 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
 
   const { otp, otpExpiry, isVerified, verifiedAt, image, ref, provider, ...customerBody } = result.value;
 
-  const existingCustomer: IUser = await Customer.findOne({
+  const existingCustomer = await Customer.findOne({
     email: customerBody.email,
   });
 
@@ -47,18 +47,14 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
   }
 
   if (existingCustomer && existingCustomer.isVerified && provider !== existingCustomer.provider) {
-    let message;
-    switch (existingCustomer.provider) {
-      case "apple":
-        message = "Your account was registered using Apple. Please log in with Apple!";
-        break;
-      case "google":
-        message = "Your account was registered using Google. Please log in with Google!";
-        break;
-      default:
-        message = "Please log in using the email and password you registered with!";
-        break;
-    }
+    const providerMessages: Record<string, string> = {
+      apple: "Your account was registered using Apple. Please log in with Apple!",
+      google: "Your account was registered using Google. Please log in with Google!",
+      default: "Please log in using the email and password you registered with!",
+    };
+
+    const message = providerMessages[existingCustomer.provider] || providerMessages["default"];
+
     return apiResponse(res, 401, false, message);
   }
 
@@ -69,10 +65,10 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
     customerBody.isVerified = true;
     customerBody.verifiedAt = moment();
     customerBody.token = token;
-    customerBody.password = await bcrypt.hash("123456", 10);
+    customerBody.password = await bcrypt.hash("12345678", 10);
 
     if (existingCustomer) {
-      const customer: IUser = await Customer.findByIdAndUpdate(
+      const customer = await Customer.findByIdAndUpdate(
         existingCustomer._id,
         {
           token,
@@ -180,10 +176,10 @@ export const customerAndSubAdminLogin = asyncHandler(async (req: Request, res: R
   const result = customerLoginSchema.validate(req.body);
   if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
 
-  const { email, password } = result.value;
+  const { email, password, provider } = result.value;
 
-  const customer: any = await Customer.findOne({ email });
-  const subAdmin: any = await SubAdmin.aggregate([
+  const customer = await Customer.findOne({ email });
+  const subAdmin = await SubAdmin.aggregate([
     { $match: { email: email, status: true, softDeleted: false } },
     {
       $lookup: {
@@ -239,7 +235,7 @@ export const customerAndSubAdminLogin = asyncHandler(async (req: Request, res: R
     if (!customer.status) return apiResponse(res, 401, false, "Your account has been blocked by admin!");
 
     // Switch Account Login Try
-    if (customer.provider !== "email") {
+    if (customer.provider !== provider) {
       const providerMessages: any = {
         apple: "Your account was registered using Apple. Please log in with Apple!",
         google: "Your account was registered using Google. Please log in with Google!",
@@ -248,8 +244,10 @@ export const customerAndSubAdminLogin = asyncHandler(async (req: Request, res: R
       return apiResponse(res, 401, false, providerMessages[customer.provider] || providerMessages.default);
     }
 
-    const isPasswordValid = await bcrypt.compare(password, customer.password);
-    if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
+    if (provider === "email") {
+      const isPasswordValid = await bcrypt.compare(password, customer.password);
+      if (!isPasswordValid) return apiResponse(res, 401, false, "Provided incorrect password!");
+    }
 
     const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER }, "30 days");
     await Customer.updateOne({ email: customer.email }, { token, deletionRequest: false });
@@ -263,7 +261,7 @@ export const customerAndSubAdminLogin = asyncHandler(async (req: Request, res: R
   // Sub-admin Exist Logic
   if (subAdmin[0]) {
     const isPasswordValid = await bcrypt.compare(password, subAdmin[0].password);
-    if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
+    if (!isPasswordValid) return apiResponse(res, 401, false, "Provided incorrect password!");
 
     const token = generateSignature({ email: subAdmin[0].email, role: ROLE.SUB_ADMIN }, "30 days");
     await SubAdmin.updateOne({ email: subAdmin[0].email }, { token });
