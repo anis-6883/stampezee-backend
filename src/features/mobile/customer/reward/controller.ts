@@ -17,7 +17,7 @@ export const getAllReward = asyncHandler(async (req: IApiRequest, res: Response)
     CollectStamp.aggregate([
       {
         $match: {
-          eligibleForReward: true,
+          $or: [{ eligibleForReward: true }, { rewardCollected: true }],
           customerId: req?.user?._id,
         },
       },
@@ -103,6 +103,7 @@ export const getAllReward = asyncHandler(async (req: IApiRequest, res: Response)
       {
         $project: {
           stamp: 1,
+          rewardCollected: 1,
           "branch._id": "$branch._id",
           "branch.name": "$branch.name",
           "branch.address": "$branch.address.name",
@@ -115,7 +116,7 @@ export const getAllReward = asyncHandler(async (req: IApiRequest, res: Response)
     CollectStamp.aggregate([
       {
         $match: {
-          eligibleForReward: true,
+          $or: [{ eligibleForReward: true }, { rewardCollected: true }],
           customerId: req?.user?._id,
         },
       },

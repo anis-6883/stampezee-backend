@@ -29,7 +29,7 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
     if (alreadyScanned.invoice == null) {
       await OrderStamp.deleteOne({ _id: alreadyScanned._id });
     } else {
-      throw "This stamp has already been used.";
+      throw "This stamp has already been used!";
     }
   }
 
@@ -117,11 +117,11 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
 
   const currencyExchange = await CurrencyExchange.findOne({ name: retailer?.businessCurrency });
 
-  if (stampIsCollected.length < 1) throw "Invalid QR Code";
+  if (stampIsCollected.length < 1) throw "Invalid QR Code!";
 
-  if (stampIsCollected[0].stamps.length < 1) throw "Stamp Expired";
+  if (stampIsCollected[0].stamps.length < 1) throw "Stamp Expired!";
 
-  if (stampIsCollected[0].rewardTaken) throw "You have already collected the reward.";
+  if (stampIsCollected[0].rewardTaken) throw "You have already collected the reward!";
 
   let orderBody: Object = {
     collectStampId,
@@ -136,7 +136,7 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
   };
 
   const response: Object = {
-    message: "Scan was successful",
+    message: "Scan was done successfully!",
     eligibleForReward: false,
     isRewarded: false,
     totalStampCollected: stampIsCollected[0].totalStampTaken + 1,
@@ -214,7 +214,7 @@ export const uploadInvoice = asyncHandler(async (req: IApiRequest, res: Response
     Retailer.findById(req?.user?.retailerId, { businessCurrency: 1 }),
   ]);
 
-  if (orderIsAvailable.length < 1) throw "Invalid Order";
+  if (orderIsAvailable.length < 1) throw "Invalid Order!";
   if (orderIsAvailable[0].subAdmin.length < 1) return apiResponse(res, 401, false, "Unauthorized Request!");
 
   const updatedBody: any = { amount };
@@ -500,11 +500,11 @@ export const orderDetails = asyncHandler(async (req: IApiRequest, res: Response)
   /**
    * Following error throw when
    * orderId is invalid
-   * this order doesn't belong to this subadmin
+   * this order doesn't belong to this sub-admin
    * customer account is hard deleted from db
    * stamp is hard deleted
    */
-  if (orderDetails.length < 1) throw "Inavlid order";
+  if (orderDetails.length < 1) throw "Invalid order!";
 
   return apiResponse(res, 200, true, "Order details have fetched successfully!", orderDetails[0]);
 });
