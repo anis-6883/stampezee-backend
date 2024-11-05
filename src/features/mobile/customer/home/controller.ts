@@ -66,7 +66,7 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
     },
     {
       $lookup: {
-        from: "orderstamps",
+        from: "order_stamps",
         localField: "_id",
         foreignField: "collectStampId",
         as: "stampsTaken",
@@ -141,7 +141,7 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
         pipeline: [
           {
             $lookup: {
-              from: "stampimages",
+              from: "stamp_images",
               localField: "stampImageId",
               foreignField: "_id",
               as: "stampImage",
@@ -168,7 +168,7 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
     },
     {
       $lookup: {
-        from: "orderstamps",
+        from: "order_stamps",
         localField: "_id",
         foreignField: "collectStampId",
         as: "stampsTaken",

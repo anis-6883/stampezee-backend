@@ -91,7 +91,7 @@ export const getAllRetailers = asyncHandler(async (req: IApiRequest, res: Respon
       },
       {
         $lookup: {
-          from: "enrollsubscriptions",
+          from: "enroll_subscriptions",
           localField: "_id",
           foreignField: "retailerId",
           as: "enrollSubscription",
@@ -202,10 +202,10 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
     },
     {
       $lookup: {
-        from: "subadmins",
+        from: "sub_admins",
         localField: "_id",
         foreignField: "retailerId",
-        as: "subadmins",
+        as: "sub_admins",
         pipeline: [
           {
             $lookup: {
@@ -237,7 +237,7 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
     {
       // Lookup for the subscription type "plan"
       $lookup: {
-        from: "enrollsubscriptions",
+        from: "enroll_subscriptions",
         localField: "_id",
         foreignField: "retailerId",
         as: "enrollSubscription",
@@ -254,7 +254,7 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
     {
       // Lookup for the subscription type "addon"
       $lookup: {
-        from: "enrollsubscriptions",
+        from: "enroll_subscriptions",
         localField: "_id",
         foreignField: "retailerId",
         as: "addonSubscriptions",
@@ -305,10 +305,10 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
           },
           {
             $lookup: {
-              from: "collectstamps",
+              from: "collect_stamps",
               localField: "_id",
               foreignField: "branchId",
-              as: "collectstamps",
+              as: "collect_stamps",
               pipeline: [
                 {
                   $group: {
@@ -327,21 +327,21 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
           },
           {
             $unwind: {
-              path: "$collectstamps",
+              path: "$collect_stamps",
               preserveNullAndEmptyArrays: true,
             },
           },
           {
             $lookup: {
-              from: "orderstamps",
+              from: "order_stamps",
               localField: "_id",
               foreignField: "branchId",
-              as: "orderstamps",
+              as: "order_stamps",
             },
           },
           {
             $lookup: {
-              from: "subadmins",
+              from: "sub_admins",
               localField: "_id",
               foreignField: "branchId",
               as: "subadmin",
@@ -367,9 +367,9 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
               address: "$address.name",
               subAdminName: { $ifNull: ["$subadmin.fullName", null] },
               subAdminEmail: { $ifNull: ["$subadmin.email", null] },
-              totalCustomer: { $ifNull: ["$collectstamps.totalCustomer", 0] },
-              totalOrder: { $size: "$orderstamps" },
-              totalRevenue: { $sum: "$orderstamps.amount" },
+              totalCustomer: { $ifNull: ["$collect_stamps.totalCustomer", 0] },
+              totalOrder: { $size: "$order_stamps" },
+              totalRevenue: { $sum: "$order_stamps.amount" },
             },
           },
         ],
@@ -404,7 +404,7 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
           },
         },
         totalActiveBranch: { $size: "$branches" },
-        totalSubAdmin: { $size: "$subadmins" },
+        totalSubAdmin: { $size: "$sub_admins" },
         totalActiveStamp: { $size: "$stamps" },
         totalCustomer: { $sum: "$branches.totalCustomer" },
         totalOrder: { $sum: "$branches.totalOrder" },

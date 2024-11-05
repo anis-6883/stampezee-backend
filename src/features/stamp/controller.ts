@@ -144,7 +144,7 @@ export const getAllStamps = asyncHandler(async (req: IApiRequest, res: Response)
       },
       {
         $lookup: {
-          from: "stampimages",
+          from: "stamp_images",
           localField: "stampImageId",
           foreignField: "_id",
           as: "stampImage",
@@ -242,7 +242,7 @@ export const getBranchCategoryImageList = asyncHandler(async (req: IApiRequest, 
       },
       {
         $lookup: {
-          from: "enrollsubscriptions",
+          from: "enroll_subscriptions",
           localField: "enrollSubscriptionId",
           foreignField: "_id",
           as: "enrollSubscription",
