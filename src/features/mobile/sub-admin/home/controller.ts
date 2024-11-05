@@ -69,7 +69,7 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
       },
       {
         $lookup: {
-          from: "orderstamps",
+          from: "order_stamps",
           localField: "_id",
           foreignField: "collectStampId",
           as: "rewardCollected",
@@ -84,7 +84,7 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
       },
       {
         $lookup: {
-          from: "orderstamps",
+          from: "order_stamps",
           localField: "_id",
           foreignField: "collectStampId",
           as: "stampTaken",
@@ -197,7 +197,7 @@ export const uploadInvoice = asyncHandler(async (req: IApiRequest, res: Response
       },
       {
         $lookup: {
-          from: "subadmins",
+          from: "sub_admins",
           localField: "subAdminId",
           foreignField: "_id",
           as: "subAdmin",
@@ -354,7 +354,7 @@ export const recentScans = asyncHandler(async (req: IApiRequest, res: Response) 
       },
       {
         $lookup: {
-          from: "collectstamps",
+          from: "collect_stamps",
           localField: "collectStampId",
           foreignField: "_id",
           as: "collectedstamps",
@@ -428,7 +428,7 @@ export const orderDetails = asyncHandler(async (req: IApiRequest, res: Response)
     },
     {
       $lookup: {
-        from: "collectstamps",
+        from: "collect_stamps",
         localField: "collectStampId",
         foreignField: "_id",
         as: "collectedstamps",

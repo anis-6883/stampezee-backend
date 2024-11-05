@@ -106,7 +106,7 @@ export const getAllBranches = asyncHandler(async (req: IApiRequest, res: Respons
       },
       {
         $lookup: {
-          from: "enrollsubscriptions",
+          from: "enroll_subscriptions",
           localField: "enrollSubscriptionId",
           foreignField: "_id",
           as: "enrollSubscription",

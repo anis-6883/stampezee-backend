@@ -146,7 +146,7 @@ export const getRetailerBillingPdf = asyncHandler(async (req: IApiRequest, res: 
     },
     {
       $lookup: {
-        from: "enrollsubscriptions",
+        from: "enroll_subscriptions",
         localField: "enrollSubscriptionId",
         foreignField: "_id",
         as: "enrollSubscription",

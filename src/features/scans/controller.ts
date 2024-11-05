@@ -44,7 +44,7 @@ export const stampScanDetailsForRetailer = asyncHandler(async (req: IApiRequest,
       },
       {
         $lookup: {
-          from: "collectstamps",
+          from: "collect_stamps",
           localField: "collectStampId",
           foreignField: "_id",
           as: "collectstamp",
@@ -121,7 +121,7 @@ export const stampScanDetailsForRetailer = asyncHandler(async (req: IApiRequest,
       },
       {
         $lookup: {
-          from: "subadmins",
+          from: "sub_admins",
           localField: "subAdminId",
           foreignField: "_id",
           as: "subAdmin",
@@ -227,7 +227,7 @@ export const stampScanDetailsForSuperAdmin = asyncHandler(async (req: IApiReques
       },
       {
         $lookup: {
-          from: "collectstamps",
+          from: "collect_stamps",
           localField: "collectStampId",
           foreignField: "_id",
           as: "collectstamp",
@@ -304,7 +304,7 @@ export const stampScanDetailsForSuperAdmin = asyncHandler(async (req: IApiReques
       },
       {
         $lookup: {
-          from: "subadmins",
+          from: "sub_admins",
           localField: "subAdminId",
           foreignField: "_id",
           as: "subAdmin",

@@ -12,6 +12,7 @@ import { IApiRequest } from "../../../../types/index";
 export const getAllReward = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { page = 1, limit = 10 }: any = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
+
   const [eligibleRewardList, results] = await Promise.all([
     CollectStamp.aggregate([
       {
@@ -46,7 +47,7 @@ export const getAllReward = asyncHandler(async (req: IApiRequest, res: Response)
             },
             {
               $lookup: {
-                from: "stampimages",
+                from: "stamp_images",
                 localField: "stampImageId",
                 foreignField: "_id",
                 as: "stampImage",
@@ -144,8 +145,8 @@ export const getAllReward = asyncHandler(async (req: IApiRequest, res: Response)
   ]);
 
   const total = results[0]?.total || 0;
-
   const mobilePagination = makePaginateForMobile(Number(page), Number(limit), skip, total);
+
   return apiResponse(
     res,
     200,

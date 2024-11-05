@@ -17,7 +17,7 @@ export const getRetailerRefunds = asyncHandler(async (req: IApiRequest, res: Res
     Refund.aggregate([
       {
         $lookup: {
-          from: "enrollsubscriptions",
+          from: "enroll_subscriptions",
           localField: "enrollSubscriptionId",
           foreignField: "_id",
           as: "enrollsubscription",
@@ -49,7 +49,7 @@ export const getRetailerRefunds = asyncHandler(async (req: IApiRequest, res: Res
     Refund.aggregate([
       {
         $lookup: {
-          from: "enrollsubscriptions",
+          from: "enroll_subscriptions",
           localField: "enrollSubscriptionId",
           foreignField: "_id",
           as: "enrollsubscription",
@@ -88,7 +88,7 @@ export const getAllRefundsForSuperAdmin = asyncHandler(async (req: IApiRequest, 
     Refund.aggregate([
       {
         $lookup: {
-          from: "enrollsubscriptions",
+          from: "enroll_subscriptions",
           localField: "enrollSubscriptionId",
           foreignField: "_id",
           as: "enrollsubscription",

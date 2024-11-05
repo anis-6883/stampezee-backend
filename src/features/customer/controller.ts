@@ -46,7 +46,7 @@ export const getAllCustomers = asyncHandler(async (req: IApiRequest, res: Respon
       },
       {
         $lookup: {
-          from: "collectstamps",
+          from: "collect_stamps",
           localField: "_id",
           foreignField: "customerId",
           as: "collectStamps",
@@ -54,7 +54,7 @@ export const getAllCustomers = asyncHandler(async (req: IApiRequest, res: Respon
       },
       {
         $lookup: {
-          from: "orderstamps",
+          from: "order_stamps",
           localField: "_id",
           foreignField: "customerId",
           as: "orderStamps",
@@ -109,7 +109,7 @@ export const getSingleCustomer = asyncHandler(async (req: IApiRequest, res: Resp
     },
     {
       $lookup: {
-        from: "collectstamps",
+        from: "collect_stamps",
         localField: "_id",
         foreignField: "customerId",
         as: "collectStamps",
@@ -117,7 +117,7 @@ export const getSingleCustomer = asyncHandler(async (req: IApiRequest, res: Resp
     },
     {
       $lookup: {
-        from: "orderstamps",
+        from: "order_stamps",
         localField: "_id",
         foreignField: "customerId",
         as: "orderStamps",
@@ -193,7 +193,7 @@ export const getSingleCustomerScanList = asyncHandler(async (req: IApiRequest, r
       },
       {
         $lookup: {
-          from: "collectstamps",
+          from: "collect_stamps",
           localField: "collectStampId",
           foreignField: "_id",
           as: "collectstamp",
@@ -270,7 +270,7 @@ export const getSingleCustomerScanList = asyncHandler(async (req: IApiRequest, r
       },
       {
         $lookup: {
-          from: "subadmins",
+          from: "sub_admins",
           localField: "subAdminId",
           foreignField: "_id",
           as: "subAdmin",
@@ -417,7 +417,7 @@ export const getAllRetailerCustomers = asyncHandler(async (req: IApiRequest, res
       },
       {
         $lookup: {
-          from: "collectstamps",
+          from: "collect_stamps",
           localField: "_id",
           foreignField: "customerId",
           as: "collectStamps",
@@ -425,7 +425,7 @@ export const getAllRetailerCustomers = asyncHandler(async (req: IApiRequest, res
       },
       {
         $lookup: {
-          from: "orderstamps",
+          from: "order_stamps",
           localField: "_id",
           foreignField: "customerId",
           as: "orderStamps",

@@ -50,7 +50,7 @@ export const customerScanHistory = asyncHandler(async (req: IApiRequest, res: Re
       },
       {
         $lookup: {
-          from: "collectstamps",
+          from: "collect_stamps",
           localField: "collectStampId",
           foreignField: "_id",
           as: "collectstamp",
@@ -127,7 +127,7 @@ export const customerScanHistory = asyncHandler(async (req: IApiRequest, res: Re
       },
       {
         $lookup: {
-          from: "subadmins",
+          from: "sub_admins",
           localField: "subAdminId",
           foreignField: "_id",
           as: "subAdmin",
@@ -221,7 +221,7 @@ export const customerCollectedRewardHistory = asyncHandler(async (req: IApiReque
       },
       {
         $lookup: {
-          from: "collectstamps",
+          from: "collect_stamps",
           localField: "collectStampId",
           foreignField: "_id",
           as: "collectstamp",
@@ -298,7 +298,7 @@ export const customerCollectedRewardHistory = asyncHandler(async (req: IApiReque
       },
       {
         $lookup: {
-          from: "subadmins",
+          from: "sub_admins",
           localField: "subAdminId",
           foreignField: "_id",
           as: "subAdmin",

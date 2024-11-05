@@ -119,7 +119,7 @@ export const getAllStampImages = asyncHandler(async (req: IApiRequest, res: Resp
       StampImage.aggregate([
         {
           $lookup: {
-            from: "enrollsubscriptions",
+            from: "enroll_subscriptions",
             localField: "enrollSubscriptionId",
             foreignField: "_id",
             as: "enrollSubscription",

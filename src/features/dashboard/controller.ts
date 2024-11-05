@@ -239,10 +239,10 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
           },
           {
             $lookup: {
-              from: "collectstamps",
+              from: "collect_stamps",
               localField: "_id",
               foreignField: "branchId",
-              as: "collectstamps",
+              as: "collect_stamps",
               pipeline: [
                 {
                   $group: {
@@ -261,21 +261,21 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
           },
           {
             $unwind: {
-              path: "$collectstamps",
+              path: "$collect_stamps",
               preserveNullAndEmptyArrays: true,
             },
           },
           {
             $lookup: {
-              from: "orderstamps",
+              from: "order_stamps",
               localField: "_id",
               foreignField: "branchId",
-              as: "orderstamps",
+              as: "order_stamps",
             },
           },
           {
             $lookup: {
-              from: "subadmins",
+              from: "sub_admins",
               localField: "_id",
               foreignField: "branchId",
               as: "subadmin",
@@ -301,9 +301,9 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
               address: "$address.name",
               subAdminName: { $ifNull: ["$subadmin.fullName", null] },
               subAdminEmail: { $ifNull: ["$subadmin.email", null] },
-              totalCustomer: { $ifNull: ["$collectstamps.totalCustomer", 0] },
-              totalOrder: { $size: "$orderstamps" },
-              totalRevenue: { $sum: "$orderstamps.amount" },
+              totalCustomer: { $ifNull: ["$collect_stamps.totalCustomer", 0] },
+              totalOrder: { $size: "$order_stamps" },
+              totalRevenue: { $sum: "$order_stamps.amount" },
             },
           },
         ],
