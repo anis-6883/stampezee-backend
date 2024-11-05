@@ -4,13 +4,13 @@ import Notification from "../../../../models/notification";
 import { IApiRequest } from "../../../../types/index";
 
 /**
- * Get All Single Notificationes
+ * Get All Single Notifications
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getAllNotificationsForCustomer = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10, search } = req.query;
+  const { page = 1, limit = 10 } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
   const query = {
@@ -41,9 +41,10 @@ export const getAllNotificationsForCustomer = asyncHandler(async (req: IApiReque
         },
       },
     ]),
-    Notification.find(query).countDocuments(),
+    Notification.countDocuments(query),
   ]);
 
   const mobilePagination = makePaginateForMobile(Number(page), Number(limit), skip, total);
-  return apiResponse(res, 200, true, "Notificationes fetched successfully!", docs, mobilePagination);
+
+  return apiResponse(res, 200, true, "Notifications fetched successfully!", docs, mobilePagination);
 });

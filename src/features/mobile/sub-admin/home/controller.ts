@@ -136,7 +136,7 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
   };
 
   const response: Object = {
-    message: "Scan was done successfully!",
+    message: "Woahh! You're One Step Closer to Your Reward! 🥳",
     eligibleForReward: false,
     isRewarded: false,
     totalStampCollected: stampIsCollected[0].totalStampTaken + 1,
