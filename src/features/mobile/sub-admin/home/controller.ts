@@ -162,10 +162,11 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
     response.totalStampCollected = stampIsCollected[0].totalStampTaken;
     response.isRewarded = true;
     response.offer = rewardType === "discount" ? `${discountReward}%` : promotionReward;
+    response.message = "Congratulations! You've unlocked a reward!";
   }
 
-  const newOrder: any = await OrderStamp.create(orderBody);
-  const data: Object = { collectStampId, response };
+  const newOrder = await OrderStamp.create(orderBody);
+  const data = { collectStampId, response };
 
   stampCollected(data);
 
