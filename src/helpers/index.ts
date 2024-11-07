@@ -2329,6 +2329,26 @@ export const htmlToPdf = async ({
 
     // await page.waitForFunction("document.fonts.ready");
 
+    // Wait for the image to load completely
+    await page.evaluate(() => {
+      return new Promise<void>((resolve) => {
+        const logoImg = document.querySelector(
+          "img[src='https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/logo.png']"
+        ) as HTMLImageElement;
+        const thankImg = document.querySelector(
+          "img[src='https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/logo.png']"
+        ) as HTMLImageElement;
+        if (logoImg && logoImg.complete && thankImg && thankImg.complete) {
+          resolve();
+        } else {
+          logoImg?.addEventListener("load", () => resolve());
+          logoImg?.addEventListener("error", () => resolve());
+          thankImg?.addEventListener("load", () => resolve());
+          thankImg?.addEventListener("error", () => resolve());
+        }
+      });
+    });
+
     await page.evaluate(() => {
       document.body.style.backgroundColor = "#ffffff"; // Change to the desired color
     });

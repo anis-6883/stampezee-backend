@@ -1927,6 +1927,7 @@ export const getInvoiceTemplatePdf = ({
               <img
                 src="https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/logo.png"
                 width="150"
+                height="150"
                 alt="Cyber Kitty"
                 style="margin-bottom: 15px"
               />
