@@ -1,12 +1,13 @@
 import bcrypt from "bcrypt";
 import { Response } from "express";
 import mongoose from "mongoose";
+import { ROLE } from "../../configs/constants";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import Branch from "../../models/branch";
 import CollectStamp from "../../models/collect-stamp";
 import Customer from "../../models/customer";
 import OrderStamp from "../../models/order-stamp";
-import { IApiRequest, IUser } from "../../types";
+import { IApiRequest, IUser, Object } from "../../types";
 import { sendRegistrationMail } from "./service";
 import { customerSchema, customerStatusSchema, updateCustomerSchema } from "./validation";
 
@@ -102,6 +103,14 @@ export const getAllCustomers = asyncHandler(async (req: IApiRequest, res: Respon
  */
 export const getSingleCustomer = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
+  const query: Object = {};
+
+  if (req.role === ROLE.RETAILER) {
+    const branches = await Branch.find({ retailerId: req.user._id }).select("_id");
+    const branchIds = branches.map((branch) => branch._id);
+
+    query.branchId = { $in: branchIds };
+  }
 
   const customer = await Customer.aggregate([
     {
@@ -113,6 +122,11 @@ export const getSingleCustomer = asyncHandler(async (req: IApiRequest, res: Resp
         localField: "_id",
         foreignField: "customerId",
         as: "collectStamps",
+        pipeline: [
+          {
+            $match: query,
+          },
+        ],
       },
     },
     {
