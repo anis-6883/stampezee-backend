@@ -135,6 +135,11 @@ export const getSingleCustomer = asyncHandler(async (req: IApiRequest, res: Resp
         localField: "_id",
         foreignField: "customerId",
         as: "orderStamps",
+        pipeline: [
+          {
+            $match: { ...(req.role === ROLE.RETAILER && { retailerId: req.user._id }) },
+          },
+        ],
       },
     },
     {
