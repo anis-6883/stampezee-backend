@@ -181,7 +181,7 @@ export const getSingleCustomerScanList = asyncHandler(async (req: IApiRequest, r
   const { page = 1, limit = 10, search }: any = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
-  const query: any = {};
+  const query: Object = {};
 
   if (search) {
     query["retailer.storeName"] = { $regex: search, $options: "i" };
@@ -192,6 +192,7 @@ export const getSingleCustomerScanList = asyncHandler(async (req: IApiRequest, r
       {
         $match: {
           customerId: mongoose.Types.ObjectId.createFromHexString(id),
+          ...(req.role === ROLE.RETAILER && { retailerId: req.user._id }),
         },
       },
       {
