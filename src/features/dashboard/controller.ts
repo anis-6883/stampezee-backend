@@ -1,6 +1,7 @@
 import { Response } from "express";
 import moment from "moment";
 import { apiResponse, asyncHandler, countryData, generateRandomColor } from "../../helpers";
+import Branch from "../../models/branch";
 import Customer from "../../models/customer";
 import EnrollSubscription from "../../models/enroll-subscription";
 import OrderStamp from "../../models/order-stamp";
@@ -9,7 +10,7 @@ import Stamp from "../../models/stamp";
 import { IApiRequest } from "../../types";
 
 /**
- * Get Super Admin Dashboard Card Stats
+ * Get Super Admin Dashboard Card Stats (Super Admin)
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -62,7 +63,7 @@ export const superAdminDashboardCardStats = asyncHandler(async (req: IApiRequest
 });
 
 /**
- * Get Super Admin Dashboard Revenue
+ * Get Super Admin Dashboard Revenue (Super Admin)
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -213,7 +214,142 @@ export const superAdminDashboardRevenue = asyncHandler(async (req: IApiRequest, 
 });
 
 /**
- * Get Retailer Admin Dashboard Card Stats
+ * Get All Customer Stats By Country Wise (Super Admin)
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const customerStatsWithCountryWise = asyncHandler(async (req: IApiRequest, res: Response) => {
+  // Perform the aggregation to get country-wise counts and total count
+  const customerCounts = await Customer.aggregate([
+    {
+      $group: {
+        _id: "$country",
+        count: { $sum: 1 }, // Count customers in each country
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalCustomers: { $sum: "$count" }, // Total count of all customer
+        countries: {
+          $push: {
+            country: "$_id",
+            count: "$count",
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        totalCustomers: 1,
+        countries: 1,
+      },
+    },
+  ]);
+
+  if (!customerCounts.length) {
+    return apiResponse(res, 200, true, "Customer countries fetched successfully!", {
+      totalCustomers: 0,
+      countries: [],
+    });
+  }
+
+  const { totalCustomers, countries } = customerCounts[0];
+
+  // Map the results to the desired format
+  const formattedResponse = countries
+    .map((c: any) => ({
+      country: countryData?.find((item: any) => item?.country === c.country)?.code?.toLocaleLowerCase(),
+      name: c.country,
+      value: Math.round((c.count / totalCustomers) * 100), // Percentage value
+      style: generateRandomColor(), // Random color for background
+    }))
+    .filter((c: any) => c.name !== null);
+
+  return apiResponse(res, 200, true, "Customer countries fetched successfully!", {
+    totalCustomers,
+    countries: formattedResponse?.sort((a: any, b: any) => b.value - a.value),
+  });
+});
+
+/**
+ * Get Top Outlets according to number of sales (Super Admin)
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const topOutlets = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const outlets = await OrderStamp.aggregate([
+    {
+      $addFields: {
+        amountInCAD: {
+          $cond: {
+            if: { $eq: ["$amountCurrency", "CAD"] },
+            then: "$amount",
+            else: { $multiply: ["$amount", "$exchangeRate"] }, // Convert to CAD using exchangeRate if different currency
+          },
+        },
+      },
+    },
+    {
+      $group: {
+        _id: "$branchId", // Group by branchId
+        totalAmountInCAD: { $sum: "$amountInCAD" }, // Sum the converted amountInCAD for each branchId
+        retailerId: { $first: "$retailerId" }, // Capture the retailerId for each branchId
+      },
+    },
+    {
+      $lookup: {
+        from: "retailers",
+        localField: "retailerId",
+        foreignField: "_id",
+        as: "retailer",
+      },
+    },
+    {
+      $unwind: "$retailer",
+    },
+    {
+      $lookup: {
+        from: "branches",
+        localField: "_id",
+        foreignField: "_id",
+        as: "branch",
+      },
+    },
+    {
+      $unwind: "$branch",
+    },
+    {
+      $sort: {
+        totalAmountInCAD: -1,
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        totalAmountInCAD: 1,
+        retailer: {
+          _id: "$retailer._id",
+          storeName: "$retailer.storeName",
+          email: "$retailer.email",
+        },
+        branch: {
+          _id: "$branch._id",
+          name: "$branch.name",
+          address: "$branch.address.name",
+        },
+      },
+    },
+  ]);
+
+  return apiResponse(res, 200, true, "Top Outlets List!", outlets);
+});
+
+/**
+ * Get Retailer Admin Dashboard Card Stats (Retailer)
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -363,7 +499,7 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
 });
 
 /**
- * Get All Retailer Stats By Country Wise
+ * Get All Retailer Stats By Country Wise (Retailer)
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -422,136 +558,72 @@ export const retailerStatsWithCountryWise = asyncHandler(async (req: IApiRequest
 });
 
 /**
- * Get All Customer Stats By Country Wise
+ * Get Avg Stamp Collect per Customer (Retailer)
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const customerStatsWithCountryWise = asyncHandler(async (req: IApiRequest, res: Response) => {
-  // Perform the aggregation to get country-wise counts and total count
-  const customerCounts = await Customer.aggregate([
+export const avgCollectedStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { start = undefined, end = undefined } = req.query;
+
+  const result = await Branch.aggregate([
     {
-      $group: {
-        _id: "$country",
-        count: { $sum: 1 }, // Count customers in each country
+      $match: { retailerId: req.user._id },
+    },
+    {
+      $lookup: {
+        from: "collect_stamps",
+        localField: "_id",
+        foreignField: "branchId",
+        as: "collectStamps",
+        pipeline: [
+          {
+            $match: {
+              ...(start &&
+                end && {
+                  createdAt: {
+                    $gte: new Date(`${start}T00:00:00` as string), // Greater than or equal to start date
+                    $lte: new Date(`${end}T23:59:59` as string), // Less than or equal to end date
+                  },
+                }),
+            },
+          },
+        ],
       },
     },
     {
+      $unwind: "$collectStamps",
+    },
+    {
       $group: {
-        _id: null,
-        totalCustomers: { $sum: "$count" }, // Total count of all customer
-        countries: {
-          $push: {
-            country: "$_id",
-            count: "$count",
-          },
-        },
+        _id: "$retailerId",
+        totalStampsCollected: { $sum: 1 },
+        totalCustomer: { $addToSet: "$collectStamps.customerId" },
       },
     },
     {
       $project: {
         _id: 0,
-        totalCustomers: 1,
-        countries: 1,
+        totalStampsCollected: 1,
+        totalCustomer: { $size: "$totalCustomer" },
+        avgStampCollect: {
+          $cond: {
+            if: { $gt: [{ $size: "$totalCustomer" }, 0] }, // Avoid division by zero
+            then: { $round: [{ $divide: ["$totalStampsCollected", { $size: "$totalCustomer" }] }] },
+            else: 0,
+          },
+        },
       },
     },
   ]);
 
-  if (!customerCounts.length) {
-    return apiResponse(res, 200, true, "Customer countries fetched successfully!", {
-      totalCustomers: 0,
-      countries: [],
+  if (result.length <= 0) {
+    return apiResponse(res, 200, true, "Avg stamp collect per customer fetched successfully!", {
+      totalStampsCollected: 0,
+      totalCustomer: 0,
+      avgStampCollect: 0,
     });
   }
 
-  const { totalCustomers, countries } = customerCounts[0];
-
-  // Map the results to the desired format
-  const formattedResponse = countries
-    .map((c: any) => ({
-      country: countryData?.find((item: any) => item?.country === c.country)?.code?.toLocaleLowerCase(),
-      name: c.country,
-      value: Math.round((c.count / totalCustomers) * 100), // Percentage value
-      style: generateRandomColor(), // Random color for background
-    }))
-    .filter((c: any) => c.name !== null);
-
-  return apiResponse(res, 200, true, "Customer countries fetched successfully!", {
-    totalCustomers,
-    countries: formattedResponse?.sort((a: any, b: any) => b.value - a.value),
-  });
-});
-
-/**
- * Get Top Outlets according to number of sales
- * @param {Request} req - The HTTP request object.
- * @param {Response} res - The HTTP response object.
- * @returns {Promise<void>} - A promise that resolves when the response is sent.
- */
-export const topOutlets = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const outlets = await OrderStamp.aggregate([
-    {
-      $addFields: {
-        amountInCAD: {
-          $cond: {
-            if: { $eq: ["$amountCurrency", "CAD"] },
-            then: "$amount",
-            else: { $multiply: ["$amount", "$exchangeRate"] }, // Convert to CAD using exchangeRate if different currency
-          },
-        },
-      },
-    },
-    {
-      $group: {
-        _id: "$branchId", // Group by branchId
-        totalAmountInCAD: { $sum: "$amountInCAD" }, // Sum the converted amountInCAD for each branchId
-        retailerId: { $first: "$retailerId" }, // Capture the retailerId for each branchId
-      },
-    },
-    {
-      $lookup: {
-        from: "retailers",
-        localField: "retailerId",
-        foreignField: "_id",
-        as: "retailer",
-      },
-    },
-    {
-      $unwind: "$retailer",
-    },
-    {
-      $lookup: {
-        from: "branches",
-        localField: "_id",
-        foreignField: "_id",
-        as: "branch",
-      },
-    },
-    {
-      $unwind: "$branch",
-    },
-    {
-      $sort: {
-        totalAmountInCAD: -1,
-      },
-    },
-    {
-      $project: {
-        _id: 0,
-        totalAmountInCAD: 1,
-        retailer: {
-          _id: "$retailer._id",
-          storeName: "$retailer.storeName",
-          email: "$retailer.email",
-        },
-        branch: {
-          _id: "$branch._id",
-          name: "$branch.name",
-          address: "$branch.address.name",
-        },
-      },
-    },
-  ]);
-
-  return apiResponse(res, 200, true, "Top Outlets List!", outlets);
+  return apiResponse(res, 200, true, "Avg stamp collect per customer fetched successfully!", result[0]);
 });
