@@ -19,6 +19,7 @@ export const customerSchema = Joi.object({
 
 export const updateCustomerSchema = Joi.object({
   email: stringField("email"),
+  address: stringField("address"),
   fullName: stringField("fullName"),
   dialCode: stringField("dialCode"),
   phone: stringField("phone"),

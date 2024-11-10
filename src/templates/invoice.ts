@@ -1268,7 +1268,6 @@ export const getInvoiceTemplate = ({
       .company-info p {
         font-size: 16px;
         margin-top: 1px;
-        
       }
 
       /* Responsive Design */
@@ -1288,9 +1287,77 @@ export const getInvoiceTemplate = ({
       .overflow-hidden {
         overflow: hidden;
       }
+
+
+
+       @media (max-width: 768px) {
+       body {
+       font-size: 14px;
+       color : black;
+       }
+    
+       tfoot {
+        font-size: 14px;
+      }
+
+       .sub-container {
+        width: 80%;
+        margin: 0;
+      }
+
+        .invoice {
+        font-family: tannimbus;
+        font-weight: bold;
+        font-size: 30px;
+        text-align: end;
+      }
+
+    
+    .total-row td {
+      font-size: 14px;
+    }
+
+    /* Adjust padding of text columns for better readability on mobile */
+    tfoot td {
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+
+    .text-right {
+      text-align: right;
+    }
+
+    /* Adjust column widths for mobile view */
+    td[colspan="3"] {
+      width: 100%;
+    }
+
+    /* Make sure the company info section is centered and has proper margins */
+    .company-info {
+      text-align: center;
+    }
+
+    .company-title {
+      font-size: 20px;
+      margin: 0;
+    }
+
+    .company-info p {
+      font-size: 12px;
+      margin: 5px 0;
+    }
+
+    /* Adjust the thank-you image */
+    .company-info img {
+      max-width: 100%;
+      height: auto;
+      width: 200px;
+      margin: 0 auto;
+    }
+  }
     </style>
   </head>
-  <body class="bg-gray-100 p-4">
+  <body class="bg-gray-100 py-3">
     <!-- Main Container -->
     <table class="container overflow-hidden">
       <tr>
@@ -1306,7 +1373,8 @@ export const getInvoiceTemplate = ({
                     <div>
                       <img
                         src="https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/logo.png"
-                        width="150"
+                        width="100"
+                        height="100"
                         alt="Cyber Kitty"
                         style="margin-bottom: 15px"
                       />
@@ -1371,89 +1439,89 @@ export const getInvoiceTemplate = ({
               </tbody>
              
               <!-- Footer Section -->
-              <tfoot style="font-family:Tahoma; font-size:15px">
-                <tr>
-                  <td></td>
-                </tr>
-                <tr>
-                  <td style="padding-left: 250px" colspan="3" class="title">Subtotal</td>
-                  <td class="text-right pr-45">${invoiceMetadata?.subtotal}</td>
-                </tr>
-                ${
-                  invoiceMetadata?.remainingAmount
-                    ? `<tr>
-                  <td style="padding-left: 250px" colspan="3" class="title">Remaining Amount</td>
-                  <td class="text-right pr-45">-${invoiceMetadata?.remainingAmount}</td>
-                </tr>`
-                    : ""
-                }
-                ${
-                  invoiceMetadata?.planChangeCost
-                    ? `<tr>
-                  <td style="padding-left: 250px" colspan="3" class="title">Plan Change Cost</td>
-                  <td class="text-right pr-45">${invoiceMetadata?.planChangeCost}</td>
-                </tr>`
-                    : ""
-                }
-                ${
-                  invoiceMetadata?.couponDiscount
-                    ? `<tr>
-                  <td style="padding-left: 250px" colspan="3" class="title">Coupon (${invoiceMetadata?.coupon?.discount}%)</td>
-                  <td class="text-right pr-45">-${invoiceMetadata?.couponDiscount}</td>
-                </tr>`
-                    : ""
-                }
-                ${
-                  invoiceMetadata?.taxDiscount
-                    ? `<tr>
-                  <td style="padding-left: 250px" colspan="3" class="title">Tax (${invoiceMetadata?.tax?.taxCost}%)</td>
-                  <td class="text-right pr-45">${invoiceMetadata?.taxDiscount}</td>
-                </tr>`
-                    : ""
-                }
-                <tr>
-                  <td></td>
-                </tr>
-                <tr class="total-row">
-                  <td
-                    colspan="3"
-                    style="font-weight: 700; font-size: x-large"
-                    colspan="3"
-                    class="text-right total-label title"
-                  >
-                    ${invoiceMetadata?.invoiceNo ? "Total" : "Refund"}
-                  </td>
-                  <td colspan="3" style="font-weight: 700; font-size: x-large" class="total-amount text-right">
-                    ${invoiceMetadata?.total}
-                  </td>
-                </tr>
-                <tr>
-                  <td></td>
-                </tr>
-                <tr>
-                  <td></td>
-                </tr>
-                <tr>
-                  <td colspan="3">
-                    <div style="padding-top: 40px">
-                      <img
-                        src="https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/thank-you.jpg"
-                        width="250"
-                        alt="thank-you"
-                        style="margin-bottom: 15px"
-                      />
-                    </div>
-                  </td>
-                </tr>
-                <tr style="width: 100%">
-                  <td colspan="2">
-                    <div class="company-info">
-                      <h2 class="company-title livvic-bold-italic">StampEzee</h2>
-                      <p>123 Anywhere St., Any City, ST 12345</p>
-                    </div>
-                  </td>
-                </tr>
-              </tfoot>
+              <tfoot style="font-family: Tahoma; font-size: 15px">
+  <tr>
+    <td></td>
+  </tr>
+  <tr>
+    <td style="padding-left: 10px; text-align: left;" colspan="3" class="title">Subtotal</td>
+    <td class="text-right pr-45">${invoiceMetadata?.subtotal}</td>
+  </tr>
+  ${
+    invoiceMetadata?.remainingAmount
+      ? `<tr>
+      <td style="padding-left: 10px; text-align: left;" colspan="3" class="title">Remaining Amount</td>
+      <td class="text-right pr-45">-${invoiceMetadata?.remainingAmount}</td>
+    </tr>`
+      : ""
+  }
+  ${
+    invoiceMetadata?.planChangeCost
+      ? `<tr>
+      <td style="padding-left: 10px; text-align: left;" colspan="3" class="title">Plan Change Cost</td>
+      <td class="text-right pr-45">${invoiceMetadata?.planChangeCost}</td>
+    </tr>`
+      : ""
+  }
+  ${
+    invoiceMetadata?.couponDiscount
+      ? `<tr>
+      <td style="padding-left: 10px; text-align: left;" colspan="3" class="title">Coupon (${invoiceMetadata?.coupon?.discount}%)</td>
+      <td class="text-right pr-45">-${invoiceMetadata?.couponDiscount}</td>
+    </tr>`
+      : ""
+  }
+  ${
+    invoiceMetadata?.taxDiscount
+      ? `<tr>
+      <td style="padding-left: 10px; text-align: left;" colspan="3" class="title">Tax (${invoiceMetadata?.tax?.taxCost}%)</td>
+      <td class="text-right pr-45">${invoiceMetadata?.taxDiscount}</td>
+    </tr>`
+      : ""
+  }
+  <tr>
+    <td></td>
+  </tr>
+  <tr class="total-row">
+    <td
+      colspan="3"
+      style="font-weight: 700; font-size: x-large; text-align: right;"
+      class="total-label title"
+    >
+      ${invoiceMetadata?.invoiceNo ? "Total" : "Refund"}
+    </td>
+    <td colspan="3" style="font-weight: 700; font-size: x-large; text-align: right" class="total-amount">
+      ${invoiceMetadata?.total}
+    </td>
+  </tr>
+  <tr>
+    <td></td>
+  </tr>
+  <tr>
+    <td></td>
+  </tr>
+  <tr>
+    <td colspan="3">
+      <div style="padding-top: 40px; text-align: center;">
+        <img
+          src="https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/thank-you.jpg"
+          width="150"
+          height="150"
+          alt="thank-you"
+          style="margin-bottom: 15px; max-width: 100%; height: auto;"
+        />
+      </div>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <div class="company-info" style="text-align: left;">
+        <h2 class="company-title livvic-bold-italic" style="font-size: 24px;">StampEzee</h2>
+        <p style="font-size: 14px;">123 Anywhere St., Any City, ST 12345</p>
+      </div>
+    </td>
+  </tr>
+</tfoot>
             </table>
           </div>
         </td>

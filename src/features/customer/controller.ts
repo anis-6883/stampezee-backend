@@ -530,7 +530,7 @@ export const updateCustomerBySuperAdmin = asyncHandler(async (req: IApiRequest, 
   });
 
   const { id } = req.params;
-  const { otp, otpExpiry, isVerified, verifiedAt, image, ref, password, ...updateBody } = result;
+  const { otp, otpExpiry, isVerified, verifiedAt, image, ref, address, password, ...updateBody } = result;
 
   const existingCustomer: IUser = await Customer.findOne({
     email: updateBody.email,
@@ -538,6 +538,8 @@ export const updateCustomerBySuperAdmin = asyncHandler(async (req: IApiRequest, 
   });
 
   if (existingCustomer) throw "This customer already exists!";
+
+  updateBody["address.name"] = address;
 
   const customer = await Customer.findOneAndUpdate({ _id: id }, updateBody);
   if (!customer) return apiResponse(res, 404, false, "Customer not found!");
