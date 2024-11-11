@@ -355,9 +355,52 @@ export const topOutlets = asyncHandler(async (req: IApiRequest, res: Response) =
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const retailer = await Retailer.aggregate([
+  const result = await Retailer.aggregate([
     {
       $match: { _id: req?.user?._id },
+    },
+    {
+      $lookup: {
+        from: "branches",
+        localField: "_id",
+        foreignField: "retailerId",
+        as: "branchCustomer",
+        pipeline: [
+          {
+            $match: {
+              status: true,
+              softDeleted: false,
+              disabledBySystem: false,
+            },
+          },
+          {
+            $lookup: {
+              from: "collect_stamps",
+              localField: "_id",
+              foreignField: "branchId",
+              as: "collectStamps",
+            },
+          },
+          {
+            $unwind: "$collectStamps",
+          },
+          {
+            $group: {
+              _id: "$retailerId",
+              totalCustomer: { $addToSet: "$collectStamps.customerId" },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              totalCustomer: { $size: "$totalCustomer" }, // Calculate size of the unique customer set
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: "$branchCustomer",
     },
     {
       $lookup: {
@@ -475,27 +518,27 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
         },
         totalActiveBranch: { $size: "$branches" },
         totalActiveStamp: { $size: "$stamps" },
-        totalCustomer: { $sum: "$branches.totalCustomer" },
         totalOrder: { $sum: "$branches.totalOrder" },
         totalRevenue: { $sum: "$branches.totalRevenue" },
+        totalCustomer: "$branchCustomer.totalCustomer",
       },
     },
     {
       $project: {
         _id: 0,
+        branches: 1,
         totalActiveBranch: 1,
         totalActiveStamp: 1,
-        totalCustomer: 1,
         totalOrder: 1,
         totalRevenue: 1,
-        branches: 1,
+        totalCustomer: 1,
       },
     },
   ]);
 
-  if (retailer.length <= 0) return apiResponse(res, 404, false, "Retailer not found!");
+  if (result.length <= 0) return apiResponse(res, 404, false, "Retailer not found!");
 
-  return apiResponse(res, 200, true, "Retailer dashboard card stats fetched successfully!", retailer[0]);
+  return apiResponse(res, 200, true, "Retailer dashboard card stats fetched successfully!", result[0]);
 });
 
 /**
