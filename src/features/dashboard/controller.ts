@@ -2,6 +2,7 @@ import { Response } from "express";
 import moment from "moment";
 import { apiResponse, asyncHandler, countryData, generateRandomColor } from "../../helpers";
 import Branch from "../../models/branch";
+import CollectStamp from "../../models/collect-stamp";
 import Customer from "../../models/customer";
 import EnrollSubscription from "../../models/enroll-subscription";
 import OrderStamp from "../../models/order-stamp";
@@ -669,4 +670,73 @@ export const avgCollectedStamp = asyncHandler(async (req: IApiRequest, res: Resp
   }
 
   return apiResponse(res, 200, true, "Avg stamp collect per customer fetched successfully!", result[0]);
+});
+
+/**
+ * Get Reward Collect Percentage (Retailer)
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const rewardCollectPercentage = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const branches = await Branch.find({ retailerId: req.user._id }).select("_id");
+  const branchIds = branches.map((branch) => branch._id);
+
+  const result = await CollectStamp.aggregate([
+    {
+      $match: {
+        branchId: { $in: branchIds },
+        // softDeleted: false,
+      },
+    },
+    {
+      $group: {
+        _id: null, // Group by null to get totals across the entire collection
+        totalRewardCollectedTrue: {
+          $sum: { $cond: [{ $eq: ["$rewardCollected", true] }, 1, 0] },
+        },
+        totalRewardCollectedFalse: {
+          $sum: { $cond: [{ $eq: ["$rewardCollected", false] }, 1, 0] },
+        },
+        totalEligibleForReward: {
+          $sum: { $cond: [{ $eq: ["$eligibleForReward", true] }, 1, 0] },
+        },
+        totalCount: { $sum: 1 }, // Total documents counted
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        totalRewardCollectedTrue: 1,
+        totalRewardCollectedFalse: 1,
+        totalEligibleForReward: 1,
+        rewardCollectedTruePercentage: {
+          $cond: {
+            if: { $gt: ["$totalCount", 0] },
+            then: { $round: [{ $multiply: [{ $divide: ["$totalRewardCollectedTrue", "$totalCount"] }, 100] }, 2] },
+            else: 0,
+          },
+        },
+        rewardCollectedFalsePercentage: {
+          $cond: {
+            if: { $gt: ["$totalCount", 0] },
+            then: { $round: [{ $multiply: [{ $divide: ["$totalRewardCollectedFalse", "$totalCount"] }, 100] }, 2] },
+            else: 0,
+          },
+        },
+      },
+    },
+  ]);
+
+  if (result.length <= 0) {
+    return apiResponse(res, 200, true, "Reward collect percentage fetched successfully!", {
+      totalRewardCollectedTrue: 0,
+      totalRewardCollectedFalse: 0,
+      totalEligibleForReward: 0,
+      rewardCollectedTruePercentage: 0,
+      rewardCollectedFalsePercentage: 0,
+    });
+  }
+
+  return apiResponse(res, 200, true, "Reward collect percentage fetched successfully!", result[0]);
 });
