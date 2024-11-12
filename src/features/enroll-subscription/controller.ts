@@ -13,7 +13,7 @@ import {
   htmlToPdf,
 } from "../../helpers";
 import Branch from "../../models/branch";
-import Coupon from "../../models/coupon";
+import Coupon, { ICoupon } from "../../models/coupon";
 import CriticalPayment from "../../models/critical-payment";
 import CurrencyExchange from "../../models/currency-exchange";
 import EnrollSubscription from "../../models/enroll-subscription";
@@ -22,7 +22,7 @@ import Refund from "../../models/refund";
 import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
 import Stamp from "../../models/stamp";
-import Subscription from "../../models/subscription";
+import Subscription, { ISubscription } from "../../models/subscription";
 import { getInvoiceTemplate } from "../../templates/invoice";
 import { IApiRequest, IEnrollSubscriptionBody, ILineItem } from "../../types";
 import { couponSchema, enrollSubscriptionSchema } from "./validation";
@@ -864,9 +864,10 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
     }
 
     // Check & Get Coupon
-    let coupon = null;
+    let coupon: ICoupon = null;
+    let appliedSlugs: string[] = [];
     if (code) {
-      const coupon = (
+      coupon = (
         await Coupon.aggregate([
           {
             $match: {
@@ -880,6 +881,7 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
           {
             $project: {
               _id: 1,
+              code: 1,
               title: 1,
               discountType: 1,
               discount: 1,
@@ -894,13 +896,13 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
 
       if (!coupon) throw "Provided invalid coupon code!";
 
-      const subscriptions = await Subscription.find({
+      const subscriptions: ISubscription[] = await Subscription.find({
         _id: { $in: coupon?.applicablePackages || [] },
         slug: { $ne: "trial" },
       });
 
       const applicablePackages = subscriptions.map((subscription) => subscription.slug);
-      const appliedSlugs = applicablePackages.filter((slug) => slugs.includes(slug));
+      appliedSlugs = applicablePackages.filter((slug) => slugs.includes(slug));
       if (appliedSlugs.length <= 0) throw "Provided invalid coupon code!";
 
       if (coupon.allowFor === "specific") {
@@ -937,6 +939,8 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
       ///////////////////////////////////
       //////// New Subscription /////////
       ///////////////////////////////////
+      let totalCouponAmount = 0;
+
       for (const subscription of subscriptions) {
         let finalPrice = 0;
         let taxValue = 0;
@@ -944,7 +948,15 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
 
         finalPrice = Number((selectCurrency.exchangeRate * subscription.price).toFixed(2));
 
-        //TODO: Check coupon eligibility & apply
+        //Check coupon eligibility & apply
+        if (coupon && appliedSlugs.includes(subscription.slug)) {
+          couponValue =
+            coupon.discountType === "percentage"
+              ? (finalPrice * coupon?.discount) / 100
+              : selectCurrency.exchangeRate * coupon?.discount;
+
+          totalCouponAmount += Number(couponValue.toFixed(2));
+        }
 
         // Only tax apply
         if (taxStatus === "on") {
@@ -952,10 +964,10 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
           finalPrice += taxValue;
         }
 
-        const enrollSubscription: any = await EnrollSubscription.create({
+        const enrollSubscription = await EnrollSubscription.create({
           retailerId: req.user._id,
           planSnapshot: subscription,
-          // couponSnapshot: coupon ?? null,
+          couponSnapshot: coupon ?? null,
           taxSnapshot: {
             taxTitle: taxStatus === "on" ? taxTitle : null,
             taxCost: taxStatus === "on" ? taxCost : null,
@@ -970,7 +982,7 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
           status: false,
         });
 
-        enrollIdDuration["planEnrollmentId"] = String(enrollSubscription._id);
+        if (subscription.type === "subscription") enrollIdDuration["planEnrollmentId"] = String(enrollSubscription._id);
         enrollIdDuration[enrollSubscription._id] = subscription.duration;
         const isPlan = [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug);
 
@@ -990,6 +1002,22 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
             },
           },
           quantity: 1,
+        });
+      }
+
+      if (coupon) {
+        const applyCoupon = await stripe.coupons.create({
+          name: coupon.title,
+          amount_off:
+            selectCurrency?.name === "JPY"
+              ? Math.round(Number(totalCouponAmount))
+              : Math.round(Number(totalCouponAmount) * 100),
+          currency,
+          duration: "once",
+        });
+
+        coupons.push({
+          coupon: applyCoupon.id,
         });
       }
     }
@@ -1190,7 +1218,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       ]);
     }
 
-    let subscriptionId;
+    let subscriptionIds: string[] = [];
     let updateSubscriptions = [];
     const purchasedSubscription = await EnrollSubscription.findById(checkoutSession.metadata["planEnrollmentId"]);
 
@@ -1225,11 +1253,11 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     //   }
     // }
 
-    for (let key in checkoutSession.metadata) {
+    for (let key in checkoutSession?.metadata) {
       if (key !== "planEnrollmentId") {
         const now = moment();
         const expireDate = moment().add(checkoutSession.metadata[key], "days");
-        subscriptionId = key;
+        subscriptionIds.push(key);
 
         updateSubscriptions.push(
           EnrollSubscription.findByIdAndUpdate(key, {
@@ -1252,7 +1280,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     // Store Payment Info
     const payment = await Payment.create({
       retailerId: retailer?._id,
-      enrollSubscriptionId: subscriptionId,
+      enrollSubscriptionId: subscriptionIds,
       invoiceNumber: invoice?.number,
       invoicePdf: invoice?.invoice_pdf,
       paymentIntentId: invoice?.payment_intent?.id,
@@ -1261,17 +1289,18 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       paymentMethodDetails: invoice?.payment_intent?.payment_method, // Kind of Log Store
     });
 
+    // TODO: Test Needed in Critical Payment
     // Handle Critical Payment (if payment method id is missing)
     if (!invoice?.payment_intent?.payment_method?.id) {
       await CriticalPayment.create({
         paymentId: payment._id,
-        enrollSubscriptionId: subscriptionId,
+        enrollSubscriptionId: subscriptionIds,
         stripeInvoiceId: eventObject.invoice,
         status: "pending",
       });
     }
 
-    // @TODO: Send Subscription Invoice
+    // TODO: Send Subscription Invoice
 
     const customerInfo = {
       name: retailer?.fullName,

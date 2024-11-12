@@ -1,6 +1,6 @@
 import { Document, model, Schema, Types } from "mongoose";
 
-interface ICoupon extends Document {
+export interface ICoupon extends Document {
   title: string;
   description?: string;
   code: string;

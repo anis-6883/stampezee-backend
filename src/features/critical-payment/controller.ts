@@ -112,9 +112,9 @@ export const resolveCriticalPayment = asyncHandler(async (req: IApiRequest, res:
     const criticalPayment = await CriticalPayment.findOne({ stripeInvoiceId });
     if (!criticalPayment) throw "Provided invalid stripe invoice id!";
 
-    const enrollUpdated = await EnrollSubscription.findOneAndUpdate(
+    const enrollUpdated = await EnrollSubscription.updateMany(
       {
-        _id: criticalPayment.enrollSubscriptionId,
+        _id: { $in: criticalPayment.enrollSubscriptionIds },
       },
       {
         "stripe.paymentMethodId": invoice?.payment_intent?.payment_method?.id,
