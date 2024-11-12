@@ -3,7 +3,15 @@ import moment from "moment";
 import nodemailer from "nodemailer";
 import Stripe from "stripe";
 import { PACKAGES } from "../../configs/constants";
-import { apiResponse, asyncHandler, calculateBalanceAmount, htmlToPdf } from "../../helpers";
+import {
+  apiResponse,
+  asyncHandler,
+  calculateBalanceAmount,
+  checkCombination,
+  checkDuplicates,
+  exclude,
+  htmlToPdf,
+} from "../../helpers";
 import Branch from "../../models/branch";
 import Coupon from "../../models/coupon";
 import CriticalPayment from "../../models/critical-payment";
@@ -45,7 +53,7 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
     abortEarly: false,
   });
 
-  const { code, slug } = result || {};
+  const { code, slugs } = result || {};
 
   const coupon = (
     await Coupon.aggregate([
@@ -61,6 +69,7 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
       {
         $project: {
           _id: 1,
+          code: 1,
           title: 1,
           discountType: 1,
           discount: 1,
@@ -81,7 +90,8 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
   });
 
   const applicablePackages = subscriptions.map((subscription) => subscription.slug);
-  if (!applicablePackages.includes(slug)) throw "Provided invalid coupon code!";
+  const appliedSlugs = applicablePackages.filter((slug) => slugs.includes(slug));
+  if (appliedSlugs.length <= 0) throw "Provided invalid coupon code!";
 
   if (coupon.allowFor === "specific") {
     if (!coupon.allowedRetailers.includes(req.user._id as any)) throw "Provided invalid coupon code!";
@@ -95,7 +105,10 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
 
   if (alreadyApplied >= coupon.limit) throw "Your coupon limit is over!";
 
-  return apiResponse(res, 200, true, "Coupon applied!", coupon);
+  const data = exclude(coupon, ["applicablePackages", "allowedRetailers", "allowFor", "limit"]);
+  data.appliedSlugs = appliedSlugs;
+
+  return apiResponse(res, 200, true, "Coupon applied!", data);
 });
 
 /**
@@ -777,7 +790,7 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
         Promise.all([
           EnrollSubscription.create({
             retailerId: req.user._id,
-            planSnapshot: [subscription],
+            planSnapshot: subscription,
             paymentStatus: "trial",
             validityFrom: now,
             validityTo: expireDate,
@@ -799,9 +812,203 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
     throw "Free trial already taken!";
   }
 
-  console.log({ result });
+  // Get Payment Metadata & Allowed Currencies
+  const [paymentMetadata, allowCurrencies] = await Promise.all([
+    Settings.findOne(
+      {},
+      {
+        "stripe.planChangeCost": 1,
+        "stripe.refundableThreshold": 1,
+        "stripe.taxTitle": 1,
+        "stripe.taxCost": 1,
+        "stripe.taxStatus": 1,
+        "stripe.stripeSecretKey": 1,
+      }
+    ),
+    CurrencyExchange.find({ status: true }),
+  ]);
 
-  return apiResponse(res, 200, true, "Enroll Subscription Rebuild!");
+  const {
+    stripeSecretKey = null,
+    planChangeCost = null,
+    refundableThreshold = null,
+    taxTitle = null,
+    taxCost = null,
+    taxStatus = null,
+  } = paymentMetadata.stripe ?? {};
+
+  const selectCurrency = allowCurrencies.find((curr) => curr.name === currency);
+
+  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+  if (!selectCurrency) throw "Provided currency is not allowed!";
+
+  const stripe = new Stripe(stripeSecretKey);
+
+  // Enroll Paid Subscription
+  if (checkCombination(slugs, [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED]) && checkDuplicates(slugs)) {
+    const subscriptions: any[] = await Subscription.find({ slug: { $in: slugs } });
+    const pickPlan = subscriptions.find((subs) => subs.type === "subscription"); // Always Get One Plan if Exists
+
+    // Check Already enrolled or not
+    const enrolled = await EnrollSubscription.findOne({
+      retailerId: req.user._id,
+      "planSnapshot.type": "subscription",
+      paymentStatus: "completed",
+      validityTo: { $gt: moment() },
+      status: true,
+    });
+
+    if (!enrolled && !pickPlan) throw `You can't purchase an add-on without an active plan!`;
+    if (enrolled && slugs.includes(enrolled.planSnapshot.slug)) {
+      throw `You already take ${enrolled.planSnapshot.title} plan!`;
+    }
+
+    // Check & Get Coupon
+    let coupon = null;
+    if (code) {
+      const coupon = (
+        await Coupon.aggregate([
+          {
+            $match: {
+              code,
+              startedAt: { $lte: new Date() },
+              expiredAt: { $gte: new Date() },
+              status: true,
+              softDeleted: false,
+            },
+          },
+          {
+            $project: {
+              _id: 1,
+              title: 1,
+              discountType: 1,
+              discount: 1,
+              allowFor: 1,
+              allowedRetailers: 1,
+              applicablePackages: 1,
+              limit: 1,
+            },
+          },
+        ])
+      )[0];
+
+      if (!coupon) throw "Provided invalid coupon code!";
+
+      const subscriptions = await Subscription.find({
+        _id: { $in: coupon?.applicablePackages || [] },
+        slug: { $ne: "trial" },
+      });
+
+      const applicablePackages = subscriptions.map((subscription) => subscription.slug);
+      const appliedSlugs = applicablePackages.filter((slug) => slugs.includes(slug));
+      if (appliedSlugs.length <= 0) throw "Provided invalid coupon code!";
+
+      if (coupon.allowFor === "specific") {
+        if (!coupon.allowedRetailers.includes(req.user._id as any)) throw "Provided invalid coupon code!";
+      }
+
+      const alreadyApplied = await EnrollSubscription.countDocuments({
+        retailerId: req.user._id,
+        "couponSnapshot._id": coupon._id,
+        paymentStatus: "completed",
+      });
+
+      if (alreadyApplied >= coupon.limit) throw "Your coupon limit is over!";
+    }
+
+    // TODO: Check & Get Coupon
+
+    // TODO: Take a Subscription with [One Plan and One Add-on]
+    // TODO: Or, Take a Subscription with [Two Add-ons]
+    // TODO: Make a payment with [packages]
+    // TODO: If One add-on cancelled then handle payment with [package] (recurring)
+    // TODO: If plan cancelled then handle cancel subscription
+
+    ////////////////////////////////////////////////////////////////////////
+    //////// Decision -> (Upgrade or Downgrade) or New Subscription ////////
+    ////////////////////////////////////////////////////////////////////////
+    const enrollIdDuration: { [key: string]: number | string } = {};
+    const line_items: ILineItem[] = [];
+    const coupons: { coupon: string }[] = [];
+
+    if (pickPlan && enrolled) {
+      return apiResponse(res, 200, true, "pickPlan && enrolled!");
+    } else {
+      ///////////////////////////////////
+      //////// New Subscription /////////
+      ///////////////////////////////////
+      for (const subscription of subscriptions) {
+        let finalPrice = 0;
+        let taxValue = 0;
+        let couponValue = 0;
+
+        finalPrice = Number((selectCurrency.exchangeRate * subscription.price).toFixed(2));
+
+        //TODO: Check coupon eligibility & apply
+
+        // Only tax apply
+        if (taxStatus === "on") {
+          taxValue = (finalPrice * taxCost) / 100;
+          finalPrice += taxValue;
+        }
+
+        const enrollSubscription: any = await EnrollSubscription.create({
+          retailerId: req.user._id,
+          planSnapshot: subscription,
+          // couponSnapshot: coupon ?? null,
+          taxSnapshot: {
+            taxTitle: taxStatus === "on" ? taxTitle : null,
+            taxCost: taxStatus === "on" ? taxCost : null,
+          },
+          balanceInfo: {
+            planCurrentPrice: (finalPrice - taxValue - couponValue).toFixed(2),
+            currency,
+            currencyRate: selectCurrency.exchangeRate,
+          },
+          paymentStatus: "pending",
+          enrollStatus: "purchase",
+          status: false,
+        });
+
+        enrollIdDuration["planEnrollmentId"] = String(enrollSubscription._id);
+        enrollIdDuration[enrollSubscription._id] = subscription.duration;
+        const isPlan = [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug);
+
+        line_items.push({
+          price_data: {
+            currency: currency.toLowerCase(),
+            product_data: {
+              name: `${subscription.title} ${isPlan ? "Plan" : "Add-On"}`,
+              ...(taxStatus === "on" && {
+                description: `${subscription.title} ${isPlan ? "Plan" : "Add-On"} (including ${taxTitle} ${taxCost}%)`,
+              }),
+            },
+            unit_amount:
+              selectCurrency?.name === "JPY" ? Math.round(Number(finalPrice)) : Math.round(Number(finalPrice) * 100), // convert into cent
+            recurring: {
+              interval: "month",
+            },
+          },
+          quantity: 1,
+        });
+      }
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      line_items,
+      mode: "subscription",
+      payment_method_types: ["card"],
+      metadata: enrollIdDuration, // Need for update info after complete payment
+      discounts: coupons,
+      success_url: `${process.env.FRONTEND_URL}/payment/complete`,
+      cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
+      customer_email: req?.user?.email,
+    });
+
+    return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
+  }
+
+  throw "Only one subscription plan and no duplicate addons are allowed!";
 });
 
 /**

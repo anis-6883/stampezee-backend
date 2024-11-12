@@ -37,7 +37,7 @@ interface IEnrollSubscription extends Document {
     renewCancelAt?: Date;
     renewCanceledAtByCustomer?: Date;
   };
-  planSnapshot: ISubscription[];
+  planSnapshot: ISubscription;
   couponSnapshot?: ICoupon;
   taxSnapshot: {
     taxTitle?: string;
@@ -102,7 +102,7 @@ const enrollSubscriptionSchema = new Schema<IEnrollSubscription>(
       renewCancelAt: { type: Date, default: null },
       renewCanceledAtByCustomer: { type: Date, default: null },
     },
-    planSnapshot: { type: [subscriptionSchema], required: true },
+    planSnapshot: { type: subscriptionSchema, required: true },
     couponSnapshot: { type: couponSchema, default: null },
     taxSnapshot: {
       taxTitle: { type: String, default: null },

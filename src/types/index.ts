@@ -59,6 +59,7 @@ export interface IUser {
     name: string;
   };
   _doc?: any;
+  businessCurrency?: any;
 }
 
 export interface IApiRequest extends Request {
