@@ -983,7 +983,7 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
         });
 
         if (subscription.type === "subscription") enrollIdDuration["planEnrollmentId"] = String(enrollSubscription._id);
-        enrollIdDuration[enrollSubscription._id] = subscription.duration;
+        enrollIdDuration[enrollSubscription._id as string] = subscription.duration;
         const isPlan = [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug);
 
         line_items.push({
