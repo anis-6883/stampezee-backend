@@ -4,6 +4,7 @@ interface ICustomer extends Document {
   _doc?: unknown;
   fullName: string;
   email: string;
+  contactEmail?: string;
   provider: "email" | "google" | "apple";
   password: string;
   otp?: number;
@@ -33,6 +34,7 @@ const customerSchema = new Schema<ICustomer>(
     fullName: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, trim: true },
     provider: { type: String, required: true, enum: ["email", "google", "apple"] },
+    contactEmail: { type: String, trim: true, default: null }, // Need for Login with Apple for hiding issue
     password: { type: String, required: true },
     otp: { type: Number, trim: true, default: null },
     otpExpiry: { type: Date, default: null },

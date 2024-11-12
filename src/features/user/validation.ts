@@ -1,5 +1,11 @@
 import Joi from "joi";
-import { requiredEmailField, requiredStringField, requiredWeakPasswordField, stringField } from "../../helpers";
+import {
+  emailField,
+  requiredEmailField,
+  requiredStringField,
+  requiredWeakPasswordField,
+  stringField,
+} from "../../helpers";
 
 const updateLongitude = Joi.when("address", {
   is: Joi.exist(),
@@ -26,6 +32,7 @@ const updateLatitude = Joi.when("address", {
 export const customerRegisterSchema = Joi.object({
   fullName: requiredStringField("fullName"),
   email: requiredEmailField,
+  contactEmail: emailField,
   password: Joi.string().when("provider", {
     is: "email",
     then: requiredWeakPasswordField(6),
