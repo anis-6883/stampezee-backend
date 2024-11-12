@@ -48,9 +48,9 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
 
   let allowTotalNotification = 0;
 
-  for (const addon of addons) {
-    allowTotalNotification += addon.planSnapshot?.limit;
-  }
+  // for (const addon of addons) {
+  //   allowTotalNotification += addon.planSnapshot?.limit;
+  // }
 
   if (totalNotification >= allowTotalNotification) throw "Your notification limit is over. Take Another Add-on!";
 
@@ -125,9 +125,9 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
 
   let allowTotalNotification = 0;
 
-  for (const addon of addons) {
-    allowTotalNotification += addon.planSnapshot?.limit;
-  }
+  // for (const addon of addons) {
+  //   allowTotalNotification += addon.planSnapshot?.limit;
+  // }
 
   if (totalNotification >= allowTotalNotification) throw "Your notification limit is over. Take Another Add-on!";
 
@@ -263,9 +263,9 @@ export const getAllNotificationsForRetailer = asyncHandler(async (req: IApiReque
 
   let allowTotalNotification = 0;
 
-  for (const addon of addons) {
-    allowTotalNotification += addon.planSnapshot?.limit;
-  }
+  // for (const addon of addons) {
+  //   allowTotalNotification += addon.planSnapshot?.limit;
+  // }
 
   data.notificationLimit =
     allowTotalNotification - totalNotification < 0 ? 0 : allowTotalNotification - totalNotification;

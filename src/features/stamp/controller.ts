@@ -52,7 +52,8 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
   if (!category) throw "Category not found!";
   if (!subscription) throw "No one is allowed to create a stamp without a plan!";
 
-  const allowTotalStamp = (subscription?.planSnapshot?.allowTotalStamp ?? 0) + addons.length;
+  // const allowTotalStamp = (subscription?.planSnapshot?.allowTotalStamp ?? 0) + addons.length;
+  const allowTotalStamp = 0;
   if (retailerTotalStamp >= allowTotalStamp) throw "Your stamp limit is over. Take new Add-on!";
 
   if (!createBody.hasValidity) {

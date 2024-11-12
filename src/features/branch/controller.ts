@@ -41,7 +41,8 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
 
   if (!subscription) throw "No one is allowed to create a branch without a plan!";
 
-  const allowTotalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addons.length;
+  // const allowTotalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addons.length;
+  const allowTotalBranch = 0;
   const branchWithoutSystemDisabled = retailerTotalBranch.filter((branch) => !branch.disabledBySystem).length;
 
   if (branchWithoutSystemDisabled >= allowTotalBranch) throw "Your branch limit is over. Take new Add-on!";
@@ -56,7 +57,8 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
     (branch) => branch.source === "subscription" && !branch.disabledBySystem
   ).length;
 
-  const source = subscriptionBranchSlot < subscription?.planSnapshot?.allowTotalBranch ? "subscription" : "addon";
+  // const source = subscriptionBranchSlot < subscription?.planSnapshot?.allowTotalBranch ? "subscription" : "addon";
+  const source = "subscription";
 
   await Branch.create({
     name,
@@ -236,7 +238,8 @@ export const activateSystemDisabledBranch = asyncHandler(async (req: IApiRequest
 
   if (!subscription) throw "No one is allowed to activate branch without a plan!";
 
-  const allowTotalBranch = subscription?.planSnapshot?.allowTotalBranch ?? 0;
+  // const allowTotalBranch = subscription?.planSnapshot?.allowTotalBranch ?? 0;
+  const allowTotalBranch = 0;
   if (retailerTotalActiveBranch.length >= allowTotalBranch) throw "Your branch limit is over to activate!";
 
   const updateBranch = await Branch.findByIdAndUpdate(id, { status: true, disabledBySystem: false }, { new: true });

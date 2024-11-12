@@ -3,7 +3,7 @@ import moment from "moment";
 import nodemailer from "nodemailer";
 import Stripe from "stripe";
 import { PACKAGES } from "../../configs/constants";
-import { apiResponse, asyncHandler, calculateBalanceAmount, checkPlanChange, htmlToPdf } from "../../helpers";
+import { apiResponse, asyncHandler, calculateBalanceAmount, htmlToPdf } from "../../helpers";
 import Branch from "../../models/branch";
 import Coupon from "../../models/coupon";
 import CriticalPayment from "../../models/critical-payment";
@@ -17,7 +17,6 @@ import Stamp from "../../models/stamp";
 import Subscription from "../../models/subscription";
 import { getInvoiceTemplate } from "../../templates/invoice";
 import { IApiRequest, IEnrollSubscriptionBody, ILineItem } from "../../types";
-import { sendInvoiceToEmail } from "./service";
 import { couponSchema, enrollSubscriptionSchema } from "./validation";
 
 /**
@@ -161,7 +160,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     status: true,
   });
 
-  if (enrolled && slug === enrolled.planSnapshot.slug) throw `You already take ${enrolled.planSnapshot.title} plan!`;
+  // if (enrolled && slug === enrolled.planSnapshot.slug) throw `You already take ${enrolled.planSnapshot.title} plan!`;
   if (!enrolled && !isPlan) throw `You can't purchase an add-on without an active plan!`;
 
   // Check & Get Coupon
@@ -251,11 +250,13 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
   const coupons: { coupon: string }[] = [];
 
   if (isPlan && enrolled) {
-    const changeMode: number = checkPlanChange(
-      [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED],
-      enrolled.planSnapshot.slug,
-      pickSubscriptionPlan?.slug
-    );
+    // const changeMode: number = checkPlanChange(
+    //   [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED],
+    //   enrolled.planSnapshot.slug,
+    //   pickSubscriptionPlan?.slug
+    // );
+
+    const changeMode: number = 1;
 
     const convertToSelectedCurrency = Number(
       (
@@ -495,14 +496,15 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           phone: `${retailer?.dialCode}-${retailer?.phone}`,
           address: `${retailer?.address}, ${retailer?.city}, ${retailer?.postalCode}`,
         };
-        const purchasedItems = [
-          {
-            title: enrollSubscription?.planSnapshot?.title,
-            quantity: 1,
-            unitPrice: `${Number(enrollSubscription?.planSnapshot?.price * enrollSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
-            total: `${Number(enrollSubscription?.planSnapshot?.price * enrollSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
-          },
-        ];
+
+        // const purchasedItems = [
+        //   {
+        //     title: enrollSubscription?.planSnapshot?.title,
+        //     quantity: 1,
+        //     unitPrice: `${Number(enrollSubscription?.planSnapshot?.price * enrollSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
+        //     total: `${Number(enrollSubscription?.planSnapshot?.price * enrollSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
+        //   },
+        // ];
 
         let taxAmount = 0;
         let couponAmount = 0;
@@ -522,40 +524,40 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             (enrollSubscription?.balanceInfo?.planCurrentPrice * enrollSubscription?.taxSnapshot?.taxCost) / 100;
         }
 
-        const invoiceMetadata = {
-          invoiceNo: "",
-          subtotal: `${Number(enrollSubscription?.planSnapshot?.price * enrollSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
-          remainingAmount:
-            enrollSubscription?.enrollStatus === "purchase"
-              ? null
-              : `${enrollSubscription?.balanceInfo?.currentBalance?.toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
-          planChangeCost:
-            enrollSubscription?.enrollStatus === "purchase" || enrollSubscription?.enrollStatus === "downgrade"
-              ? null
-              : `${enrollSubscription?.planChangeCost.toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
-          couponDiscount: enrollSubscription?.couponSnapshot
-            ? `${couponAmount.toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`
-            : null,
-          taxDiscount:
-            enrollSubscription?.taxSnapshot && enrollSubscription?.enrollStatus !== "downgrade"
-              ? `${taxAmount?.toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`
-              : null,
-          coupon: enrollSubscription?.couponSnapshot
-            ? {
-                title: enrollSubscription?.couponSnapshot?.title,
-                discountType: enrollSubscription?.couponSnapshot?.discountType,
-                discount: enrollSubscription?.couponSnapshot?.discount,
-              }
-            : null,
-          tax:
-            enrollSubscription?.taxSnapshot && enrollSubscription?.enrollStatus !== "downgrade"
-              ? {
-                  taxTitle: enrollSubscription?.taxSnapshot?.taxTitle,
-                  taxCost: enrollSubscription?.taxSnapshot?.taxCost,
-                }
-              : null,
-          total: `${Math.abs(totalAmount).toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
-        };
+        // const invoiceMetadata = {
+        //   invoiceNo: "",
+        //   subtotal: `${Number(enrollSubscription?.planSnapshot?.price * enrollSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
+        //   remainingAmount:
+        //     enrollSubscription?.enrollStatus === "purchase"
+        //       ? null
+        //       : `${enrollSubscription?.balanceInfo?.currentBalance?.toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
+        //   planChangeCost:
+        //     enrollSubscription?.enrollStatus === "purchase" || enrollSubscription?.enrollStatus === "downgrade"
+        //       ? null
+        //       : `${enrollSubscription?.planChangeCost.toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
+        //   couponDiscount: enrollSubscription?.couponSnapshot
+        //     ? `${couponAmount.toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`
+        //     : null,
+        //   taxDiscount:
+        //     enrollSubscription?.taxSnapshot && enrollSubscription?.enrollStatus !== "downgrade"
+        //       ? `${taxAmount?.toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`
+        //       : null,
+        //   coupon: enrollSubscription?.couponSnapshot
+        //     ? {
+        //         title: enrollSubscription?.couponSnapshot?.title,
+        //         discountType: enrollSubscription?.couponSnapshot?.discountType,
+        //         discount: enrollSubscription?.couponSnapshot?.discount,
+        //       }
+        //     : null,
+        //   tax:
+        //     enrollSubscription?.taxSnapshot && enrollSubscription?.enrollStatus !== "downgrade"
+        //       ? {
+        //           taxTitle: enrollSubscription?.taxSnapshot?.taxTitle,
+        //           taxCost: enrollSubscription?.taxSnapshot?.taxCost,
+        //         }
+        //       : null,
+        //   total: `${Math.abs(totalAmount).toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
+        // };
 
         const paymentInfo = {
           bankName: "Fauget Bank",
@@ -563,13 +565,13 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           accountNo: "123-456-7890",
         };
 
-        await sendInvoiceToEmail({
-          email: retailer?.email,
-          customerInfo,
-          purchasedItems,
-          invoiceMetadata,
-          paymentInfo,
-        });
+        // await sendInvoiceToEmail({
+        //   email: retailer?.email,
+        //   customerInfo,
+        //   purchasedItems,
+        //   invoiceMetadata,
+        //   paymentInfo,
+        // });
         return apiResponse(res, 200, true, `Your plan successfully downgraded!`, {
           plan: pickSubscriptionPlan?.slug,
           planStartAt: moment(),
@@ -736,6 +738,70 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
   });
 
   return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
+});
+
+/**
+ * Enroll Subscription (Re-build)
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await enrollSubscriptionSchema.validateAsync(req.body, {
+    abortEarly: false,
+  });
+
+  interface IEnrollSubscriptionBodyRebuild {
+    slugs: string[];
+    branchIds?: string[];
+    stampIds?: string[];
+    code: string;
+    currency: string;
+  }
+
+  const { slugs, code, branchIds, stampIds, currency }: IEnrollSubscriptionBodyRebuild = result;
+
+  if ((slugs.includes(PACKAGES.TRIAL) && slugs.length > 1) || (slugs.includes(PACKAGES.TRIAL) && code)) {
+    throw "You can't take additional packages or coupon in free trial!";
+  }
+
+  // Enroll Free Trial
+  if (slugs.includes(PACKAGES.TRIAL)) {
+    if (!req.user.takeFreeTrial) {
+      const subscription = await Subscription.findOne({ slug: "trial" });
+
+      if (subscription) {
+        const now = moment();
+        const expireDate = moment().add(subscription.duration, "days");
+
+        Promise.all([
+          EnrollSubscription.create({
+            retailerId: req.user._id,
+            planSnapshot: [subscription],
+            paymentStatus: "trial",
+            validityFrom: now,
+            validityTo: expireDate,
+            enrollStatus: "trial",
+          }),
+          Retailer.findByIdAndUpdate(req.user._id, { takeFreeTrial: true }),
+        ]);
+
+        return apiResponse(res, 200, true, "Free trial enrolled successfully!", {
+          takeFreeTrial: true,
+          plan: "trial",
+          planStartAt: now,
+          planValidAt: expireDate,
+          totalBranch: subscription?.allowTotalBranch,
+        });
+      }
+      throw "Free trial package not found!";
+    }
+    throw "Free trial already taken!";
+  }
+
+  console.log({ result });
+
+  return apiResponse(res, 200, true, "Enroll Subscription Rebuild!");
 });
 
 /**
@@ -922,35 +988,35 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     const purchasedSubscription = await EnrollSubscription.findById(checkoutSession.metadata["planEnrollmentId"]);
 
     // Deactivate last previous active plan
-    if (purchasedSubscription.planSnapshot.type === "subscription") {
-      const prevSubscription = await EnrollSubscription.findOneAndUpdate(
-        {
-          retailerId: retailer._id,
-          "planSnapshot.type": "subscription",
-          paymentStatus: { $in: ["completed", "trial"] },
-          status: true,
-        },
-        { status: false },
-        { new: true }
-      );
+    // if (purchasedSubscription.planSnapshot.type === "subscription") {
+    //   const prevSubscription = await EnrollSubscription.findOneAndUpdate(
+    //     {
+    //       retailerId: retailer._id,
+    //       "planSnapshot.type": "subscription",
+    //       paymentStatus: { $in: ["completed", "trial"] },
+    //       status: true,
+    //     },
+    //     { status: false },
+    //     { new: true }
+    //   );
 
-      if (prevSubscription && prevSubscription.paymentStatus !== "trial") {
-        await stripe.subscriptions.cancel(prevSubscription.stripe.subscriptionId);
-      }
+    //   if (prevSubscription && prevSubscription.paymentStatus !== "trial") {
+    //     await stripe.subscriptions.cancel(prevSubscription.stripe.subscriptionId);
+    //   }
 
-      // Update expiration for already created branch
-      if ("planEnrollmentId" in checkoutSession.metadata) {
-        updateSubscriptions.push(
-          Branch.updateMany(
-            {
-              retailerId: retailer._id,
-              source: "subscription",
-            },
-            { enrollSubscriptionId: checkoutSession.metadata["planEnrollmentId"] }
-          )
-        );
-      }
-    }
+    //   // Update expiration for already created branch
+    //   if ("planEnrollmentId" in checkoutSession.metadata) {
+    //     updateSubscriptions.push(
+    //       Branch.updateMany(
+    //         {
+    //           retailerId: retailer._id,
+    //           source: "subscription",
+    //         },
+    //         { enrollSubscriptionId: checkoutSession.metadata["planEnrollmentId"] }
+    //       )
+    //     );
+    //   }
+    // }
 
     for (let key in checkoutSession.metadata) {
       if (key !== "planEnrollmentId") {
@@ -1005,14 +1071,14 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       phone: `${retailer?.dialCode}-${retailer?.phone}`,
       address: `${retailer?.address}, ${retailer?.city}, ${retailer?.postalCode}`,
     };
-    const purchasedItems = [
-      {
-        title: purchasedSubscription?.planSnapshot?.title,
-        quantity: 1,
-        unitPrice: `${Number(purchasedSubscription?.planSnapshot?.price * purchasedSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
-        total: `${Number(purchasedSubscription?.planSnapshot?.price * purchasedSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
-      },
-    ];
+    // const purchasedItems = [
+    //   {
+    //     title: purchasedSubscription?.planSnapshot?.title,
+    //     quantity: 1,
+    //     unitPrice: `${Number(purchasedSubscription?.planSnapshot?.price * purchasedSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
+    //     total: `${Number(purchasedSubscription?.planSnapshot?.price * purchasedSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
+    //   },
+    // ];
 
     let taxValue = 0;
     let couponValue = 0;
@@ -1033,38 +1099,38 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
         (purchasedSubscription?.balanceInfo?.planCurrentPrice * purchasedSubscription?.taxSnapshot?.taxCost) / 100;
     }
 
-    const invoiceMetadata = {
-      invoiceNo: invoice?.number,
-      subtotal: `${Number(purchasedSubscription?.planSnapshot?.price * purchasedSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
-      remainingAmount:
-        purchasedSubscription?.enrollStatus === "purchase"
-          ? null
-          : `${purchasedSubscription?.balanceInfo?.currentBalance?.toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
-      planChangeCost:
-        purchasedSubscription?.enrollStatus === "purchase"
-          ? null
-          : `${purchasedSubscription?.planChangeCost.toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
-      couponDiscount: purchasedSubscription?.couponSnapshot
-        ? `${couponValue.toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`
-        : null,
-      taxDiscount: purchasedSubscription?.taxSnapshot
-        ? `${taxValue?.toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`
-        : null,
-      coupon: purchasedSubscription?.couponSnapshot
-        ? {
-            title: purchasedSubscription?.couponSnapshot?.title,
-            discountType: purchasedSubscription?.couponSnapshot?.discountType,
-            discount: purchasedSubscription?.couponSnapshot?.discount,
-          }
-        : null,
-      tax: purchasedSubscription?.taxSnapshot
-        ? {
-            taxTitle: purchasedSubscription?.taxSnapshot?.taxTitle,
-            taxCost: purchasedSubscription?.taxSnapshot?.taxCost,
-          }
-        : null,
-      total: `${(checkoutSession?.amount_total / 100).toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
-    };
+    // const invoiceMetadata = {
+    //   invoiceNo: invoice?.number,
+    //   subtotal: `${Number(purchasedSubscription?.planSnapshot?.price * purchasedSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
+    //   remainingAmount:
+    //     purchasedSubscription?.enrollStatus === "purchase"
+    //       ? null
+    //       : `${purchasedSubscription?.balanceInfo?.currentBalance?.toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
+    //   planChangeCost:
+    //     purchasedSubscription?.enrollStatus === "purchase"
+    //       ? null
+    //       : `${purchasedSubscription?.planChangeCost.toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
+    //   couponDiscount: purchasedSubscription?.couponSnapshot
+    //     ? `${couponValue.toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`
+    //     : null,
+    //   taxDiscount: purchasedSubscription?.taxSnapshot
+    //     ? `${taxValue?.toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`
+    //     : null,
+    //   coupon: purchasedSubscription?.couponSnapshot
+    //     ? {
+    //         title: purchasedSubscription?.couponSnapshot?.title,
+    //         discountType: purchasedSubscription?.couponSnapshot?.discountType,
+    //         discount: purchasedSubscription?.couponSnapshot?.discount,
+    //       }
+    //     : null,
+    //   tax: purchasedSubscription?.taxSnapshot
+    //     ? {
+    //         taxTitle: purchasedSubscription?.taxSnapshot?.taxTitle,
+    //         taxCost: purchasedSubscription?.taxSnapshot?.taxCost,
+    //       }
+    //     : null,
+    //   total: `${(checkoutSession?.amount_total / 100).toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
+    // };
 
     const paymentInfo = {
       bankName: "Fauget Bank",
@@ -1074,7 +1140,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
 
     await Promise.all(updateSubscriptions);
 
-    await sendInvoiceToEmail({ email: retailer?.email, customerInfo, purchasedItems, invoiceMetadata, paymentInfo });
+    // await sendInvoiceToEmail({ email: retailer?.email, customerInfo, purchasedItems, invoiceMetadata, paymentInfo });
   } catch (err) {
     console.log(err);
     // throw err.message || err || "Something went wrong!";
@@ -1166,4 +1232,118 @@ export const testEmailPDF = asyncHandler(async (req: IApiRequest, res: Response)
   }
 
   return apiResponse(res, 200, true, "Test Email with Pdf!");
+});
+
+/**
+ * Test MultiPackage Subscription
+ * @param {Request} eventObject - The HTTP webhook event object.
+ * @param {Request} stripe - The stripe object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const testMultiPackage = asyncHandler(async (req: IApiRequest, res: Response) => {
+  // Get Payment Metadata & Allowed Currencies
+  const [paymentMetadata, allowCurrencies] = await Promise.all([
+    Settings.findOne(
+      {},
+      {
+        "stripe.planChangeCost": 1,
+        "stripe.refundableThreshold": 1,
+        "stripe.taxTitle": 1,
+        "stripe.taxCost": 1,
+        "stripe.taxStatus": 1,
+        "stripe.stripeSecretKey": 1,
+      }
+    ),
+    CurrencyExchange.find({ status: true }),
+  ]);
+
+  const { stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } =
+    paymentMetadata.stripe ?? {};
+
+  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+
+  const stripe = new Stripe(stripeSecretKey);
+
+  const session = await stripe.checkout.sessions.create({
+    line_items: [
+      {
+        price_data: {
+          currency: "cad",
+          product_data: {
+            name: `Custom Plan 1`,
+          },
+          unit_amount: 20 * 100, // convert into cent
+          recurring: {
+            interval: "month",
+          },
+        },
+        quantity: 1,
+      },
+      {
+        price_data: {
+          currency: "cad",
+          product_data: {
+            name: `Custom Plan 2`,
+          },
+          unit_amount: 50 * 100, // convert into cent
+          recurring: {
+            interval: "month",
+          },
+        },
+        quantity: 1,
+      },
+    ],
+    mode: "subscription",
+    payment_method_types: ["card"],
+    success_url: `${process.env.FRONTEND_URL}/payment/complete`,
+    cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
+    customer_email: req?.user?.email,
+  });
+
+  return apiResponse(res, 200, true, "Test Multi Package!", { url: session?.url });
+});
+
+/**
+ * Test Delete Subscription Item
+ * @param {Request} eventObject - The HTTP webhook event object.
+ * @param {Request} stripe - The stripe object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const deleteSubItem = asyncHandler(async (req: IApiRequest, res: Response) => {
+  // Get Payment Metadata & Allowed Currencies
+  const [paymentMetadata, allowCurrencies] = await Promise.all([
+    Settings.findOne(
+      {},
+      {
+        "stripe.planChangeCost": 1,
+        "stripe.refundableThreshold": 1,
+        "stripe.taxTitle": 1,
+        "stripe.taxCost": 1,
+        "stripe.taxStatus": 1,
+        "stripe.stripeSecretKey": 1,
+      }
+    ),
+    CurrencyExchange.find({ status: true }),
+  ]);
+
+  const { stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } =
+    paymentMetadata.stripe ?? {};
+
+  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+
+  const stripe = new Stripe(stripeSecretKey);
+
+  // const deletedItem = await stripe.subscriptionItems.del("si_RCKkNVcqJegihY", {
+  //   proration_behavior: "none", // Options: 'create_prorations', 'none', 'always_invoice'
+  // });
+
+  // console.log("Deleted subscription item without proration:", deletedItem);
+
+  // const subscription = await stripe.subscriptions.cancel("sub_1QJw59JVIk5LKvIENo37jYSe");
+
+  stripe.subscriptions.update("sub_1QJwEgJVIk5LKvIEdI8WVtv6", {
+    cancel_at_period_end: true,
+  });
+
+  return apiResponse(res, 200, true, "Deleted Sub Item!");
 });
