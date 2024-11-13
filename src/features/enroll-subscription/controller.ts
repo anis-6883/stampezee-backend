@@ -967,7 +967,7 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
         const enrollSubscription = await EnrollSubscription.create({
           retailerId: req.user._id,
           planSnapshot: subscription,
-          couponSnapshot: coupon ?? null,
+          couponSnapshot: coupon && appliedSlugs.includes(subscription.slug) ? coupon : null,
           taxSnapshot: {
             taxTitle: taxStatus === "on" ? taxTitle : null,
             taxCost: taxStatus === "on" ? taxCost : null,
@@ -1577,9 +1577,19 @@ export const deleteSubItem = asyncHandler(async (req: IApiRequest, res: Response
 
   // const subscription = await stripe.subscriptions.cancel("sub_1QJw59JVIk5LKvIENo37jYSe");
 
-  stripe.subscriptions.update("sub_1QJwEgJVIk5LKvIEdI8WVtv6", {
-    cancel_at_period_end: true,
-  });
+  // stripe.subscriptions.update("sub_1QJwEgJVIk5LKvIEdI8WVtv6", {
+  //   cancel_at_period_end: true,
+  // });
+
+  // const paymentMethods = await stripe.customers.listPaymentMethods("cus_RCj2NchPrjMs6y", {
+  //   limit: 3,
+  // });
+
+  // const customer = await stripe.customers.update("cus_RCj2NchPrjMs6y", {
+  //   invoice_settings: {
+  //     default_payment_method: "pm_1QKYwMJVIk5LKvIExxn64Pzt",
+  //   },
+  // });
 
   return apiResponse(res, 200, true, "Deleted Sub Item!");
 });

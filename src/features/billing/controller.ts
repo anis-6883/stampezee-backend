@@ -49,7 +49,45 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  return apiResponse(res, 200, true, "Retailer billing fetched successfully!", data);
+  const result = await Payment.aggregate([
+    {
+      $sort: {
+        createdAt: -1,
+      },
+    },
+    {
+      $skip: skip,
+    },
+    {
+      $limit: Number(limit),
+    },
+    {
+      $lookup: {
+        from: "enroll_subscriptions",
+        localField: "enrollSubscriptionId",
+        foreignField: "_id",
+        as: "subscriptions",
+        pipeline: [
+          {
+            $project: {
+              title: "$planSnapshot.title",
+            },
+          },
+        ],
+      },
+    },
+    {
+      $project: {
+        subscriptions: 1,
+        paymentIntentId: 1,
+        invoiceNumber: 1,
+        amountTotal: 1,
+        paymentStatus: 1,
+      },
+    },
+  ]);
+
+  return apiResponse(res, 200, true, "Retailer billing fetched successfully!", result);
 });
 
 /**
