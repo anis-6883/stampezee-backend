@@ -74,7 +74,7 @@ export interface ILineItem {
   price_data?: {
     unit_amount: number;
     currency: string;
-    product_data: { name: string; description?: string };
+    product_data: { name: string; description?: string; metadata?: { enrollSubscriptionId: string } };
     recurring?: { interval: "day" | "week" | "month" | "year" };
   };
   quantity: number;
