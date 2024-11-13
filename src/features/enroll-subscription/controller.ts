@@ -1223,35 +1223,35 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     const purchasedSubscription = await EnrollSubscription.findById(checkoutSession.metadata["planEnrollmentId"]);
 
     // Deactivate last previous active plan
-    // if (purchasedSubscription.planSnapshot.type === "subscription") {
-    //   const prevSubscription = await EnrollSubscription.findOneAndUpdate(
-    //     {
-    //       retailerId: retailer._id,
-    //       "planSnapshot.type": "subscription",
-    //       paymentStatus: { $in: ["completed", "trial"] },
-    //       status: true,
-    //     },
-    //     { status: false },
-    //     { new: true }
-    //   );
+    if (purchasedSubscription.planSnapshot.type === "subscription") {
+      const prevSubscription = await EnrollSubscription.findOneAndUpdate(
+        {
+          retailerId: retailer._id,
+          "planSnapshot.type": "subscription",
+          paymentStatus: { $in: ["completed", "trial"] },
+          status: true,
+        },
+        { status: false },
+        { new: true }
+      );
 
-    //   if (prevSubscription && prevSubscription.paymentStatus !== "trial") {
-    //     await stripe.subscriptions.cancel(prevSubscription.stripe.subscriptionId);
-    //   }
+      if (prevSubscription && prevSubscription.paymentStatus !== "trial") {
+        await stripe.subscriptions.cancel(prevSubscription.stripe.subscriptionId);
+      }
 
-    //   // Update expiration for already created branch
-    //   if ("planEnrollmentId" in checkoutSession.metadata) {
-    //     updateSubscriptions.push(
-    //       Branch.updateMany(
-    //         {
-    //           retailerId: retailer._id,
-    //           source: "subscription",
-    //         },
-    //         { enrollSubscriptionId: checkoutSession.metadata["planEnrollmentId"] }
-    //       )
-    //     );
-    //   }
-    // }
+      // Update expiration for already created branch
+      if ("planEnrollmentId" in checkoutSession.metadata) {
+        updateSubscriptions.push(
+          Branch.updateMany(
+            {
+              retailerId: retailer._id,
+              source: "subscription",
+            },
+            { enrollSubscriptionId: checkoutSession.metadata["planEnrollmentId"] }
+          )
+        );
+      }
+    }
 
     for (let key in checkoutSession?.metadata) {
       if (key !== "planEnrollmentId") {
