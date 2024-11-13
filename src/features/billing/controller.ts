@@ -249,3 +249,48 @@ export const getRetailerBillingPdf = asyncHandler(async (req: IApiRequest, res: 
 
   // return apiResponse(res, 200, true, "Get Retailer Billing PDF Successfully!", {});
 });
+
+/**
+ * Setup Payment Intent
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const setupPaymentIntent = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
+  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+
+  const { stripeSecretKey } = paymentMetadata?.stripe;
+  const stripe = new Stripe(stripeSecretKey);
+
+  const setupIntent = await stripe.setupIntents.create({
+    payment_method_types: ["card"],
+  });
+
+  return apiResponse(res, 200, true, "Attach payment method successfully!", setupIntent);
+});
+
+/**
+ * Attach Payment Method
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const attachPaymentMethod = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { paymentMethodId, customerId } = req.body;
+
+  if (!paymentMethodId) throw "No provide payment method id!";
+  if (!customerId) throw "No provide customer id!";
+
+  const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
+  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+
+  const { stripeSecretKey } = paymentMetadata?.stripe;
+  const stripe = new Stripe(stripeSecretKey);
+
+  const paymentMethod = await stripe.paymentMethods.attach(paymentMethodId, {
+    customer: customerId,
+  });
+
+  return apiResponse(res, 200, true, "Attach payment method successfully!", paymentMethod);
+});
