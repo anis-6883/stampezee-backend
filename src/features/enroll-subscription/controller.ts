@@ -930,6 +930,7 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
     //////// Decision -> (Upgrade or Downgrade) or New Subscription ////////
     ////////////////////////////////////////////////////////////////////////
     const enrollIdDuration: { [key: string]: number | string } = {};
+    enrollIdDuration["currency"] = currency;
     const line_items: ILineItem[] = [];
     const coupons: { coupon: string }[] = [];
 
@@ -967,7 +968,7 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
         const enrollSubscription = await EnrollSubscription.create({
           retailerId: req.user._id,
           planSnapshot: subscription,
-          couponSnapshot: coupon ?? null,
+          couponSnapshot: coupon && appliedSlugs.includes(subscription.slug) ? coupon : null,
           taxSnapshot: {
             taxTitle: taxStatus === "on" ? taxTitle : null,
             taxCost: taxStatus === "on" ? taxCost : null,
@@ -994,6 +995,9 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
               ...(taxStatus === "on" && {
                 description: `${subscription.title} ${isPlan ? "Plan" : "Add-On"} (including ${taxTitle} ${taxCost}%)`,
               }),
+              metadata: {
+                enrollSubscriptionId: String(enrollSubscription._id),
+              },
             },
             unit_amount:
               selectCurrency?.name === "JPY" ? Math.round(Number(finalPrice)) : Math.round(Number(finalPrice) * 100), // convert into cent
@@ -1191,7 +1195,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
 const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, stripe: Stripe): Promise<void> => {
   try {
     const [checkoutSession, retailer, freeTrailSubscription] = await Promise.all<[any, any, any]>([
-      stripe.checkout.sessions.retrieve(eventObject.id),
+      stripe.checkout.sessions.retrieve(eventObject.id, { expand: ["subscription"] }),
       Retailer.findOne({ email: eventObject.customer_email }),
       Subscription.findOne({ slug: "trial" }),
     ]);
@@ -1199,6 +1203,10 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     const invoice: any = await stripe.invoices.retrieve(eventObject.invoice as string, {
       expand: ["payment_intent.payment_method"],
     });
+
+    // TODO: Store Subscription Item Id
+    console.log({ checkoutSession });
+    console.log({ subscriptionItems: checkoutSession.subscription.items.data[0] });
 
     if (invoice.payment_intent.status !== "succeeded") return;
 
@@ -1254,7 +1262,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     }
 
     for (let key in checkoutSession?.metadata) {
-      if (key !== "planEnrollmentId") {
+      if (!["planEnrollmentId", "currency"].includes(key)) {
         const now = moment();
         const expireDate = moment().add(checkoutSession.metadata[key], "days");
         subscriptionIds.push(key);
@@ -1263,7 +1271,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
           EnrollSubscription.findByIdAndUpdate(key, {
             paymentStatus: "completed",
             stripe: {
-              subscriptionId: checkoutSession?.subscription,
+              subscriptionId: checkoutSession?.subscription?.id,
               customerId: checkoutSession?.customer,
               paymentMethodId: invoice?.payment_intent?.payment_method?.id,
               renewCancelAt: null,
@@ -1280,12 +1288,16 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     // Store Payment Info
     const payment = await Payment.create({
       retailerId: retailer?._id,
-      enrollSubscriptionId: subscriptionIds,
+      enrollSubscriptionIds: subscriptionIds,
       invoiceNumber: invoice?.number,
       invoicePdf: invoice?.invoice_pdf,
       paymentIntentId: invoice?.payment_intent?.id,
       paymentStatus: invoice?.payment_intent?.status,
-      amountTotal: checkoutSession?.amount_total,
+      amountTotal:
+        checkoutSession.metadata["currency"] === "JPY"
+          ? checkoutSession?.amount_total
+          : (checkoutSession?.amount_total / 100).toFixed(2),
+      currency: checkoutSession.metadata["currency"],
       paymentMethodDetails: invoice?.payment_intent?.payment_method, // Kind of Log Store
     });
 
@@ -1294,7 +1306,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     if (!invoice?.payment_intent?.payment_method?.id) {
       await CriticalPayment.create({
         paymentId: payment._id,
-        enrollSubscriptionId: subscriptionIds,
+        enrollSubscriptionIds: subscriptionIds,
         stripeInvoiceId: eventObject.invoice,
         status: "pending",
       });
@@ -1577,9 +1589,25 @@ export const deleteSubItem = asyncHandler(async (req: IApiRequest, res: Response
 
   // const subscription = await stripe.subscriptions.cancel("sub_1QJw59JVIk5LKvIENo37jYSe");
 
-  stripe.subscriptions.update("sub_1QJwEgJVIk5LKvIEdI8WVtv6", {
-    cancel_at_period_end: true,
-  });
+  // stripe.subscriptions.update("sub_1QJwEgJVIk5LKvIEdI8WVtv6", {
+  //   cancel_at_period_end: true,
+  // });
+
+  // const paymentMethods = await stripe.customers.listPaymentMethods("cus_RCj2NchPrjMs6y", {
+  //   limit: 3,
+  // });
+
+  // const customer = await stripe.customers.update("cus_RCj2NchPrjMs6y", {
+  //   invoice_settings: {
+  //     default_payment_method: "pm_1QKYwMJVIk5LKvIExxn64Pzt",
+  //   },
+  // });
+
+  // const subscriptionItems = await stripe.subscriptionItems.list({
+  //   // limit: 3,
+  //   subscription: "sub_1QKeVwJVIk5LKvIEtGeJLd4s",
+  //   expand: ["data.plan.product"],
+  // });
 
   return apiResponse(res, 200, true, "Deleted Sub Item!");
 });

@@ -66,6 +66,7 @@ export const customerUpdateProfile = Joi.object({
   dialCode: requiredStringField("dialCode"),
   phone: requiredStringField("phone"),
   country: requiredStringField("country"),
+  contactEmail: stringField("contactEmail"),
 });
 
 export const retailerRegisterSchema = Joi.object({
