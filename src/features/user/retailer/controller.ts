@@ -170,8 +170,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   const { addonBranches, addonStamps, addonCustomStampImages, addonRegularNotifications, addonLocationNotifications } =
     addons.reduce(
       (acc, addon) => {
-        // const slug = addon?.planSnapshot?.slug;
-        const slug = BRANCH;
+        const slug = addon?.planSnapshot?.slug;
         if (slug === BRANCH) acc.addonBranches++;
         if (slug === STAMP) acc.addonStamps++;
         if (slug === CUSTOM_STAMP_IMAGE) acc.addonCustomStampImages++;
@@ -197,15 +196,15 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   data.role = ROLE.RETAILER;
   data.accessToken = accessToken;
   data.refreshToken = refreshToken;
-  // data.plan = subscription?.planSnapshot?.slug ?? null;
+  data.plan = subscription?.planSnapshot?.slug ?? null;
   data.planPaymentCurrency = subscription?.balanceInfo.currency ?? null;
   data.planPayment = subscription?.balanceInfo?.planCurrentPrice
     ? Number((subscription?.balanceInfo?.planCurrentPrice).toFixed(2))
     : null;
   data.planStartAt = subscription?.validityFrom ?? null;
   data.planValidAt = subscription?.validityTo ?? null;
-  // data.totalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addonBranches;
-  // data.totalStamp = (subscription?.planSnapshot?.allowTotalStamp ?? 0) + addonStamps;
+  data.totalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addonBranches;
+  data.totalStamp = (subscription?.planSnapshot?.allowTotalStamp ?? 0) + addonStamps;
   data.totalCustomStampImage = addonCustomStampImages;
   data.totalRegularNotification = addonRegularNotifications;
   data.totalLocationNotification = addonLocationNotifications;
@@ -270,8 +269,7 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
   const { addonBranches, addonStamps, addonCustomStampImages, addonRegularNotifications, addonLocationNotifications } =
     addons.reduce(
       (acc, addon) => {
-        // const slug = addon?.planSnapshot?.slug;
-        const slug = BRANCH;
+        const slug = addon?.planSnapshot?.slug;
         if (slug === BRANCH) acc.addonBranches++;
         if (slug === STAMP) acc.addonStamps++;
         if (slug === CUSTOM_STAMP_IMAGE) acc.addonCustomStampImages++;
@@ -289,15 +287,15 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
     );
 
   data.role = ROLE.RETAILER;
-  // data.plan = subscription?.planSnapshot?.slug ?? null;
+  data.plan = subscription?.planSnapshot?.slug ?? null;
   data.planPaymentCurrency = subscription?.balanceInfo.currency ?? null;
   data.planPayment = subscription?.balanceInfo?.planCurrentPrice
     ? Number((subscription?.balanceInfo?.planCurrentPrice).toFixed(2))
     : null;
   data.planStartAt = subscription?.validityFrom ?? null;
   data.planValidAt = subscription?.validityTo ?? null;
-  // data.totalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addonBranches;
-  // data.totalStamp = (subscription?.planSnapshot?.allowTotalStamp ?? 0) + addonStamps;
+  data.totalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addonBranches;
+  data.totalStamp = (subscription?.planSnapshot?.allowTotalStamp ?? 0) + addonStamps;
   data.totalCustomStampImage = addonCustomStampImages;
   data.totalRegularNotification = addonRegularNotifications;
   data.totalLocationNotification = addonLocationNotifications;
