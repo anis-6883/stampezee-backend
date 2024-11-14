@@ -20,15 +20,17 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
   const { page = 1, limit = 10, search }: any = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
-  const query: any = { retailerId: req.user._id, paymentStatus: "completed" };
+  const query: any = { paymentStatus: "succeeded" };
 
   if (search) {
     const regex = new RegExp(`.*${search.trim()}.*`, "i"); //case insensitive search. For sensitive remove i
-    query["stripe.subscriptionId"] = regex;
+
+    const orQuery = [{ paymentIntentId: regex }, { invoiceNumber: regex }];
+    query.$or = orQuery;
   }
 
   const [docs, total] = await Promise.all([
-    EnrollSubscription.aggregate([
+    Payment.aggregate([
       {
         $match: query,
       },
@@ -43,51 +45,40 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
       {
         $limit: Number(limit),
       },
+      {
+        $lookup: {
+          from: "enroll_subscriptions",
+          localField: "enrollSubscriptionIds",
+          foreignField: "_id",
+          as: "subscriptions",
+          pipeline: [
+            {
+              $project: {
+                title: "$planSnapshot.title",
+                slug: "$planSnapshot.slug",
+              },
+            },
+          ],
+        },
+      },
+      {
+        $project: {
+          subscriptions: 1,
+          paymentIntentId: 1,
+          invoiceNumber: 1,
+          amountTotal: 1,
+          currency: 1,
+          paymentStatus: 1,
+          createdAt: 1,
+        },
+      },
     ]),
-    EnrollSubscription.countDocuments(query),
+    Payment.countDocuments(query),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  const result = await Payment.aggregate([
-    {
-      $sort: {
-        createdAt: -1,
-      },
-    },
-    {
-      $skip: skip,
-    },
-    {
-      $limit: Number(limit),
-    },
-    {
-      $lookup: {
-        from: "enroll_subscriptions",
-        localField: "enrollSubscriptionId",
-        foreignField: "_id",
-        as: "subscriptions",
-        pipeline: [
-          {
-            $project: {
-              title: "$planSnapshot.title",
-            },
-          },
-        ],
-      },
-    },
-    {
-      $project: {
-        subscriptions: 1,
-        paymentIntentId: 1,
-        invoiceNumber: 1,
-        amountTotal: 1,
-        paymentStatus: 1,
-      },
-    },
-  ]);
-
-  return apiResponse(res, 200, true, "Retailer billing fetched successfully!", result);
+  return apiResponse(res, 200, true, "Retailer billing fetched successfully!", data);
 });
 
 /**
