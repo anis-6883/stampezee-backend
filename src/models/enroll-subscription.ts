@@ -1,4 +1,4 @@
-import { Document, Schema, Types, model } from "mongoose";
+import { Document, Schema, model } from "mongoose";
 
 interface ISubscription {
   title: string;
@@ -16,46 +16,11 @@ interface ISubscription {
   softDeleted: boolean;
 }
 
-interface ICoupon {
-  title: string;
-  description?: string;
-  code: string;
-  startedAt?: Date;
-  expiredAt?: Date;
-  discountType: "percentage" | "flat";
-  discount: number;
-  status: boolean;
-  softDeleted: boolean;
-}
-
 interface IEnrollSubscription extends Document {
-  retailerId: Types.ObjectId;
-  stripe: {
-    subscriptionId?: string;
-    subscriptionItemId?: string;
-    customerId?: string;
-    paymentMethodId?: string;
-    renewCancelAt?: Date;
-    renewCanceledAtByCustomer?: Date;
-  };
   planSnapshot: ISubscription;
-  couponSnapshot?: ICoupon;
-  taxSnapshot: {
-    taxTitle?: string;
-    taxCost: number;
-  };
-  balanceInfo: {
-    currentBalance: number;
-    planCurrentPrice: number;
-    currency: string;
-    currencyRate: number;
-  };
-  planChangeCost: number;
-  refundAmount: number;
-  paymentStatus: "trial" | "pending" | "completed";
-  enrollStatus: "trial" | "purchase" | "upgrade" | "downgrade";
-  validityFrom?: Date;
-  validityTo?: Date;
+  subscriptionItemId?: string;
+  currentBalance: number;
+  planCurrentPrice: number;
   status: boolean;
 }
 
@@ -81,47 +46,12 @@ const subscriptionSchema = new Schema<ISubscription>({
   softDeleted: { type: Boolean, default: false },
 });
 
-const couponSchema = new Schema<ICoupon>({
-  title: { type: String, required: true, trim: true },
-  description: { type: String, trim: true, default: null },
-  code: { type: String, required: true, trim: true },
-  startedAt: { type: Date, default: null },
-  expiredAt: { type: Date, default: null },
-  discountType: { type: String, enum: ["percentage", "flat"], required: true },
-  discount: { type: Number, required: true },
-  status: { type: Boolean, default: true },
-  softDeleted: { type: Boolean, default: false },
-});
-
 const enrollSubscriptionSchema = new Schema<IEnrollSubscription>(
   {
-    retailerId: { type: "ObjectId", ref: "Retailer", required: true },
-    stripe: {
-      subscriptionId: { type: String, default: null },
-      subscriptionItemId: { type: String, default: null },
-      customerId: { type: String, default: null },
-      paymentMethodId: { type: String, default: null },
-      renewCancelAt: { type: Date, default: null },
-      renewCanceledAtByCustomer: { type: Date, default: null },
-    },
-    planSnapshot: { type: subscriptionSchema, required: true },
-    couponSnapshot: { type: couponSchema, default: null },
-    taxSnapshot: {
-      taxTitle: { type: String, default: null },
-      taxCost: { type: Number, default: 0 },
-    },
-    balanceInfo: {
-      currentBalance: { type: Number, default: 0 },
-      planCurrentPrice: { type: Number, default: 0 },
-      currency: { type: String, default: "CAD" },
-      currencyRate: { type: Number, default: 0 },
-    },
-    planChangeCost: { type: Number, default: 0 },
-    refundAmount: { type: Number, default: 0 },
-    paymentStatus: { type: String, enum: ["trial", "pending", "completed"], required: true },
-    enrollStatus: { type: String, enum: ["trial", "purchase", "upgrade", "downgrade"], required: true },
-    validityFrom: { type: Date, default: null },
-    validityTo: { type: Date, default: null },
+    planSnapshot: { type: subscriptionSchema, required: true }, // array | add subscriptionItemId
+    subscriptionItemId: { type: String, default: null },
+    currentBalance: { type: Number, default: 0 },
+    planCurrentPrice: { type: Number, default: 0 },
     status: { type: Boolean, default: true },
   },
   {

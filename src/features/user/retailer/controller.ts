@@ -197,12 +197,12 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   data.accessToken = accessToken;
   data.refreshToken = refreshToken;
   data.plan = subscription?.planSnapshot?.slug ?? null;
-  data.planPaymentCurrency = subscription?.balanceInfo.currency ?? null;
-  data.planPayment = subscription?.balanceInfo?.planCurrentPrice
-    ? Number((subscription?.balanceInfo?.planCurrentPrice).toFixed(2))
-    : null;
-  data.planStartAt = subscription?.validityFrom ?? null;
-  data.planValidAt = subscription?.validityTo ?? null;
+  // data.planPaymentCurrency = subscription?.balanceInfo.currency ?? null;
+  // data.planPayment = subscription?.balanceInfo?.planCurrentPrice
+  //   ? Number((subscription?.balanceInfo?.planCurrentPrice).toFixed(2))
+  //   : null;
+  // data.planStartAt = subscription?.validityFrom ?? null;
+  // data.planValidAt = subscription?.validityTo ?? null;
   data.totalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addonBranches;
   data.totalStamp = (subscription?.planSnapshot?.allowTotalStamp ?? 0) + addonStamps;
   data.totalCustomStampImage = addonCustomStampImages;
@@ -288,12 +288,12 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
 
   data.role = ROLE.RETAILER;
   data.plan = subscription?.planSnapshot?.slug ?? null;
-  data.planPaymentCurrency = subscription?.balanceInfo.currency ?? null;
-  data.planPayment = subscription?.balanceInfo?.planCurrentPrice
-    ? Number((subscription?.balanceInfo?.planCurrentPrice).toFixed(2))
-    : null;
-  data.planStartAt = subscription?.validityFrom ?? null;
-  data.planValidAt = subscription?.validityTo ?? null;
+  // data.planPaymentCurrency = subscription?.balanceInfo.currency ?? null;
+  // data.planPayment = subscription?.balanceInfo?.planCurrentPrice
+  //   ? Number((subscription?.balanceInfo?.planCurrentPrice).toFixed(2))
+  //   : null;
+  // data.planStartAt = subscription?.validityFrom ?? null;
+  // data.planValidAt = subscription?.validityTo ?? null;
   data.totalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addonBranches;
   data.totalStamp = (subscription?.planSnapshot?.allowTotalStamp ?? 0) + addonStamps;
   data.totalCustomStampImage = addonCustomStampImages;

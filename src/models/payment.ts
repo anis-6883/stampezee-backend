@@ -1,8 +1,6 @@
-import { Document, model, Schema, Types } from "mongoose";
+import { Document, model, Schema } from "mongoose";
 
 interface IPayment extends Document {
-  retailerId: Types.ObjectId;
-  enrollSubscriptionIds: Types.ObjectId[];
   paymentIntentId: string;
   invoiceNumber: string;
   invoicePdf: string;
@@ -14,8 +12,6 @@ interface IPayment extends Document {
 
 const paymentSchema = new Schema<IPayment>(
   {
-    retailerId: { type: "ObjectId", ref: "Retailer", required: true },
-    enrollSubscriptionIds: { type: ["ObjectId"], ref: "EnrollSubscription", required: true },
     paymentIntentId: { type: String, required: true },
     invoiceNumber: { type: String, required: true },
     invoicePdf: { type: String, required: true },
