@@ -1195,7 +1195,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
 const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, stripe: Stripe): Promise<void> => {
   try {
     const [checkoutSession, retailer, freeTrailSubscription] = await Promise.all<[any, any, any]>([
-      stripe.checkout.sessions.retrieve(eventObject.id, { expand: ["subscription"] }),
+      stripe.checkout.sessions.retrieve(eventObject.id),
       Retailer.findOne({ email: eventObject.customer_email }),
       Subscription.findOne({ slug: "trial" }),
     ]);
@@ -1204,11 +1204,17 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       expand: ["payment_intent.payment_method"],
     });
 
-    // TODO: Store Subscription Item Id
-    console.log({ checkoutSession });
-    console.log({ subscriptionItems: checkoutSession.subscription.items.data[0] });
-
     if (invoice.payment_intent.status !== "succeeded") return;
+
+    // Get Subscription Items Id and Map with Enroll Id
+    const subscriptionItems: any = await stripe.subscriptionItems.list({
+      subscription: checkoutSession.subscription as string,
+      expand: ["data.plan.product"],
+    });
+
+    const subscriptionItemsMap = Object.fromEntries(
+      subscriptionItems.data.map((item: any) => [item.plan.product.metadata.enrollSubscriptionId, item.id])
+    );
 
     // If a user takes a plan without taking the free trial, then the free trial isn't applicable anymore
     if (!retailer.takeFreeTrial) {
@@ -1271,7 +1277,8 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
           EnrollSubscription.findByIdAndUpdate(key, {
             paymentStatus: "completed",
             stripe: {
-              subscriptionId: checkoutSession?.subscription?.id,
+              subscriptionId: checkoutSession?.subscription,
+              subscriptionItemId: subscriptionItemsMap[key],
               customerId: checkoutSession?.customer,
               paymentMethodId: invoice?.payment_intent?.payment_method?.id,
               renewCancelAt: null,
@@ -1603,11 +1610,15 @@ export const deleteSubItem = asyncHandler(async (req: IApiRequest, res: Response
   //   },
   // });
 
-  // const subscriptionItems = await stripe.subscriptionItems.list({
-  //   // limit: 3,
-  //   subscription: "sub_1QKeVwJVIk5LKvIEtGeJLd4s",
-  //   expand: ["data.plan.product"],
-  // });
+  const subscriptionItems: any = await stripe.subscriptionItems.list({
+    // limit: 3,
+    subscription: "sub_1QKubdJVIk5LKvIE5M5GtWns",
+    expand: ["data.plan.product"],
+  });
 
-  return apiResponse(res, 200, true, "Deleted Sub Item!");
+  const result = Object.fromEntries(
+    subscriptionItems.data.map((item: any) => [item.plan.product.metadata.enrollSubscriptionId, item.id])
+  );
+
+  return apiResponse(res, 200, true, "Deleted Sub Item!", result);
 });

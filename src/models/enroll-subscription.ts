@@ -32,6 +32,7 @@ interface IEnrollSubscription extends Document {
   retailerId: Types.ObjectId;
   stripe: {
     subscriptionId?: string;
+    subscriptionItemId?: string;
     customerId?: string;
     paymentMethodId?: string;
     renewCancelAt?: Date;
@@ -97,6 +98,7 @@ const enrollSubscriptionSchema = new Schema<IEnrollSubscription>(
     retailerId: { type: "ObjectId", ref: "Retailer", required: true },
     stripe: {
       subscriptionId: { type: String, default: null },
+      subscriptionItemId: { type: String, default: null },
       customerId: { type: String, default: null },
       paymentMethodId: { type: String, default: null },
       renewCancelAt: { type: Date, default: null },
