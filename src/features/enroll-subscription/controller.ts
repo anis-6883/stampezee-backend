@@ -787,6 +787,7 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
 
         await Enrollment.create({
           retailerId: req.user._id,
+          planExists: PACKAGES.TRIAL,
           packages: [enrollSubscription._id],
           paymentStatus: "trial",
           validityFrom: now,
@@ -1235,6 +1236,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
 
         await Enrollment.create({
           retailerId: retailer._id,
+          planExists: PACKAGES.TRIAL,
           packages: [enrollSubscription._id],
           paymentStatus: "trial",
           validityFrom: now,
@@ -1244,38 +1246,50 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       }
     }
 
-    let subscriptionIds: string[] = [];
     let updateSubscriptions: any = [];
-    // const purchasedSubscription = await EnrollSubscription.findById(checkoutSession.metadata["planEnrollmentId"]);
+    const { enrollmentId = null } = checkoutSession?.metadata;
+
+    const enrollment = await Enrollment.findById(enrollmentId);
 
     // TODO: Deactivate last previous active plan
-    // if (purchasedSubscription.planSnapshot.type === "subscription") {
-    // const prevSubscription = await EnrollSubscription.findOneAndUpdate(
-    //   {
-    //     retailerId: retailer._id,
-    //     "planSnapshot.type": "subscription",
-    //     paymentStatus: { $in: ["completed", "trial"] },
-    //     status: true,
-    //   },
-    //   { status: false },
-    //   { new: true }
-    // );
-    // if (prevSubscription && prevSubscription.paymentStatus !== "trial") {
-    //   await stripe.subscriptions.cancel(prevSubscription.stripe.subscriptionId);
-    // }
-    // Update expiration for already created branch
-    // if ("planEnrollmentId" in checkoutSession.metadata) {
-    //   updateSubscriptions.push(
-    //     Branch.updateMany(
-    //       {
-    //         retailerId: retailer._id,
-    //         source: "subscription",
-    //       },
-    //       { enrollSubscriptionId: checkoutSession.metadata["planEnrollmentId"] }
-    //     )
-    //   );
-    // }
-    // }
+    if (enrollment.planExists) {
+      const prevSubscription = await Enrollment.findOneAndUpdate(
+        {
+          retailerId: retailer._id,
+          planExists: { $ne: null },
+          paymentStatus: { $in: ["completed", "trial"] },
+          status: true,
+        },
+        { status: false },
+        { new: true }
+      );
+
+      await EnrollSubscription.updateMany(
+        {
+          _id: { $in: prevSubscription.packages },
+        },
+        {
+          status: false,
+        }
+      );
+
+      // if (prevSubscription && prevSubscription.paymentStatus !== "trial") {
+      //   await stripe.subscriptions.cancel(prevSubscription.stripe.subscriptionId);
+      // }
+
+      // Update expiration for already created branch
+      // if ("planEnrollmentId" in checkoutSession.metadata) {
+      //   updateSubscriptions.push(
+      //     Branch.updateMany(
+      //       {
+      //         retailerId: retailer._id,
+      //         source: "subscription",
+      //       },
+      //       { enrollSubscriptionId: checkoutSession.metadata["planEnrollmentId"] }
+      //     )
+      //   );
+      // }
+    }
 
     // Store Payment Info
     const payment = await Payment.create({
@@ -1290,8 +1304,6 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       currency: checkoutSession.metadata["currency"],
       paymentMethodDetails: invoice?.payment_intent?.payment_method, // Kind of Log Store
     });
-
-    const { enrollmentId = null } = checkoutSession?.metadata;
 
     // Update Enrollment with Payment
     updateSubscriptions.push(
