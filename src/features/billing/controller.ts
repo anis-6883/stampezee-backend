@@ -289,7 +289,32 @@ export const getRetailerBillingPdf = asyncHandler(async (req: IApiRequest, res: 
 });
 
 /**
- * Setup Payment Intent
+ * Get All Payment Method for Customer ID
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const getAllPaymentMethod = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { customerId } = req.params;
+  const { limit = 3 } = req.query;
+
+  if (!customerId) throw "No provide customer id!";
+
+  const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
+  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+
+  const { stripeSecretKey } = paymentMetadata?.stripe;
+  const stripe = new Stripe(stripeSecretKey);
+
+  const paymentMethods = await stripe.customers.listPaymentMethods(customerId, {
+    limit: Number(limit),
+  });
+
+  return apiResponse(res, 200, true, "Get all payment method successfully!", paymentMethods);
+});
+
+/**
+ * Setup Payment Intent for Attach Payment Method
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -305,11 +330,11 @@ export const setupPaymentIntent = asyncHandler(async (req: IApiRequest, res: Res
     payment_method_types: ["card"],
   });
 
-  return apiResponse(res, 200, true, "Attach payment method successfully!", setupIntent);
+  return apiResponse(res, 200, true, "Setup payment intent successfully!", setupIntent);
 });
 
 /**
- * Attach Payment Method
+ * Attach Payment Method with Customer ID
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
