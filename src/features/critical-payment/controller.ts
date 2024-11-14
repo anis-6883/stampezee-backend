@@ -2,7 +2,6 @@ import { Response } from "express";
 import Stripe from "stripe";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import CriticalPayment from "../../models/critical-payment";
-import EnrollSubscription from "../../models/enroll-subscription";
 import Settings from "../../models/settings";
 import { IApiRequest } from "../../types";
 import { criticalPaymentSchema } from "./validation";
@@ -108,24 +107,24 @@ export const resolveCriticalPayment = asyncHandler(async (req: IApiRequest, res:
     expand: ["payment_intent.payment_method"],
   });
 
-  if (invoice?.id && invoice?.payment_intent?.payment_method?.id) {
-    const criticalPayment = await CriticalPayment.findOne({ stripeInvoiceId });
-    if (!criticalPayment) throw "Provided invalid stripe invoice id!";
+  // if (invoice?.id && invoice?.payment_intent?.payment_method?.id) {
+  //   const criticalPayment = await CriticalPayment.findOne({ stripeInvoiceId });
+  //   if (!criticalPayment) throw "Provided invalid stripe invoice id!";
 
-    const enrollUpdated = await EnrollSubscription.updateMany(
-      {
-        _id: { $in: criticalPayment.enrollSubscriptionIds },
-      },
-      {
-        "stripe.paymentMethodId": invoice?.payment_intent?.payment_method?.id,
-      },
-      { new: true }
-    );
+  //   const enrollUpdated = await EnrollSubscription.updateMany(
+  //     {
+  //       _id: { $in: criticalPayment.enrollSubscriptionIds },
+  //     },
+  //     {
+  //       "stripe.paymentMethodId": invoice?.payment_intent?.payment_method?.id,
+  //     },
+  //     { new: true }
+  //   );
 
-    if (enrollUpdated) await CriticalPayment.findOneAndUpdate({ stripeInvoiceId }, { status: "resolved" });
-  } else {
-    throw "Try again to resolve!";
-  }
+  //   if (enrollUpdated) await CriticalPayment.findOneAndUpdate({ stripeInvoiceId }, { status: "resolved" });
+  // } else {
+  //   throw "Try again to resolve!";
+  // }
 
   return apiResponse(res, 200, true, "Critical payment resolved successfully!");
 });

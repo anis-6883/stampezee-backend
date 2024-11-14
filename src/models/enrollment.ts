@@ -1,20 +1,9 @@
 import { Document, Schema, Types, model } from "mongoose";
 
-interface ICoupon {
-  title: string;
-  description?: string;
-  code: string;
-  startedAt?: Date;
-  expiredAt?: Date;
-  discountType: "percentage" | "flat";
-  discount: number;
-  status: boolean;
-  softDeleted: boolean;
-}
-
 interface IEnrollment extends Document {
   retailerId: Types.ObjectId;
-  planSnapshots: Types.ObjectId[];
+  planExists: string | null;
+  packages: Types.ObjectId[];
   payments: Types.ObjectId[];
   stripe: {
     subscriptionId?: string;
@@ -23,7 +12,6 @@ interface IEnrollment extends Document {
     renewCancelAt?: Date;
     renewCanceledAtByCustomer?: Date;
   };
-  couponSnapshot?: ICoupon;
   taxSnapshot: {
     taxTitle?: string;
     taxCost: number;
@@ -39,22 +27,11 @@ interface IEnrollment extends Document {
   status: boolean;
 }
 
-const couponSchema = new Schema<ICoupon>({
-  title: { type: String, required: true, trim: true },
-  description: { type: String, trim: true, default: null },
-  code: { type: String, required: true, trim: true },
-  startedAt: { type: Date, default: null },
-  expiredAt: { type: Date, default: null },
-  discountType: { type: String, enum: ["percentage", "flat"], required: true },
-  discount: { type: Number, required: true },
-  status: { type: Boolean, default: true },
-  softDeleted: { type: Boolean, default: false },
-});
-
 const enrollmentSchema = new Schema<IEnrollment>(
   {
     retailerId: { type: "ObjectId", ref: "Retailer", required: true },
-    planSnapshots: { type: ["ObjectId"], ref: "EnrollSubscription", required: true },
+    planExists: { type: String, default: null },
+    packages: { type: ["ObjectId"], ref: "EnrollSubscription", required: true },
     payments: { type: ["ObjectId"], ref: "Payment", required: true },
     stripe: {
       subscriptionId: { type: String, default: null },
@@ -63,7 +40,6 @@ const enrollmentSchema = new Schema<IEnrollment>(
       renewCancelAt: { type: Date, default: null },
       renewCanceledAtByCustomer: { type: Date, default: null },
     },
-    couponSnapshot: { type: couponSchema, default: null }, // move to payment
     taxSnapshot: {
       taxTitle: { type: String, default: null },
       taxCost: { type: Number, default: 0 },
@@ -84,6 +60,6 @@ const enrollmentSchema = new Schema<IEnrollment>(
   }
 );
 
-const Enrollment = model<IEnrollment>("enroll_subscriptions", enrollmentSchema);
+const Enrollment = model<IEnrollment>("enrollments", enrollmentSchema);
 
 export default Enrollment;

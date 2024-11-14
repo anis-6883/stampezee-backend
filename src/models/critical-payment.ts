@@ -2,7 +2,7 @@ import { Document, model, Schema, Types } from "mongoose";
 
 interface ICriticalPayment extends Document {
   paymentId: Types.ObjectId;
-  enrollSubscriptionIds: Types.ObjectId[];
+  enrollmentId: Types.ObjectId;
   stripeInvoiceId: string;
   status: string;
 }
@@ -10,7 +10,7 @@ interface ICriticalPayment extends Document {
 const criticalPaymentSchema = new Schema<ICriticalPayment>(
   {
     paymentId: { type: "ObjectId", ref: "Payment", required: true },
-    enrollSubscriptionIds: { type: ["ObjectId"], ref: "EnrollSubscription", required: true },
+    enrollmentId: { type: "ObjectId", ref: "Enrollment", required: true },
     stripeInvoiceId: { type: String, required: true },
     status: { type: String, enum: ["pending", "resolved"], default: "pending" },
   },
