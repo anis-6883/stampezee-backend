@@ -3,8 +3,6 @@ import { Document, Schema, Types, model } from "mongoose";
 interface IEnrollment extends Document {
   retailerId: Types.ObjectId;
   planExists: string | null;
-  packages: Types.ObjectId[];
-  payments: Types.ObjectId[];
   stripe: {
     subscriptionId?: string;
     customerId?: string;
@@ -31,8 +29,6 @@ const enrollmentSchema = new Schema<IEnrollment>(
   {
     retailerId: { type: "ObjectId", ref: "Retailer", required: true },
     planExists: { type: String, default: null },
-    packages: { type: ["ObjectId"], ref: "EnrollSubscription", required: true },
-    payments: { type: ["ObjectId"], ref: "Payment", required: true },
     stripe: {
       subscriptionId: { type: String, default: null },
       customerId: { type: String, default: null },

@@ -1,4 +1,4 @@
-import { Document, Schema, model } from "mongoose";
+import { Document, model, Schema, Types } from "mongoose";
 
 interface ISubscription {
   title: string;
@@ -29,6 +29,7 @@ interface ICoupon {
 }
 
 interface IEnrollSubscription extends Document {
+  enrollmentId: Types.ObjectId;
   planSnapshot: ISubscription;
   couponSnapshot?: ICoupon;
   subscriptionItemId?: string;
@@ -73,6 +74,7 @@ const couponSchema = new Schema<ICoupon>({
 
 const enrollSubscriptionSchema = new Schema<IEnrollSubscription>(
   {
+    enrollmentId: { type: "ObjectId", ref: "Enrollment", required: true },
     planSnapshot: { type: subscriptionSchema, required: true },
     couponSnapshot: { type: couponSchema, default: null },
     subscriptionItemId: { type: String, default: null },

@@ -778,21 +778,21 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
         const now = moment();
         const expireDate = moment().add(subscription.duration, "days");
 
-        const [enrollSubscription] = await Promise.all([
-          EnrollSubscription.create({
-            planSnapshot: subscription,
+        const [enrollment] = await Promise.all([
+          Enrollment.create({
+            retailerId: req.user._id,
+            planExists: PACKAGES.TRIAL,
+            paymentStatus: "trial",
+            validityFrom: now,
+            validityTo: expireDate,
+            enrollStatus: "trial",
           }),
           Retailer.findByIdAndUpdate(req.user._id, { takeFreeTrial: true }),
         ]);
 
-        await Enrollment.create({
-          retailerId: req.user._id,
-          planExists: PACKAGES.TRIAL,
-          packages: [enrollSubscription._id],
-          paymentStatus: "trial",
-          validityFrom: now,
-          validityTo: expireDate,
-          enrollStatus: "trial",
+        await EnrollSubscription.create({
+          enrollmentId: enrollment?._id,
+          planSnapshot: subscription,
         });
 
         return apiResponse(res, 200, true, "Free trial enrolled successfully!", {
@@ -937,9 +937,25 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
       ///////////////////////////////////
       //////// New Subscription /////////
       ///////////////////////////////////
-      let totalCouponAmount = 0;
-      let packages = [];
 
+      const enrollment = await Enrollment.create({
+        retailerId: req.user._id,
+        planExists: pickPlan ? pickPlan?.slug : null,
+        taxSnapshot: {
+          taxTitle: taxStatus === "on" ? taxTitle : null,
+          taxCost: taxStatus === "on" ? taxCost : null,
+        },
+        currency,
+        currencyRate: selectCurrency.exchangeRate,
+        paymentStatus: "pending",
+        enrollStatus: "purchase",
+        status: false,
+      });
+
+      let totalCouponAmount = 0;
+      enrollIdDuration["enrollmentId"] = String(enrollment._id);
+
+      // Package push into line items
       for (const subscription of subscriptions) {
         let finalPrice = 0;
         let taxValue = 0;
@@ -964,12 +980,11 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
         }
 
         const enrollSubscription = await EnrollSubscription.create({
+          enrollmentId: enrollment?._id,
           planSnapshot: subscription,
           couponSnapshot: coupon && appliedSlugs.includes(subscription.slug) ? coupon : null,
           planCurrentPrice: (finalPrice - taxValue - couponValue).toFixed(2),
         });
-
-        packages.push(enrollSubscription._id);
 
         const isPlan = [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug);
 
@@ -995,23 +1010,7 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
         });
       }
 
-      const enrollment = await Enrollment.create({
-        retailerId: req.user._id,
-        planExists: pickPlan ? pickPlan?.slug : null,
-        packages,
-        taxSnapshot: {
-          taxTitle: taxStatus === "on" ? taxTitle : null,
-          taxCost: taxStatus === "on" ? taxCost : null,
-        },
-        currency,
-        currencyRate: selectCurrency.exchangeRate,
-        paymentStatus: "pending",
-        enrollStatus: "purchase",
-        status: false,
-      });
-
-      if (pickPlan) enrollIdDuration["enrollmentId"] = String(enrollment._id);
-
+      // Create the coupon and push into line items
       if (coupon) {
         const applyCoupon = await stripe.coupons.create({
           name: coupon.title,
@@ -1219,29 +1218,27 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       subscriptionItems.data.map((item: any) => [item.plan.product.metadata.enrollSubscriptionId, item.id])
     );
 
-    console.log({ subscriptionItemsMap });
-
     // If a user takes a plan without taking the free trial, then the free trial isn't applicable anymore
     if (!retailer.takeFreeTrial) {
       if (freeTrailSubscription) {
         const now = moment();
         const expireDate = moment().add(freeTrailSubscription.duration, "days");
 
-        const [enrollSubscription] = await Promise.all([
-          EnrollSubscription.create({
-            planSnapshot: freeTrailSubscription,
+        const [enrollment] = await Promise.all([
+          Enrollment.create({
+            retailerId: retailer._id,
+            planExists: PACKAGES.TRIAL,
+            paymentStatus: "trial",
+            validityFrom: now,
+            validityTo: expireDate,
+            enrollStatus: "trial",
           }),
           Retailer.findByIdAndUpdate(retailer._id, { takeFreeTrial: true }),
         ]);
 
-        await Enrollment.create({
-          retailerId: retailer._id,
-          planExists: PACKAGES.TRIAL,
-          packages: [enrollSubscription._id],
-          paymentStatus: "trial",
-          validityFrom: now,
-          validityTo: expireDate,
-          enrollStatus: "trial",
+        await EnrollSubscription.create({
+          enrollmentId: enrollment?._id,
+          planSnapshot: freeTrailSubscription,
         });
       }
     }
@@ -1252,8 +1249,8 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     const enrollment = await Enrollment.findById(enrollmentId);
 
     // TODO: Deactivate last previous active plan
-    if (enrollment.planExists) {
-      const prevSubscription = await Enrollment.findOneAndUpdate(
+    if (enrollment?.planExists) {
+      const prevEnrollment = await Enrollment.findOneAndUpdate(
         {
           retailerId: retailer._id,
           planExists: { $ne: null },
@@ -1266,7 +1263,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
 
       await EnrollSubscription.updateMany(
         {
-          _id: { $in: prevSubscription.packages },
+          enrollmentId: prevEnrollment?._id,
         },
         {
           status: false,
@@ -1293,6 +1290,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
 
     // Store Payment Info
     const payment = await Payment.create({
+      enrollmentId: enrollment?._id,
       invoiceNumber: invoice?.number,
       invoicePdf: invoice?.invoice_pdf,
       paymentIntentId: invoice?.payment_intent?.id,
@@ -1309,7 +1307,6 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     updateSubscriptions.push(
       Enrollment.findByIdAndUpdate(enrollmentId, {
         paymentStatus: "completed",
-        payments: [payment._id],
         stripe: {
           subscriptionId: checkoutSession?.subscription,
           customerId: checkoutSession?.customer,
@@ -1333,8 +1330,8 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     // Handle Critical Payment (if payment method id is missing)
     if (!invoice?.payment_intent?.payment_method?.id) {
       await CriticalPayment.create({
-        paymentId: payment._id,
         enrollmentId,
+        paymentId: payment._id,
         stripeInvoiceId: eventObject.invoice,
         status: "pending",
       });
