@@ -1,9 +1,11 @@
 import { Response } from "express";
 import fs from "fs";
-import mongoose from "mongoose";
+import { Types } from "mongoose";
 import path from "path";
 import Stripe from "stripe";
-import { apiResponse, asyncHandler, htmlToPdf, makePaginate } from "../../helpers";
+import { apiResponse, asyncHandler, htmlToPdf } from "../../helpers";
+import { makePaginate } from "../../helpers/index";
+import Enrollment from "../../models/enrollment";
 import Payment from "../../models/payment";
 import Settings from "../../models/settings";
 import { IApiRequest } from "../../types";
@@ -19,17 +21,14 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
   const { page = 1, limit = 10, search }: any = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
-  const query: any = { paymentStatus: "succeeded" };
+  const query: any = { retailerId: req.user._id, paymentStatus: "completed" };
 
   if (search) {
-    const regex = new RegExp(`.*${search.trim()}.*`, "i"); //case insensitive search. For sensitive remove i
-
-    const orQuery = [{ paymentIntentId: regex }, { invoiceNumber: regex }];
-    query.$or = orQuery;
+    query["stripe.subscriptionId"] = { $regex: search, $options: "i" };
   }
 
   const [docs, total] = await Promise.all([
-    Payment.aggregate([
+    Enrollment.aggregate([
       {
         $match: query,
       },
@@ -47,37 +46,33 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
       {
         $lookup: {
           from: "enroll_subscriptions",
-          localField: "enrollSubscriptionIds",
-          foreignField: "_id",
-          as: "subscriptions",
+          localField: "_id",
+          foreignField: "enrollmentId",
+          as: "enrollSubscriptions",
           pipeline: [
             {
               $project: {
+                subscriptionItemId: 1,
                 title: "$planSnapshot.title",
                 slug: "$planSnapshot.slug",
+                type: "$planSnapshot.type",
+              },
+            },
+            {
+              $sort: {
+                type: -1,
               },
             },
           ],
         },
       },
-      {
-        $project: {
-          subscriptions: 1,
-          paymentIntentId: 1,
-          invoiceNumber: 1,
-          amountTotal: 1,
-          currency: 1,
-          paymentStatus: 1,
-          createdAt: 1,
-        },
-      },
     ]),
-    Payment.countDocuments(query),
+    Enrollment.countDocuments(query),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  return apiResponse(res, 200, true, "Retailer billing fetched successfully!", data);
+  return apiResponse(res, 200, true, "Retailer all billings fetched successfully!", data);
 });
 
 /**
@@ -88,36 +83,67 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
  */
 export const getSingleBilling = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
-  if (!mongoose.Types.ObjectId.isValid(id)) throw "Please, provide valid id!";
+  if (!Types.ObjectId.isValid(id)) throw "Please, provide valid id!";
 
-  const payment = await Payment.aggregate([
+  const enrollment = await Enrollment.aggregate([
     {
-      $match: { _id: mongoose.Types.ObjectId.createFromHexString(id) },
+      $match: { _id: Types.ObjectId.createFromHexString(id) },
     },
     {
       $lookup: {
         from: "enroll_subscriptions",
-        localField: "enrollSubscriptionIds",
-        foreignField: "_id",
-        as: "subscriptions",
+        localField: "_id",
+        foreignField: "enrollmentId",
+        as: "enrollSubscriptions",
+        pipeline: [
+          {
+            $project: {
+              subscriptionItemId: 1,
+              title: "$planSnapshot.title",
+              slug: "$planSnapshot.slug",
+              type: "$planSnapshot.type",
+            },
+          },
+          {
+            $sort: {
+              type: -1,
+            },
+          },
+        ],
       },
     },
     {
-      $project: {
-        subscriptions: 1,
-        paymentIntentId: 1,
-        invoiceNumber: 1,
-        amountTotal: 1,
-        currency: 1,
-        paymentStatus: 1,
-        createdAt: 1,
+      $lookup: {
+        from: "payments",
+        localField: "_id",
+        foreignField: "enrollmentId",
+        as: "payments",
+        pipeline: [
+          {
+            $project: {
+              paymentIntentId: 1,
+              invoiceNumber: 1,
+              amountTotal: 1,
+              currency: 1,
+              paymentMethodId: "$paymentMethodDetails.id",
+              cardBrand: "$paymentMethodDetails.card.brand",
+              cardLast4: "$paymentMethodDetails.card.last4",
+              createdAt: 1,
+            },
+          },
+          {
+            $sort: {
+              createdAt: -1,
+            },
+          },
+        ],
       },
     },
   ]);
 
-  if (payment.length <= 0) throw "No Subscription Found!";
+  if (enrollment.length <= 0) throw "No Billing Found!";
 
-  return apiResponse(res, 200, true, "Retailer single billing fetched successfully!", payment[0]);
+  return apiResponse(res, 200, true, "Retailer single billing fetched successfully!", enrollment[0]);
 });
 
 /**
@@ -155,11 +181,11 @@ export const getRetailerBillingPortal = asyncHandler(async (req: IApiRequest, re
  */
 export const getRetailerBillingPdf = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
-  if (!mongoose.Types.ObjectId.isValid(id)) throw "Please, provide valid id!";
+  if (!Types.ObjectId.isValid(id)) throw "Please, provide valid id!";
 
   const payment = await Payment.aggregate([
     {
-      $match: { _id: mongoose.Types.ObjectId.createFromHexString(id) },
+      $match: { _id: Types.ObjectId.createFromHexString(id) },
     },
     {
       $lookup: {
