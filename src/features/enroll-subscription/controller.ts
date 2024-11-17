@@ -15,7 +15,7 @@ import Settings from "../../models/settings";
 import Subscription, { ISubscription } from "../../models/subscription";
 import { getInvoiceTemplate } from "../../templates/invoice";
 import { IApiRequest, ILineItem } from "../../types";
-import { couponSchema, enrollSubscriptionSchema } from "./validation";
+import { couponSchema, enrollmentSchema } from "./validation";
 
 /**
  * Get Active Subscription Plans
@@ -751,7 +751,7 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = await enrollSubscriptionSchema.validateAsync(req.body, {
+  const result = await enrollmentSchema.validateAsync(req.body, {
     abortEarly: false,
   });
 
@@ -1323,6 +1323,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     for (const key in subscriptionItemsMap) {
       await EnrollSubscription.findByIdAndUpdate(key, {
         subscriptionItemId: subscriptionItemsMap[key],
+        status: true,
       });
     }
 
@@ -1505,75 +1506,6 @@ export const testEmailPDF = asyncHandler(async (req: IApiRequest, res: Response)
   }
 
   return apiResponse(res, 200, true, "Test Email with Pdf!");
-});
-
-/**
- * Test MultiPackage Subscription
- * @param {Request} eventObject - The HTTP webhook event object.
- * @param {Request} stripe - The stripe object.
- * @returns {Promise<void>} - A promise that resolves when the response is sent.
- */
-export const testMultiPackage = asyncHandler(async (req: IApiRequest, res: Response) => {
-  // Get Payment Metadata & Allowed Currencies
-  const [paymentMetadata, allowCurrencies] = await Promise.all([
-    Settings.findOne(
-      {},
-      {
-        "stripe.planChangeCost": 1,
-        "stripe.refundableThreshold": 1,
-        "stripe.taxTitle": 1,
-        "stripe.taxCost": 1,
-        "stripe.taxStatus": 1,
-        "stripe.stripeSecretKey": 1,
-      }
-    ),
-    CurrencyExchange.find({ status: true }),
-  ]);
-
-  const { stripeSecretKey, planChangeCost, refundableThreshold, taxTitle, taxCost, taxStatus } =
-    paymentMetadata.stripe ?? {};
-
-  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
-
-  const stripe = new Stripe(stripeSecretKey);
-
-  const session = await stripe.checkout.sessions.create({
-    line_items: [
-      {
-        price_data: {
-          currency: "cad",
-          product_data: {
-            name: `Custom Plan 1`,
-          },
-          unit_amount: 20 * 100, // convert into cent
-          recurring: {
-            interval: "month",
-          },
-        },
-        quantity: 1,
-      },
-      {
-        price_data: {
-          currency: "cad",
-          product_data: {
-            name: `Custom Plan 2`,
-          },
-          unit_amount: 50 * 100, // convert into cent
-          recurring: {
-            interval: "month",
-          },
-        },
-        quantity: 1,
-      },
-    ],
-    mode: "subscription",
-    payment_method_types: ["card"],
-    success_url: `${process.env.FRONTEND_URL}/payment/complete`,
-    cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
-    customer_email: req?.user?.email,
-  });
-
-  return apiResponse(res, 200, true, "Test Multi Package!", { url: session?.url });
 });
 
 /**

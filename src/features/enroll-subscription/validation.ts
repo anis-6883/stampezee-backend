@@ -2,7 +2,7 @@ import Joi from "joi";
 import { PACKAGES } from "../../configs/constants";
 import { requiredStringField, stringField } from "../../helpers";
 
-export const enrollSubscriptionSchema = Joi.object({
+export const enrollmentSchema = Joi.object({
   slugs: Joi.array()
     .items(
       Joi.string()

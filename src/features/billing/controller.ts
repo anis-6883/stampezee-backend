@@ -5,11 +5,12 @@ import path from "path";
 import Stripe from "stripe";
 import { apiResponse, asyncHandler, htmlToPdf } from "../../helpers";
 import { makePaginate } from "../../helpers/index";
+import EnrollSubscription from "../../models/enroll-subscription";
 import Enrollment from "../../models/enrollment";
 import Payment from "../../models/payment";
 import Settings from "../../models/settings";
 import { IApiRequest } from "../../types";
-import { portalSchema } from "./validation";
+import { enrollSubscriptionSchema, portalSchema } from "./validation";
 
 /**
  * Get All Subscription Billings
@@ -144,6 +145,57 @@ export const getSingleBilling = asyncHandler(async (req: IApiRequest, res: Respo
   if (enrollment.length <= 0) throw "No Billing Found!";
 
   return apiResponse(res, 200, true, "Retailer single billing fetched successfully!", enrollment[0]);
+});
+
+/**
+ * Cancel Subscription Item from Packages
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const cancelAddOnSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await enrollSubscriptionSchema.validateAsync(req.body, {
+    abortEarly: false,
+  });
+
+  const { enrollSubscriptionId } = result;
+  const enrollSubscription = await EnrollSubscription.findById(enrollSubscriptionId);
+  if (!enrollSubscription) throw "Enroll Subscription Not Found!";
+
+  if (enrollSubscription?.planSnapshot?.type !== "subscription") {
+    const paymentMetadata = await Settings.findOne(
+      {},
+      {
+        "stripe.planChangeCost": 1,
+        "stripe.refundableThreshold": 1,
+        "stripe.taxTitle": 1,
+        "stripe.taxCost": 1,
+        "stripe.taxStatus": 1,
+        "stripe.stripeSecretKey": 1,
+      }
+    );
+
+    const { stripeSecretKey } = paymentMetadata.stripe ?? {};
+
+    if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+
+    const stripe = new Stripe(stripeSecretKey);
+
+    const deletedItem = await stripe.subscriptionItems.del(enrollSubscription?.subscriptionItemId, {
+      proration_behavior: "none", // Options: 'create_prorations', 'none', 'always_invoice'
+    });
+
+    if (deletedItem?.deleted) {
+      await EnrollSubscription.findByIdAndUpdate(enrollSubscriptionId, {
+        status: false,
+        deletedByRetailer: true,
+      });
+    }
+
+    return apiResponse(res, 200, true, "Add-on Subscription Cancelled Successfully!");
+  } else {
+    return apiResponse(res, 400, true, "Cancel a Subscription Plan is not Allowed!");
+  }
 });
 
 /**

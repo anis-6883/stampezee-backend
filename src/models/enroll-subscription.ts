@@ -36,6 +36,7 @@ interface IEnrollSubscription extends Document {
   currentBalance: number;
   planCurrentPrice: number;
   status: boolean;
+  deletedByRetailer: boolean;
 }
 
 const subscriptionSchema = new Schema<ISubscription>({
@@ -80,7 +81,8 @@ const enrollSubscriptionSchema = new Schema<IEnrollSubscription>(
     subscriptionItemId: { type: String, default: null },
     currentBalance: { type: Number, default: 0 },
     planCurrentPrice: { type: Number, default: 0 },
-    status: { type: Boolean, default: true },
+    status: { type: Boolean, default: false },
+    deletedByRetailer: { type: Boolean, default: false },
   },
   {
     timestamps: true,
