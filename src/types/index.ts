@@ -4,6 +4,12 @@ import mongoose from "mongoose";
 export interface Object {
   [key: string]: any;
 }
+
+export interface DataItem {
+  _id: string;
+  slugs: string[];
+}
+
 export interface IEnrollPayment {
   id: string;
   metadata: any;

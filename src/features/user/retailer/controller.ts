@@ -1,9 +1,16 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
-import { COOKIE_KEY, PACKAGES, REFRESH_TOKEN_KEY, ROLE } from "../../../configs/constants";
+import { PACKAGES, ROLE } from "../../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../../configs/s3Bucket";
-import { apiResponse, asyncHandler, exclude, generateSignature, getRandomInteger } from "../../../helpers";
-import EnrollSubscription from "../../../models/enroll-subscription";
+import {
+  apiResponse,
+  asyncHandler,
+  exclude,
+  generateSignature,
+  getRandomInteger,
+  getSlugCountMap,
+} from "../../../helpers";
+import Enrollment from "../../../models/enrollment";
 import Retailer from "../../../models/retailer";
 import { IApiRequest } from "../../../types";
 import { retailerSchemaUpdate } from "../../retailer/validation";
@@ -149,43 +156,85 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
   // Check Subscription & Addon Enrollment
-  const [subscription, addons] = await Promise.all([
-    EnrollSubscription.findOne({
-      retailerId: retailer._id,
-      "planSnapshot.type": "subscription",
-      paymentStatus: { $in: ["completed", "trial"] },
-      validityTo: { $gt: new Date() },
-      status: true,
-    }),
-    EnrollSubscription.find({
-      retailerId: retailer._id,
-      "planSnapshot.type": "addon",
-      paymentStatus: "completed",
-      status: true,
-    }),
-  ]);
-
-  const { BRANCH, STAMP, CUSTOM_STAMP_IMAGE, PUSH_NOTIFICATION_USER, PUSH_NOTIFICATION_LOCATION } = PACKAGES;
-
-  const { addonBranches, addonStamps, addonCustomStampImages, addonRegularNotifications, addonLocationNotifications } =
-    addons.reduce(
-      (acc, addon) => {
-        const slug = addon?.planSnapshot?.slug;
-        if (slug === BRANCH) acc.addonBranches++;
-        if (slug === STAMP) acc.addonStamps++;
-        if (slug === CUSTOM_STAMP_IMAGE) acc.addonCustomStampImages++;
-        if (slug === PUSH_NOTIFICATION_USER) acc.addonRegularNotifications++;
-        if (slug === PUSH_NOTIFICATION_LOCATION) acc.addonLocationNotifications++;
-        return acc;
+  const [planEnrollment, addonEnrollments] = await Promise.all([
+    Enrollment.aggregate([
+      {
+        $match: {
+          retailerId: retailer._id,
+          planExists: { $ne: null },
+          paymentStatus: { $in: ["completed", "trial"] },
+          validityTo: { $gt: new Date() },
+          status: true,
+        },
       },
       {
-        addonBranches: 0,
-        addonStamps: 0,
-        addonCustomStampImages: 0,
-        addonRegularNotifications: 0,
-        addonLocationNotifications: 0,
-      }
-    );
+        $lookup: {
+          from: "enroll_subscriptions",
+          localField: "_id",
+          foreignField: "enrollmentId",
+          as: "enrollSubscription",
+          pipeline: [
+            {
+              $match: {
+                "planSnapshot.type": "subscription",
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: "$enrollSubscription",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+    ]),
+    Enrollment.aggregate([
+      {
+        $match: {
+          retailerId: retailer._id,
+          paymentStatus: "completed",
+          validityTo: { $gt: new Date() },
+          status: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "enroll_subscriptions",
+          localField: "_id",
+          foreignField: "enrollmentId",
+          as: "enrollSubscriptions",
+          pipeline: [
+            {
+              $project: {
+                slug: "$planSnapshot.slug",
+              },
+            },
+          ],
+        },
+      },
+      {
+        $addFields: {
+          slugs: {
+            $map: {
+              input: "$enrollSubscriptions",
+              as: "subscription",
+              in: "$$subscription.slug",
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          slugs: 1,
+        },
+      },
+    ]),
+  ]);
+
+  const slugMap = getSlugCountMap(addonEnrollments);
+
+  const { BRANCH, STAMP, CUSTOM_STAMP_IMAGE, PUSH_NOTIFICATION_USER, PUSH_NOTIFICATION_LOCATION } = PACKAGES;
 
   const accessToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "30d");
   const refreshToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "60d");
@@ -193,21 +242,26 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   // Remove Sensitive Data
   const data = exclude(retailer._doc, ["password", "otp", "otpExpiry"]);
 
+  const { enrollSubscription, planExists, currency, validityFrom, validityTo } = planEnrollment[0] ?? {};
+
   data.role = ROLE.RETAILER;
   data.accessToken = accessToken;
   data.refreshToken = refreshToken;
-  data.plan = subscription?.planSnapshot?.slug ?? null;
-  // data.planPaymentCurrency = subscription?.balanceInfo.currency ?? null;
-  // data.planPayment = subscription?.balanceInfo?.planCurrentPrice
-  //   ? Number((subscription?.balanceInfo?.planCurrentPrice).toFixed(2))
-  //   : null;
-  // data.planStartAt = subscription?.validityFrom ?? null;
-  // data.planValidAt = subscription?.validityTo ?? null;
-  data.totalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addonBranches;
-  data.totalStamp = (subscription?.planSnapshot?.allowTotalStamp ?? 0) + addonStamps;
-  data.totalCustomStampImage = addonCustomStampImages;
-  data.totalRegularNotification = addonRegularNotifications;
-  data.totalLocationNotification = addonLocationNotifications;
+
+  data.plan = planExists ?? null;
+  data.planPaymentCurrency = currency ?? null;
+  data.planPayment = enrollSubscription?.planCurrentPrice
+    ? Number((planEnrollment[0]?.enrollSubscription?.planCurrentPrice).toFixed(2))
+    : null;
+  data.planStartAt = validityFrom ?? null;
+  data.planValidAt = validityTo ?? null;
+
+  data.totalBranch = (enrollSubscription?.planSnapshot?.allowTotalBranch ?? 0) + (slugMap[BRANCH] ?? 0);
+  data.totalStamp = (enrollSubscription?.planSnapshot?.allowTotalStamp ?? 0) + (slugMap[STAMP] ?? 0);
+
+  data.totalCustomStampImage = slugMap[CUSTOM_STAMP_IMAGE] ?? 0;
+  data.totalRegularNotification = slugMap[PUSH_NOTIFICATION_USER] ?? 0;
+  data.totalLocationNotification = slugMap[PUSH_NOTIFICATION_LOCATION] ?? 0;
   data.expiresIn = new Date().setTime(new Date().getTime() + ALARM_EXPIRE_TIME);
 
   return apiResponse(res, 200, true, "Retailer Login Successfully!", data);
@@ -219,23 +273,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const retailerLogout = asyncHandler(async (_req: Request, res: Response) => {
-  res.clearCookie(COOKIE_KEY, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
-    expires: new Date(Date.now()),
-  });
-
-  res.clearCookie(REFRESH_TOKEN_KEY, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
-    expires: new Date(Date.now()),
-  });
-
-  return apiResponse(res, 200, true, "Retailer Logout Successfully!");
-});
+export const retailerLogout = asyncHandler(async (_req: Request, res: Response) => {});
 
 /**
  * Retailer Profile
@@ -248,57 +286,102 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
   const data = exclude(req.user, ["password", "otp", "otpExpiry"]);
 
   // Check Subscription & Addon Enrollment
-  const [subscription, addons] = await Promise.all([
-    EnrollSubscription.findOne({
-      retailerId: req.user._id,
-      "planSnapshot.type": "subscription",
-      paymentStatus: { $in: ["completed", "trial"] },
-      validityTo: { $gt: new Date() },
-      status: true,
-    }),
-    EnrollSubscription.find({
-      retailerId: req.user._id,
-      "planSnapshot.type": "addon",
-      paymentStatus: "completed",
-      status: true,
-    }),
-  ]);
-
-  const { BRANCH, STAMP, CUSTOM_STAMP_IMAGE, PUSH_NOTIFICATION_USER, PUSH_NOTIFICATION_LOCATION } = PACKAGES;
-
-  const { addonBranches, addonStamps, addonCustomStampImages, addonRegularNotifications, addonLocationNotifications } =
-    addons.reduce(
-      (acc, addon) => {
-        const slug = addon?.planSnapshot?.slug;
-        if (slug === BRANCH) acc.addonBranches++;
-        if (slug === STAMP) acc.addonStamps++;
-        if (slug === CUSTOM_STAMP_IMAGE) acc.addonCustomStampImages++;
-        if (slug === PUSH_NOTIFICATION_USER) acc.addonRegularNotifications++;
-        if (slug === PUSH_NOTIFICATION_LOCATION) acc.addonLocationNotifications++;
-        return acc;
+  const [planEnrollment, addonEnrollments] = await Promise.all([
+    Enrollment.aggregate([
+      {
+        $match: {
+          retailerId: req.user._id,
+          planExists: { $ne: null },
+          paymentStatus: { $in: ["completed", "trial"] },
+          validityTo: { $gt: new Date() },
+          status: true,
+        },
       },
       {
-        addonBranches: 0,
-        addonStamps: 0,
-        addonCustomStampImages: 0,
-        addonRegularNotifications: 0,
-        addonLocationNotifications: 0,
-      }
-    );
+        $lookup: {
+          from: "enroll_subscriptions",
+          localField: "_id",
+          foreignField: "enrollmentId",
+          as: "enrollSubscription",
+          pipeline: [
+            {
+              $match: {
+                "planSnapshot.type": "subscription",
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: "$enrollSubscription",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+    ]),
+    Enrollment.aggregate([
+      {
+        $match: {
+          retailerId: req.user._id,
+          paymentStatus: "completed",
+          validityTo: { $gt: new Date() },
+          status: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "enroll_subscriptions",
+          localField: "_id",
+          foreignField: "enrollmentId",
+          as: "enrollSubscriptions",
+          pipeline: [
+            {
+              $project: {
+                slug: "$planSnapshot.slug",
+              },
+            },
+          ],
+        },
+      },
+      {
+        $addFields: {
+          slugs: {
+            $map: {
+              input: "$enrollSubscriptions",
+              as: "subscription",
+              in: "$$subscription.slug",
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          slugs: 1,
+        },
+      },
+    ]),
+  ]);
+
+  const slugMap = getSlugCountMap(addonEnrollments);
+
+  const { BRANCH, STAMP, CUSTOM_STAMP_IMAGE, PUSH_NOTIFICATION_USER, PUSH_NOTIFICATION_LOCATION } = PACKAGES;
+  const { enrollSubscription, planExists, currency, validityFrom, validityTo } = planEnrollment[0] ?? {};
 
   data.role = ROLE.RETAILER;
-  data.plan = subscription?.planSnapshot?.slug ?? null;
-  // data.planPaymentCurrency = subscription?.balanceInfo.currency ?? null;
-  // data.planPayment = subscription?.balanceInfo?.planCurrentPrice
-  //   ? Number((subscription?.balanceInfo?.planCurrentPrice).toFixed(2))
-  //   : null;
-  // data.planStartAt = subscription?.validityFrom ?? null;
-  // data.planValidAt = subscription?.validityTo ?? null;
-  data.totalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addonBranches;
-  data.totalStamp = (subscription?.planSnapshot?.allowTotalStamp ?? 0) + addonStamps;
-  data.totalCustomStampImage = addonCustomStampImages;
-  data.totalRegularNotification = addonRegularNotifications;
-  data.totalLocationNotification = addonLocationNotifications;
+  data.plan = planExists ?? null;
+  data.planPaymentCurrency = currency ?? null;
+  data.planPayment = enrollSubscription?.planCurrentPrice
+    ? Number((planEnrollment[0]?.enrollSubscription?.planCurrentPrice).toFixed(2))
+    : null;
+  data.planStartAt = validityFrom ?? null;
+  data.planValidAt = validityTo ?? null;
+
+  data.totalBranch = (enrollSubscription?.planSnapshot?.allowTotalBranch ?? 0) + (slugMap[BRANCH] ?? 0);
+  data.totalStamp = (enrollSubscription?.planSnapshot?.allowTotalStamp ?? 0) + (slugMap[STAMP] ?? 0);
+
+  data.totalCustomStampImage = slugMap[CUSTOM_STAMP_IMAGE] ?? 0;
+  data.totalRegularNotification = slugMap[PUSH_NOTIFICATION_USER] ?? 0;
+  data.totalLocationNotification = slugMap[PUSH_NOTIFICATION_LOCATION] ?? 0;
 
   return apiResponse(res, 200, true, "Retailer profile fetched successfully!", data);
 });

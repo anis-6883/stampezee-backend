@@ -7,6 +7,7 @@ import path from "path";
 import puppeteer from "puppeteer";
 import { APP_SECRET } from "../configs/constants";
 import { getInvoiceTemplatePdf } from "../templates/invoice";
+import { DataItem } from "../types/index";
 
 const objectIdExtension = (Joi: any) => ({
   type: "objectId",
@@ -2364,3 +2365,15 @@ export const htmlToPdf = async ({
     throw error;
   }
 };
+
+export function getSlugCountMap(data: DataItem[]): Record<string, number> {
+  const slugCountMap: Record<string, number> = {};
+
+  data.forEach((item) => {
+    item.slugs.forEach((slug) => {
+      slugCountMap[slug] = (slugCountMap[slug] || 0) + 1;
+    });
+  });
+
+  return slugCountMap;
+}
