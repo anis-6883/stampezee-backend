@@ -1101,8 +1101,8 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
           { new: true }
         );
 
-        Payment.create({
-          enrollmentId: updatedSubscription._id,
+        await Payment.create({
+          enrollmentId: updatedSubscription?._id,
           paymentIntentId: invoicePaymentEvent.payment_intent,
           invoiceNumber: invoicePaymentEvent.number,
           invoicePdf: invoicePaymentEvent.invoice_pdf,

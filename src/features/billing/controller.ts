@@ -57,6 +57,7 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
                 title: "$planSnapshot.title",
                 slug: "$planSnapshot.slug",
                 type: "$planSnapshot.type",
+                deletedByRetailer: 1,
               },
             },
             {
@@ -103,6 +104,7 @@ export const getSingleBilling = asyncHandler(async (req: IApiRequest, res: Respo
               title: "$planSnapshot.title",
               slug: "$planSnapshot.slug",
               type: "$planSnapshot.type",
+              deletedByRetailer: 1,
             },
           },
           {
