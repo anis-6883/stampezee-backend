@@ -49,7 +49,7 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
 
   const retailerAddonIds = retailerTotalBranch
     .filter((branch) => branch.source === "addon")
-    .map((branch) => branch.enrollSubscriptionId.toString());
+    .map((branch) => branch.enrollmentId.toString());
   const addonIds = addons.map((enroll) => enroll._id.toString());
   const unUsedIds = addonIds.filter((item) => !retailerAddonIds.includes(item));
 
@@ -272,7 +272,7 @@ export const convertToAddonBranch = asyncHandler(async (req: IApiRequest, res: R
 
   const retailerAddonIds = retailerTotalBranch
     .filter((branch) => branch.source === "addon")
-    .map((branch) => branch.enrollSubscriptionId.toString());
+    .map((branch) => branch.enrollmentId.toString());
   const addonIds = addons.map((enroll) => enroll._id.toString());
   const unUsedIds = addonIds.filter((item) => !retailerAddonIds.includes(item));
 

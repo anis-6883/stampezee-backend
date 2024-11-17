@@ -4,6 +4,7 @@ import nodemailer from "nodemailer";
 import Stripe from "stripe";
 import { PACKAGES } from "../../configs/constants";
 import { apiResponse, asyncHandler, checkCombination, checkDuplicates, exclude, htmlToPdf } from "../../helpers";
+import Branch from "../../models/branch";
 import Coupon, { ICoupon } from "../../models/coupon";
 import CriticalPayment from "../../models/critical-payment";
 import CurrencyExchange from "../../models/currency-exchange";
@@ -1074,11 +1075,11 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
       await checkoutSessionComplete(event.data.object, stripe);
       break;
 
-    //////////////////////////////////////////////
-    //////// Handling Renew Subscription ////////
-    /////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////
+    //////// Handling Renew Subscription (Recurring Payment) ////////
+    ////////////////////////////////////////////////////////////////
     case "invoice.payment_succeeded":
-      console.log("Handling Renew Subscription!");
+      console.log("Handling Renew Subscription (Recurring Payment)!");
       const invoicePaymentEvent = event.data.object;
 
       const invoice: any = await stripe.invoices.retrieve(invoicePaymentEvent?.id as string, {
@@ -1090,29 +1091,32 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
         invoicePaymentEvent.billing_reason === "subscription_cycle"
       ) {
         console.log("Subscription is updated!");
-        const now = moment();
-        const expireDate = moment().add(30, "days");
 
-        const updatedSubscription = await EnrollSubscription.findOneAndUpdate(
+        const updatedSubscription = await Enrollment.findOneAndUpdate(
           { "stripe.subscriptionId": invoicePaymentEvent.subscription },
           {
-            validityFrom: now,
-            validityTo: expireDate,
+            validityFrom: moment(),
+            validityTo: moment().add(30, "days"),
           },
           { new: true }
         );
 
         Payment.create({
-          // retailerId: updatedSubscription?.retailerId,
-          // enrollSubscriptionId: updatedSubscription._id,
+          enrollmentId: updatedSubscription._id,
           paymentIntentId: invoicePaymentEvent.payment_intent,
           invoiceNumber: invoicePaymentEvent.number,
           invoicePdf: invoicePaymentEvent.invoice_pdf,
           paymentStatus: "succeeded",
-          amountTotal: invoicePaymentEvent.total,
+          amountTotal:
+            updatedSubscription?.currency === "JPY"
+              ? invoicePaymentEvent?.total
+              : (invoicePaymentEvent?.total / 100).toFixed(2),
+          currency: updatedSubscription?.currency,
           paymentMethodDetails: invoice?.payment_intent?.payment_method, // Kind of Log Store
         });
       }
+
+      // @TODO: Recurring Payment Subscription Mail
       break;
 
     /////////////////////////////////////////////////////////////////
@@ -1122,7 +1126,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
       console.log("Handling Cancel & Renew Subscription By Retailer!");
       let subscriptionUpdateObject = event.data.object;
 
-      await EnrollSubscription.updateOne(
+      await Enrollment.findOneAndUpdate(
         { "stripe.subscriptionId": subscriptionUpdateObject.id },
         {
           "stripe.renewCancelAt": subscriptionUpdateObject.cancel_at
@@ -1149,7 +1153,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
         invoiceObject.billing_reason === "subscription_cycle"
       ) {
         await Promise.all([
-          EnrollSubscription.updateOne(
+          Enrollment.findOneAndUpdate(
             { "stripe.subscriptionId": invoiceObject.subscription },
             {
               status: false,
@@ -1169,12 +1173,14 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
       console.log("Customer Updated!");
       let customerObject = event.data.object;
 
-      await EnrollSubscription.findOneAndUpdate(
+      await Enrollment.findOneAndUpdate(
         { "stripe.customerId": customerObject.id },
         {
           "stripe.paymentMethodId": customerObject?.invoice_settings?.default_payment_method,
         }
       );
+
+      // @TODO: Change Payment Card Mail
       break;
 
     case "customer.subscription.deleted":
@@ -1270,22 +1276,22 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
         }
       );
 
-      // if (prevSubscription && prevSubscription.paymentStatus !== "trial") {
-      //   await stripe.subscriptions.cancel(prevSubscription.stripe.subscriptionId);
-      // }
+      if (prevEnrollment && prevEnrollment.paymentStatus !== "trial") {
+        await stripe.subscriptions.cancel(prevEnrollment.stripe.subscriptionId);
+      }
 
       // Update expiration for already created branch
-      // if ("planEnrollmentId" in checkoutSession.metadata) {
-      //   updateSubscriptions.push(
-      //     Branch.updateMany(
-      //       {
-      //         retailerId: retailer._id,
-      //         source: "subscription",
-      //       },
-      //       { enrollSubscriptionId: checkoutSession.metadata["planEnrollmentId"] }
-      //     )
-      //   );
-      // }
+      if (enrollment?.planExists) {
+        updateSubscriptions.push(
+          Branch.updateMany(
+            {
+              retailerId: retailer._id,
+              source: "subscription",
+            },
+            { enrollmentId }
+          )
+        );
+      }
     }
 
     // Store Payment Info
