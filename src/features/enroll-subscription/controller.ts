@@ -3,7 +3,16 @@ import moment from "moment";
 import nodemailer from "nodemailer";
 import Stripe from "stripe";
 import { PACKAGES } from "../../configs/constants";
-import { apiResponse, asyncHandler, checkCombination, checkDuplicates, exclude, htmlToPdf } from "../../helpers";
+import {
+  apiResponse,
+  asyncHandler,
+  calculateBalanceAmount,
+  checkCombination,
+  checkDuplicates,
+  checkPlanChange,
+  exclude,
+  htmlToPdf,
+} from "../../helpers";
 import Branch from "../../models/branch";
 import Coupon, { ICoupon } from "../../models/coupon";
 import CriticalPayment from "../../models/critical-payment";
@@ -916,14 +925,6 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
       if (alreadyApplied >= coupon.limit) throw "Your coupon limit is over!";
     }
 
-    // TODO: Check & Get Coupon
-
-    // TODO: Take a Subscription with [One Plan and One Add-on]
-    // TODO: Or, Take a Subscription with [Two Add-ons]
-    // TODO: Make a payment with [packages]
-    // TODO: If One add-on cancelled then handle payment with [package] (recurring)
-    // TODO: If plan cancelled then handle cancel subscription
-
     ////////////////////////////////////////////////////////////////////////
     //////// Decision -> (Upgrade or Downgrade) or New Subscription ////////
     ////////////////////////////////////////////////////////////////////////
@@ -933,6 +934,49 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
     const coupons: { coupon: string }[] = [];
 
     if (pickPlan && enrolled) {
+      const changeMode: number = checkPlanChange(
+        [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED],
+        enrolled.planExists,
+        pickPlan?.slug
+      );
+
+      const subscriptionPlan = await EnrollSubscription.findOne({
+        enrollmentId: enrolled?._id,
+        "planSnapshot.type": "subscription",
+        status: true,
+      });
+
+      const convertToSelectedCurrency = Number(
+        ((selectCurrency.exchangeRate / enrolled.currencyRate) * subscriptionPlan.planCurrentPrice).toFixed(2)
+      );
+
+      const balanceAmount: number = calculateBalanceAmount(
+        enrolled.validityFrom,
+        enrolled.validityTo,
+        convertToSelectedCurrency
+      );
+
+      ///////////////////////////////
+      //////// Plan Upgrade /////////
+      ///////////////////////////////
+      if (changeMode > 0) {
+        let finalPrice = 0;
+
+        finalPrice = Number((selectCurrency.exchangeRate * pickPlan.price).toFixed(2));
+
+        const addonSubscriptions = await EnrollSubscription.find({
+          enrollmentId: enrolled?._id,
+          "planSnapshot.type": "addon",
+          status: true,
+        });
+
+        // TODO: Calculate the payable amount of the add-ons
+
+        console.log({ finalPrice, addonSubscriptions });
+
+        return apiResponse(res, 200, true, "Upgrade!", addonSubscriptions);
+      }
+
       return apiResponse(res, 200, true, "Upgrade or Downgrade!");
     } else {
       ///////////////////////////////////
