@@ -165,6 +165,14 @@ export const cancelAddOnSubscription = asyncHandler(async (req: IApiRequest, res
   if (!enrollSubscription) throw "Enroll Subscription Not Found!";
 
   if (enrollSubscription?.planSnapshot?.type !== "subscription") {
+    const totalPackage = await EnrollSubscription.countDocuments({
+      enrollmentId: enrollSubscription.enrollmentId,
+      status: true,
+      deletedByRetailer: false,
+    });
+
+    if (totalPackage < 2) throw "At least one package is needed for subscription!";
+
     const paymentMetadata = await Settings.findOne(
       {},
       {
@@ -196,7 +204,7 @@ export const cancelAddOnSubscription = asyncHandler(async (req: IApiRequest, res
 
     return apiResponse(res, 200, true, "Add-on Subscription Cancelled Successfully!");
   } else {
-    return apiResponse(res, 400, true, "Cancel a Subscription Plan is not Allowed!");
+    throw "Cancel a Subscription Plan is not Allowed!";
   }
 });
 
