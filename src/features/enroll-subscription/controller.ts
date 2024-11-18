@@ -24,7 +24,7 @@ import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
 import Subscription, { ISubscription } from "../../models/subscription";
 import { getInvoiceTemplate } from "../../templates/invoice";
-import { IApiRequest, ILineItem } from "../../types";
+import { IApiRequest, ILineItem, Object } from "../../types";
 import { couponSchema, enrollmentSchema } from "./validation";
 
 /**
@@ -853,7 +853,7 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
   // Enroll Paid Subscription
   if (checkCombination(slugs, [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED]) && checkDuplicates(slugs)) {
     const subscriptions: any[] = await Subscription.find({ slug: { $in: slugs } });
-    const pickPlan = subscriptions.find((subs) => subs.type === "subscription"); // Always Get One Plan if Exists
+    const pickPlan: ISubscription = subscriptions.find((subs) => subs.type === "subscription"); // Always Get One Plan if Exists
 
     // Check Already enrolled or not
     const enrolled = await Enrollment.findOne({
@@ -932,6 +932,7 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
     enrollIdDuration["currency"] = currency;
     const line_items: ILineItem[] = [];
     const coupons: { coupon: string }[] = [];
+    let extraPayableAmount = 0;
 
     if (pickPlan && enrolled) {
       const changeMode: number = checkPlanChange(
@@ -956,28 +957,165 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
         convertToSelectedCurrency
       );
 
+      let totalCouponAmount = balanceAmount ?? 0;
+
       ///////////////////////////////
       //////// Plan Upgrade /////////
       ///////////////////////////////
       if (changeMode > 0) {
-        let finalPrice = 0;
+        const enrollment = await Enrollment.create({
+          retailerId: req.user._id,
+          planExists: pickPlan ? pickPlan?.slug : null,
+          taxSnapshot: {
+            taxTitle: taxStatus === "on" ? taxTitle : null,
+            taxCost: taxStatus === "on" ? taxCost : null,
+          },
+          currency,
+          currencyRate: selectCurrency.exchangeRate,
+          planChangeCost,
+          paymentStatus: "pending",
+          enrollStatus: "purchase",
+          status: false,
+        });
 
-        finalPrice = Number((selectCurrency.exchangeRate * pickPlan.price).toFixed(2));
-
-        const addonSubscriptions = await EnrollSubscription.find({
+        const prevAddons = await EnrollSubscription.find({
           enrollmentId: enrolled?._id,
           "planSnapshot.type": "addon",
           status: true,
         });
 
-        // TODO: Calculate the payable amount of the add-ons
+        // Add Previous Add-on into new enrollment
+        for (const prevAddon of prevAddons) {
+          let finalPrice = 0;
+          let taxValue = 0;
 
-        console.log({ finalPrice, addonSubscriptions });
+          finalPrice = Number((selectCurrency.exchangeRate * prevAddon.planSnapshot.price).toFixed(2));
 
-        return apiResponse(res, 200, true, "Upgrade!", addonSubscriptions);
+          const convertToSelectedCurrency = Number(
+            ((selectCurrency.exchangeRate / enrolled.currencyRate) * prevAddon.planCurrentPrice).toFixed(2)
+          );
+
+          const addonBalanceAmount: number = calculateBalanceAmount(
+            enrolled.validityFrom,
+            enrolled.validityTo,
+            convertToSelectedCurrency
+          );
+
+          totalCouponAmount += addonBalanceAmount; // Minus Used Amount
+          extraPayableAmount += convertToSelectedCurrency - addonBalanceAmount; // Send to Frontend
+
+          console.log({ addonBalanceAmount });
+
+          // Only tax apply
+          if (taxStatus === "on") {
+            taxValue = (finalPrice * taxCost) / 100;
+            finalPrice += taxValue;
+          }
+
+          const enrollSubscription = await EnrollSubscription.create({
+            enrollmentId: enrollment?._id,
+            planSnapshot: prevAddon.planSnapshot,
+            couponSnapshot: null,
+            planCurrentPrice: (finalPrice - taxValue).toFixed(2),
+          });
+
+          line_items.push({
+            price_data: {
+              currency: currency.toLowerCase(),
+              product_data: {
+                name: `${prevAddon.planSnapshot.title} Add-On (Previous)`,
+                ...(taxStatus === "on" && {
+                  description: `${prevAddon.planSnapshot.title} Add-On (including ${taxTitle} ${taxCost}%)`,
+                }),
+                metadata: {
+                  enrollSubscriptionId: String(enrollSubscription._id),
+                },
+              },
+              unit_amount:
+                selectCurrency?.name === "JPY" ? Math.round(Number(finalPrice)) : Math.round(Number(finalPrice) * 100), // convert into cent
+              recurring: {
+                interval: "month",
+              },
+            },
+            quantity: 1,
+          });
+        }
+
+        // Add New Plan & Add-on into new enrollment
+        for (const subscription of subscriptions) {
+          let finalPrice = 0;
+          let taxValue = 0;
+
+          finalPrice = Number((selectCurrency.exchangeRate * subscription.price).toFixed(2));
+
+          // Only tax apply
+          if (taxStatus === "on") {
+            taxValue = (finalPrice * taxCost) / 100;
+            finalPrice += taxValue;
+          }
+
+          const enrollSubscription = await EnrollSubscription.create({
+            enrollmentId: enrollment?._id,
+            planSnapshot: subscription,
+            couponSnapshot: null,
+            planCurrentPrice: (finalPrice - taxValue).toFixed(2),
+          });
+
+          const isPlan = [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug);
+
+          line_items.push({
+            price_data: {
+              currency: currency.toLowerCase(),
+              product_data: {
+                name: `${subscription.title} ${isPlan ? "Plan" : "Add-On"}`,
+                ...(taxStatus === "on" && {
+                  description: `${subscription.title} ${isPlan ? "Plan" : "Add-On"} (including ${taxTitle} ${taxCost}%)`,
+                }),
+                metadata: {
+                  enrollSubscriptionId: String(enrollSubscription._id),
+                },
+              },
+              unit_amount:
+                selectCurrency?.name === "JPY" ? Math.round(Number(finalPrice)) : Math.round(Number(finalPrice) * 100), // convert into cent
+              recurring: {
+                interval: "month",
+              },
+            },
+            quantity: 1,
+          });
+        }
+
+        console.log({ extraPayableAmount });
+
+        const applyCoupon = await stripe.coupons.create({
+          name: "Current Balance",
+          amount_off:
+            selectCurrency?.name === "JPY"
+              ? Math.round(Number(totalCouponAmount))
+              : Math.round(Number(totalCouponAmount) * 100),
+          currency,
+          duration: "once",
+        });
+
+        coupons.push({
+          coupon: applyCoupon.id,
+        });
       }
 
-      return apiResponse(res, 200, true, "Upgrade or Downgrade!");
+      // Add Plan Change Cost
+      line_items.push({
+        price_data: {
+          currency,
+          product_data: {
+            name: `Plan Change Cost`,
+          },
+          unit_amount:
+            selectCurrency?.name === "JPY"
+              ? Math.round(Number(planChangeCost * selectCurrency.exchangeRate))
+              : Math.round(Number(planChangeCost * selectCurrency.exchangeRate) * 100), // convert into cent
+        },
+        quantity: 1,
+      });
     } else {
       ///////////////////////////////////
       //////// New Subscription /////////
@@ -1084,7 +1222,16 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
       customer_email: req?.user?.email,
     });
 
-    return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
+    const data: Object = { url: session?.url };
+
+    if (extraPayableAmount > 0) {
+      data["addonExists"] = true;
+      data["payableAmount"] = extraPayableAmount.toFixed(2);
+    } else {
+      data["addonExists"] = false;
+    }
+
+    return apiResponse(res, 200, true, "Send to Payment Page!", data);
   }
 
   throw "Only one subscription plan and no duplicate addons are allowed!";
