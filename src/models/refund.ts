@@ -1,7 +1,7 @@
 import { Document, model, Schema, Types } from "mongoose";
 
 interface IRefund extends Document {
-  enrollSubscriptionId: Types.ObjectId;
+  enrollmentId: Types.ObjectId;
   refundAmount: number;
   currency: string;
   refundStatus: "pending" | "completed";
@@ -11,7 +11,7 @@ interface IRefund extends Document {
 
 const refundSchema = new Schema<IRefund>(
   {
-    enrollSubscriptionId: { type: "ObjectId", ref: "EnrollSubscription", required: true },
+    enrollmentId: { type: "ObjectId", ref: "Enrollment", required: true },
     refundAmount: { type: Number, default: 0 },
     currency: { type: String, required: true },
     refundStatus: { type: String, enum: ["pending", "completed"], default: "pending" },

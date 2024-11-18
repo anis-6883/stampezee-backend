@@ -43,7 +43,6 @@ const enrollmentSchema = new Schema<IEnrollment>(
     currency: { type: String, default: "CAD" },
     currencyRate: { type: Number, default: 0 },
     planChangeCost: { type: Number, default: 0 },
-    refundAmount: { type: Number, default: 0 },
     paymentStatus: { type: String, enum: ["trial", "pending", "completed"], required: true },
     enrollStatus: { type: String, enum: ["trial", "purchase", "upgrade", "downgrade"], required: true },
     validityFrom: { type: Date, default: null },

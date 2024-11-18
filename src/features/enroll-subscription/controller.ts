@@ -20,6 +20,7 @@ import CurrencyExchange from "../../models/currency-exchange";
 import EnrollSubscription from "../../models/enroll-subscription";
 import Enrollment from "../../models/enrollment";
 import Payment from "../../models/payment";
+import Refund from "../../models/refund";
 import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
 import Stamp from "../../models/stamp";
@@ -935,6 +936,8 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
     const coupons: { coupon: string }[] = [];
     let extraPayableAmount = 0;
 
+    console.log({ pickPlan, enrolled });
+
     if (pickPlan && enrolled) {
       const changeMode: number = checkPlanChange(
         [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED],
@@ -971,7 +974,7 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
         currencyRate: selectCurrency.exchangeRate,
         planChangeCost,
         paymentStatus: "pending",
-        enrollStatus: "purchase",
+        enrollStatus: changeMode > 0 ? "upgrade" : "downgrade",
         status: false,
       });
 
@@ -1004,7 +1007,14 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
             convertToSelectedCurrency
           );
 
-          totalCouponAmount += addonBalanceAmount; // Minus Used Amount
+          if (enrolled.taxSnapshot.taxTitle) {
+            const prevTax = (prevAddon.planSnapshot.price * enrolled.taxSnapshot.taxCost) / 100;
+
+            totalCouponAmount += addonBalanceAmount + prevTax; // Minus Used Amount with Tax
+          } else {
+            totalCouponAmount += addonBalanceAmount; // Minus Used Amount
+          }
+
           extraPayableAmount += convertToSelectedCurrency - addonBalanceAmount; // Send to Frontend
 
           // Only tax apply
@@ -1139,6 +1149,213 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
               { softDeleted: true, status: false }
             );
           }
+        }
+
+        let totalAmount = 0;
+        for (const subscription of subscriptions) {
+          if (subscription.type === "subscription") {
+            totalAmount += Number(subscription.price - balanceAmount);
+          } else {
+            totalAmount += Number(subscription.price); // Add-on
+          }
+        }
+
+        // Add Previous Add-on Payable Amount in totalAmount
+        for (const prevAddon of prevAddons) {
+          const convertToSelectedCurrency = Number(
+            ((selectCurrency.exchangeRate / enrolled.currencyRate) * prevAddon.planCurrentPrice).toFixed(2)
+          );
+
+          const addonBalanceAmount: number = calculateBalanceAmount(
+            enrolled.validityFrom,
+            enrolled.validityTo,
+            convertToSelectedCurrency
+          );
+
+          totalAmount += convertToSelectedCurrency - addonBalanceAmount;
+        }
+
+        //////// Decision 1: Refund & Downgrade ///////
+        if (totalAmount <= 0) {
+          const priceIds = [];
+
+          // Add Previous Add-on into new enrollment
+          for (const prevAddon of prevAddons) {
+            let finalPrice = 0;
+            let taxValue = 0;
+
+            finalPrice = Number((selectCurrency.exchangeRate * prevAddon.planSnapshot.price).toFixed(2));
+
+            const convertToSelectedCurrency = Number(
+              ((selectCurrency.exchangeRate / enrolled.currencyRate) * prevAddon.planCurrentPrice).toFixed(2)
+            );
+
+            const addonBalanceAmount: number = calculateBalanceAmount(
+              enrolled.validityFrom,
+              enrolled.validityTo,
+              convertToSelectedCurrency
+            );
+
+            if (enrolled.taxSnapshot.taxTitle) {
+              const prevTax = (prevAddon.planSnapshot.price * enrolled.taxSnapshot.taxCost) / 100;
+
+              totalCouponAmount += addonBalanceAmount + prevTax; // Minus Used Amount with Tax
+            } else {
+              totalCouponAmount += addonBalanceAmount; // Minus Used Amount
+            }
+
+            // Only tax apply
+            if (taxStatus === "on") {
+              taxValue = (finalPrice * taxCost) / 100;
+              finalPrice += taxValue;
+            }
+
+            const enrollSubscription = await EnrollSubscription.create({
+              enrollmentId: enrollment?._id,
+              planSnapshot: prevAddon.planSnapshot,
+              couponSnapshot: null,
+              planCurrentPrice: (finalPrice - taxValue).toFixed(2),
+            });
+
+            // Create price/product for plan downgrading in stripe
+            const product = await stripe.products.create({
+              name: `${prevAddon.planSnapshot.title} Add-On`,
+              ...(taxStatus === "on" && {
+                description: `${prevAddon.planSnapshot.title} Add-On (including ${taxTitle} ${taxCost}%)`,
+              }),
+              metadata: {
+                enrollSubscriptionId: String(enrollSubscription._id),
+              },
+            });
+
+            const price = await stripe.prices.create({
+              currency: currency.toLocaleLowerCase(),
+              unit_amount:
+                selectCurrency?.name === "JPY" ? Math.round(Number(finalPrice)) : Math.round(Number(finalPrice * 100)),
+              recurring: {
+                interval: "month",
+              },
+              product: product.id,
+            });
+
+            priceIds.push({
+              price: price?.id,
+            });
+          }
+
+          // Add New Plan & Add-on into new enrollment
+          for (const subscription of subscriptions) {
+            let finalPrice = 0;
+            let taxValue = 0;
+
+            finalPrice = Number((selectCurrency.exchangeRate * subscription.price).toFixed(2));
+
+            // Only tax apply
+            if (taxStatus === "on") {
+              taxValue = (finalPrice * taxCost) / 100;
+              finalPrice += taxValue;
+            }
+
+            const enrollSubscription = await EnrollSubscription.create({
+              enrollmentId: enrollment?._id,
+              planSnapshot: subscription,
+              couponSnapshot: null,
+              planCurrentPrice: (finalPrice - taxValue).toFixed(2),
+            });
+
+            const isPlan = [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug);
+
+            // Create price/product for plan downgrading in stripe
+            const product = await stripe.products.create({
+              name: `${subscription.title} ${isPlan ? "Plan" : "Add-On"}`,
+              ...(taxStatus === "on" && {
+                description: `${subscription.title} ${isPlan ? "Plan" : "Add-On"} (including ${taxTitle} ${taxCost}%)`,
+              }),
+              metadata: {
+                enrollSubscriptionId: String(enrollSubscription._id),
+              },
+            });
+
+            const price = await stripe.prices.create({
+              currency: currency.toLocaleLowerCase(),
+              unit_amount:
+                selectCurrency?.name === "JPY" ? Math.round(Number(finalPrice)) : Math.round(Number(finalPrice * 100)),
+              recurring: {
+                interval: "month",
+              },
+              product: product.id,
+            });
+
+            priceIds.push({
+              price: price?.id,
+            });
+          }
+
+          //  Create New Subscription from Stripe
+          const stripeSubscription = await stripe.subscriptions.create({
+            customer: enrolled.stripe.customerId,
+            items: priceIds,
+            default_payment_method: enrolled?.stripe?.paymentMethodId,
+          });
+
+          // Queries: Update Branch Expire, Disable Previous Enrollment, Cancel Previous Subscription from Stripe
+          const updateQueries: any[] = [
+            Branch.updateMany({ retailerId: req.user._id, source: "subscription" }, { enrollmentId: enrollment._id }),
+            Enrollment.updateOne({ _id: enrolled._id }, { status: false }),
+            EnrollSubscription.updateMany({ enrollmentId: enrolled._id }, { status: false }),
+            Enrollment.updateOne(
+              { _id: enrollment._id },
+              { status: true, paymentStatus: "completed", validityFrom: moment(), validityTo: moment().add(30, "days") }
+            ),
+          ];
+
+          // Get Subscription Items Id and Map with Enroll Id
+          const subscriptionItems: any = await stripe.subscriptionItems.list({
+            subscription: stripeSubscription?.id,
+            expand: ["data.plan.product"],
+          });
+
+          const subscriptionItemsMap = Object.fromEntries(
+            subscriptionItems.data.map((item: any) => [item.plan.product.metadata.enrollSubscriptionId, item.id])
+          );
+
+          for (const key in subscriptionItemsMap) {
+            updateQueries.push(
+              EnrollSubscription.findByIdAndUpdate(key, {
+                subscriptionItemId: subscriptionItemsMap[key],
+                status: true,
+              })
+            );
+          }
+
+          //  Cancel Previous Subscription from Stripe
+          updateQueries.push(stripe.subscriptions.cancel(enrolled?.stripe?.subscriptionId));
+
+          // Check Refund
+          const isRefunded = Math.abs(totalAmount) >= refundableThreshold;
+          if (isRefunded && totalAmount !== 0) {
+            updateQueries.push(
+              Refund.create({
+                currency,
+                enrollmentId: enrollment._id,
+                refundAmount: parseFloat(Math.abs(totalAmount).toFixed(2)),
+                refundStatus: "pending",
+              })
+            );
+          }
+
+          await Promise.all(updateQueries);
+
+          return apiResponse(res, 200, true, `Your plan successfully downgraded!`, {
+            plan: pickPlan?.slug,
+            planStartAt: moment(),
+            planValidAt: moment().add(pickPlan.duration, "days"),
+            totalBranch: pickPlan?.allowTotalBranch,
+          });
+        }
+        //////// Decision 2: Payment & Downgrade ////////
+        else {
+          throw "Working on Downgrade 1!";
         }
       }
 

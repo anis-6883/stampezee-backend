@@ -28,7 +28,7 @@ interface ICoupon {
   softDeleted: boolean;
 }
 
-interface IEnrollSubscription extends Document {
+export interface IEnrollSubscription extends Document {
   enrollmentId: Types.ObjectId;
   planSnapshot: ISubscription;
   couponSnapshot?: ICoupon;
