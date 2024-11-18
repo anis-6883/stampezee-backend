@@ -978,6 +978,8 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
           status: false,
         });
 
+        enrollIdDuration["enrollmentId"] = String(enrollment._id);
+
         const prevAddons = await EnrollSubscription.find({
           enrollmentId: enrolled?._id,
           "planSnapshot.type": "addon",
@@ -1003,8 +1005,6 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
 
           totalCouponAmount += addonBalanceAmount; // Minus Used Amount
           extraPayableAmount += convertToSelectedCurrency - addonBalanceAmount; // Send to Frontend
-
-          console.log({ addonBalanceAmount });
 
           // Only tax apply
           if (taxStatus === "on") {
@@ -1084,8 +1084,6 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
             quantity: 1,
           });
         }
-
-        console.log({ extraPayableAmount });
 
         const applyCoupon = await stripe.coupons.create({
           name: "Current Balance",
