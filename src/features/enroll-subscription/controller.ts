@@ -22,6 +22,7 @@ import Enrollment from "../../models/enrollment";
 import Payment from "../../models/payment";
 import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
+import Stamp from "../../models/stamp";
 import Subscription, { ISubscription } from "../../models/subscription";
 import { getInvoiceTemplate } from "../../templates/invoice";
 import { IApiRequest, ILineItem, Object } from "../../types";
@@ -959,33 +960,33 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
 
       let totalCouponAmount = balanceAmount ?? 0;
 
+      const enrollment = await Enrollment.create({
+        retailerId: req.user._id,
+        planExists: pickPlan ? pickPlan?.slug : null,
+        taxSnapshot: {
+          taxTitle: taxStatus === "on" ? taxTitle : null,
+          taxCost: taxStatus === "on" ? taxCost : null,
+        },
+        currency,
+        currencyRate: selectCurrency.exchangeRate,
+        planChangeCost,
+        paymentStatus: "pending",
+        enrollStatus: "purchase",
+        status: false,
+      });
+
+      enrollIdDuration["enrollmentId"] = String(enrollment._id);
+
+      const prevAddons = await EnrollSubscription.find({
+        enrollmentId: enrolled?._id,
+        "planSnapshot.type": "addon",
+        status: true,
+      });
+
       ///////////////////////////////
       //////// Plan Upgrade /////////
       ///////////////////////////////
       if (changeMode > 0) {
-        const enrollment = await Enrollment.create({
-          retailerId: req.user._id,
-          planExists: pickPlan ? pickPlan?.slug : null,
-          taxSnapshot: {
-            taxTitle: taxStatus === "on" ? taxTitle : null,
-            taxCost: taxStatus === "on" ? taxCost : null,
-          },
-          currency,
-          currencyRate: selectCurrency.exchangeRate,
-          planChangeCost,
-          paymentStatus: "pending",
-          enrollStatus: "purchase",
-          status: false,
-        });
-
-        enrollIdDuration["enrollmentId"] = String(enrollment._id);
-
-        const prevAddons = await EnrollSubscription.find({
-          enrollmentId: enrolled?._id,
-          "planSnapshot.type": "addon",
-          status: true,
-        });
-
         // Add Previous Add-on into new enrollment
         for (const prevAddon of prevAddons) {
           let finalPrice = 0;
@@ -1098,6 +1099,47 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
         coupons.push({
           coupon: applyCoupon.id,
         });
+      }
+
+      ////////////////////////////////
+      //////// Plan Downgrade ///////
+      ///////////////////////////////
+      if (changeMode < 0) {
+        if (!enrolled?.stripe?.paymentMethodId) throw `Something went wrong on your payment method!`;
+
+        const downgradeBranchLimit = pickPlan?.allowTotalBranch;
+        const downgradeStampLimit = pickPlan?.allowTotalStamp;
+
+        const branches = await Branch.find({ retailerId: req.user._id, source: "subscription", softDeleted: false });
+        const stamps = await Stamp.find({ retailerId: req.user._id, softDeleted: false });
+
+        const disabledBySystemBranch = branches.filter((branch) => !branch.disabledBySystem).length;
+
+        if (branches.length > downgradeBranchLimit && disabledBySystemBranch > downgradeBranchLimit) {
+          if (!branchIds) throw "branchIds is required!";
+
+          if (branchIds && branchIds.length !== disabledBySystemBranch - downgradeBranchLimit) {
+            throw `You have to inactive ${disabledBySystemBranch - downgradeBranchLimit} subscription branch/s before downgrade!`;
+          }
+
+          if (branchIds && branchIds.length >= disabledBySystemBranch - downgradeBranchLimit) {
+            await Branch.updateMany(
+              { retailerId: req.user._id, _id: { $in: branchIds } },
+              { disabledBySystem: true, status: false }
+            );
+          }
+        }
+
+        if (stamps.length > downgradeStampLimit) {
+          if (!stampIds) throw "stampIds is required!";
+
+          if (stampIds) {
+            await Stamp.updateMany(
+              { retailerId: req.user._id, _id: { $in: stampIds } },
+              { softDeleted: true, status: false }
+            );
+          }
+        }
       }
 
       // Add Plan Change Cost
