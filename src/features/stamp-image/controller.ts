@@ -2,7 +2,8 @@ import { Response } from "express";
 import { PACKAGES, ROLE } from "../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
-import EnrollSubscription from "../../models/enroll-subscription";
+import { IEnrollSubscription } from "../../models/enroll-subscription";
+import Enrollment from "../../models/enrollment";
 import Sorting from "../../models/sorting";
 import StampImage from "../../models/stamp-image";
 import { IApiRequest } from "../../types";
@@ -24,42 +25,73 @@ export const createStampImage = asyncHandler(async (req: IApiRequest, res: Respo
   createBody.ref = req.role;
 
   if (req.role === ROLE.RETAILER) {
-    const [addons, retailerTotalStamp] = await Promise.all([
-      EnrollSubscription.find({
-        retailerId: req.user._id,
-        "planSnapshot.type": "addon",
-        "planSnapshot.slug": PACKAGES.CUSTOM_STAMP_IMAGE,
-        paymentStatus: "completed",
-        validityTo: { $gt: new Date() },
-        status: true,
-      }),
-      StampImage.find({
-        userId: req.user._id,
-        ref: "retailer",
-        softDeleted: false,
-      }),
+    const enrollments = await Enrollment.aggregate([
+      {
+        $match: {
+          retailerId: req.user._id,
+          paymentStatus: { $in: ["completed", "trial"] },
+          validityTo: { $gt: new Date() },
+          status: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "enroll_subscriptions",
+          localField: "_id",
+          foreignField: "enrollmentId",
+          as: "enrollSubscription",
+          pipeline: [
+            {
+              $match: {
+                status: true,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: "$enrollSubscription",
+      },
+      {
+        $match: {
+          $or: [
+            { "enrollSubscription.planSnapshot.type": "subscription" },
+            { "enrollSubscription.planSnapshot.slug": PACKAGES.CUSTOM_STAMP_IMAGE },
+          ],
+        },
+      },
+      {
+        $replaceRoot: { newRoot: "$enrollSubscription" }, // Replace root with enrollSubscription
+      },
     ]);
 
-    const addonIds = addons.map((stamp) => stamp._id.toString());
+    if (enrollments.length === 0) throw "No one is allowed to create a branch without a plan!";
+
+    const addons = enrollments
+      .filter((enrollment: IEnrollSubscription) => {
+        return enrollment.planSnapshot.type === "addon";
+      })
+      .map((enrollment: IEnrollSubscription) => enrollment._id);
+
+    const retailerTotalStamp = await StampImage.find({
+      userId: req.user._id,
+      ref: "retailer",
+      softDeleted: false,
+    });
+
     const retailerAddonIds = retailerTotalStamp.map((stamp) => stamp.enrollSubscriptionId.toString());
-    const unUsedIds = addonIds.filter((item) => !retailerAddonIds.includes(item));
+    const addonIds = addons.map((enrollSubscription) => enrollSubscription._id.toString());
+    const unUsedIds = addonIds.filter((id) => !retailerAddonIds.includes(id));
 
-    if (unUsedIds.length === 0) {
-      throw "Your stamp image limit is over. Take new Add-on!";
-    }
-
+    if (unUsedIds.length === 0) throw "Your stamp image limit is over. Take new Add-on!";
     createBody.enrollSubscriptionId = unUsedIds[0];
   }
 
-  if (!req?.file) {
-    return apiResponse(res, 400, false, "Invalid Request!", { image: "image file is required!" });
-  }
+  if (!req?.file) return apiResponse(res, 400, false, "Invalid Request!", { image: "image file is required!" });
 
   // File Validation
   const { status, message } = fileValidation(req.file, undefined, ["image/jpeg", "image/png", "image/jpg"]);
-  if (!status) {
-    return apiResponse(res, 400, false, "Invalid Request!", { image: message });
-  }
+  if (!status) return apiResponse(res, 400, false, "Invalid Request!", { image: message });
 
   // Upload File to S3 Bucket
   let imageKey = null;
@@ -102,8 +134,7 @@ export const getAllStampImages = asyncHandler(async (req: IApiRequest, res: Resp
   let roleSpecificQuery = {};
 
   if (search) {
-    const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
-    commonQuery.title = regex;
+    commonQuery.title = { $regex: search, $options: "i" };
   }
 
   if (req.role === ROLE.SUPER_ADMIN) {
@@ -118,6 +149,20 @@ export const getAllStampImages = asyncHandler(async (req: IApiRequest, res: Resp
     [docs, total] = await Promise.all([
       StampImage.aggregate([
         {
+          $match: finalQuery,
+        },
+        {
+          $sort: {
+            createdAt: -1,
+          },
+        },
+        {
+          $skip: skip,
+        },
+        {
+          $limit: Number(limit),
+        },
+        {
           $lookup: {
             from: "enroll_subscriptions",
             localField: "enrollSubscriptionId",
@@ -125,9 +170,20 @@ export const getAllStampImages = asyncHandler(async (req: IApiRequest, res: Resp
             as: "enrollSubscription",
             pipeline: [
               {
+                $lookup: {
+                  from: "enrollments",
+                  localField: "enrollmentId",
+                  foreignField: "_id",
+                  as: "enrollment",
+                },
+              },
+              {
+                $unwind: "$enrollment",
+              },
+              {
                 $project: {
-                  validityFrom: 1,
-                  validityTo: 1,
+                  validityFrom: "$enrollment.validityFrom",
+                  validityTo: "$enrollment.validityTo",
                 },
               },
             ],
@@ -138,20 +194,6 @@ export const getAllStampImages = asyncHandler(async (req: IApiRequest, res: Resp
             path: "$enrollSubscription",
             preserveNullAndEmptyArrays: true,
           },
-        },
-        {
-          $sort: {
-            createdAt: -1,
-          },
-        },
-        {
-          $match: finalQuery,
-        },
-        {
-          $skip: skip,
-        },
-        {
-          $limit: Number(limit),
         },
         {
           $project: {

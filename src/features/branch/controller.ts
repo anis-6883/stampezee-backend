@@ -87,7 +87,7 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
     .filter((branch) => branch.source === "addon")
     .map((branch) => branch.enrollSubscriptionId.toString());
 
-  const addonIds = addons.map((enrollSubscription) => enrollSubscription._id.toString());
+  const addonIds = addons.map((enrollSubscription: IEnrollSubscription) => enrollSubscription._id.toString());
   const unUsedIds = addonIds.filter((id) => !retailerAddonIds.includes(id));
 
   await Branch.create({
@@ -144,9 +144,20 @@ export const getAllBranches = asyncHandler(async (req: IApiRequest, res: Respons
           as: "enrollSubscription",
           pipeline: [
             {
+              $lookup: {
+                from: "enrollments",
+                localField: "enrollmentId",
+                foreignField: "_id",
+                as: "enrollment",
+              },
+            },
+            {
+              $unwind: "$enrollment",
+            },
+            {
               $project: {
-                validityFrom: 1,
-                validityTo: 1,
+                validityFrom: "$enrollment.validityFrom",
+                validityTo: "$enrollment.validityTo",
               },
             },
           ],
@@ -374,7 +385,7 @@ export const convertToAddonBranch = asyncHandler(async (req: IApiRequest, res: R
     .filter((branch) => branch.source === "addon")
     .map((branch) => branch.enrollSubscriptionId.toString());
 
-  const addonIds = addons.map((enrollSubscription) => enrollSubscription._id.toString());
+  const addonIds = addons.map((enrollSubscription: IEnrollSubscription) => enrollSubscription._id.toString());
   const unUsedIds = addonIds.filter((id) => !retailerAddonIds.includes(id));
 
   if (unUsedIds.length <= 0) throw "You have to purchase another add-on to convert!";
