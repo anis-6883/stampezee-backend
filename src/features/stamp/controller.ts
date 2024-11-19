@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { ROLE } from "../../configs/constants";
+import { PACKAGES, ROLE } from "../../configs/constants";
 import { apiResponse, asyncHandler, getUTC, makePaginate } from "../../helpers";
 import Branch from "../../models/branch";
 import Category from "../../models/category";
@@ -56,7 +56,7 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
       $match: {
         $or: [
           { "enrollSubscription.planSnapshot.type": "subscription" },
-          { "enrollSubscription.planSnapshot.slug": "stamp" },
+          { "enrollSubscription.planSnapshot.slug": PACKAGES.STAMP },
         ],
       },
     },
