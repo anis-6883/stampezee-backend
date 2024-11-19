@@ -503,8 +503,6 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
 
 //         await Promise.all(updateQueries);
 
-//         // @TODO: Send Subscription Invoice
-
 //         const retailer = await Retailer.findById(req.user._id);
 
 //         const customerInfo = {
@@ -936,8 +934,6 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
     const coupons: { coupon: string }[] = [];
     let extraPayableAmount = 0;
 
-    console.log({ pickPlan, enrolled });
-
     if (pickPlan && enrolled) {
       const changeMode: number = checkPlanChange(
         [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED],
@@ -1120,8 +1116,10 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
         const downgradeBranchLimit = pickPlan?.allowTotalBranch;
         const downgradeStampLimit = pickPlan?.allowTotalStamp;
 
-        const branches = await Branch.find({ retailerId: req.user._id, source: "subscription", softDeleted: false });
-        const stamps = await Stamp.find({ retailerId: req.user._id, softDeleted: false });
+        const [branches, stamps] = await Promise.all([
+          Branch.find({ retailerId: req.user._id, source: "subscription", softDeleted: false }),
+          Stamp.find({ retailerId: req.user._id, softDeleted: false }),
+        ]);
 
         const disabledBySystemBranch = branches.filter((branch) => !branch.disabledBySystem).length;
 
@@ -1298,14 +1296,28 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
             default_payment_method: enrolled?.stripe?.paymentMethodId,
           });
 
-          // Queries: Update Branch Expire, Disable Previous Enrollment, Cancel Previous Subscription from Stripe
+          // Queries:
+          // Cancel Previous Subscription from Stripe
+          // Update Branch Expire,
+          // Disable Previous Enrollment,
+          // Disable Previous Enrollment Subscription
+          // Update New Enrollment,
           const updateQueries: any[] = [
+            stripe.subscriptions.cancel(enrolled?.stripe?.subscriptionId),
             Branch.updateMany({ retailerId: req.user._id, source: "subscription" }, { enrollmentId: enrollment._id }),
             Enrollment.updateOne({ _id: enrolled._id }, { status: false }),
             EnrollSubscription.updateMany({ enrollmentId: enrolled._id }, { status: false }),
             Enrollment.updateOne(
               { _id: enrollment._id },
-              { status: true, paymentStatus: "completed", validityFrom: moment(), validityTo: moment().add(30, "days") }
+              {
+                status: true,
+                paymentStatus: "completed",
+                validityFrom: moment(),
+                validityTo: moment().add(30, "days"),
+                "stripe.subscriptionId": stripeSubscription.id,
+                "stripe.customerId": enrolled.stripe.customerId,
+                "stripe.paymentMethodId": enrolled.stripe.paymentMethodId,
+              }
             ),
           ];
 
@@ -1327,9 +1339,6 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
               })
             );
           }
-
-          //  Cancel Previous Subscription from Stripe
-          updateQueries.push(stripe.subscriptions.cancel(enrolled?.stripe?.subscriptionId));
 
           // Check Refund
           const isRefunded = Math.abs(totalAmount) >= refundableThreshold;
@@ -1563,8 +1572,6 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
           paymentMethodDetails: invoice?.payment_intent?.payment_method, // Kind of Log Store
         });
       }
-
-      // @TODO: Recurring Payment Subscription Mail
       break;
 
     /////////////////////////////////////////////////////////////////
@@ -1585,8 +1592,6 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
             : null,
         }
       );
-
-      // @TODO: Send Cancel & Renew Subscription Mail
       break;
 
     //////////////////////////////////////////////////////////////////
@@ -1609,8 +1614,6 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
           ),
           stripe.subscriptions.cancel(invoiceObject.subscription as string),
         ]);
-
-        // @TODO: Send Cancel Subscription Mail
       }
       break;
 
@@ -1627,8 +1630,6 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
           "stripe.paymentMethodId": customerObject?.invoice_settings?.default_payment_method,
         }
       );
-
-      // @TODO: Change Payment Card Mail
       break;
 
     case "customer.subscription.deleted":
@@ -1702,7 +1703,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
 
     const enrollment = await Enrollment.findById(enrollmentId);
 
-    // TODO: Deactivate last previous active plan
+    // Deactivate last previous active plan
     if (enrollment?.planExists) {
       const prevEnrollment = await Enrollment.findOneAndUpdate(
         {
@@ -1725,7 +1726,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       );
 
       if (prevEnrollment && prevEnrollment.paymentStatus !== "trial") {
-        await stripe.subscriptions.cancel(prevEnrollment.stripe.subscriptionId);
+        await stripe.subscriptions.cancel(prevEnrollment?.stripe?.subscriptionId);
       }
 
       // Update expiration for already created branch
@@ -1781,7 +1782,6 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       });
     }
 
-    // TODO: Test Needed in Critical Payment
     // Handle Critical Payment (if payment method id is missing)
     if (!invoice?.payment_intent?.payment_method?.id) {
       await CriticalPayment.create({
@@ -1792,8 +1792,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       });
     }
 
-    // TODO: Send Subscription Invoice
-
+    // Prepare to send invoice
     const customerInfo = {
       name: retailer?.fullName,
       phone: `${retailer?.dialCode}-${retailer?.phone}`,
