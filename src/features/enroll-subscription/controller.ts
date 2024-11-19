@@ -1173,7 +1173,9 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
           totalAmount += convertToSelectedCurrency - addonBalanceAmount;
         }
 
-        //////// Decision 1: Refund & Downgrade ///////
+        ///////////////////////////////////////////////
+        //////// Decision 1: Refund & Downgrade //////
+        //////////////////////////////////////////////
         if (totalAmount <= 0) {
           const priceIds = [];
 
@@ -1362,9 +1364,133 @@ export const enrollSubscriptionRebuild = asyncHandler(async (req: IApiRequest, r
             totalBranch: pickPlan?.allowTotalBranch,
           });
         }
+        /////////////////////////////////////////////////
         //////// Decision 2: Payment & Downgrade ////////
+        /////////////////////////////////////////////////
         else {
-          throw "Working on Downgrade 1!";
+          // Add Previous Add-on into new enrollment
+          for (const prevAddon of prevAddons) {
+            let finalPrice = 0;
+            let taxValue = 0;
+
+            finalPrice = Number((selectCurrency.exchangeRate * prevAddon.planSnapshot.price).toFixed(2));
+
+            const convertToSelectedCurrency = Number(
+              ((selectCurrency.exchangeRate / enrolled.currencyRate) * prevAddon.planCurrentPrice).toFixed(2)
+            );
+
+            const addonBalanceAmount: number = calculateBalanceAmount(
+              enrolled.validityFrom,
+              enrolled.validityTo,
+              convertToSelectedCurrency
+            );
+
+            if (enrolled.taxSnapshot.taxTitle) {
+              const prevTax = (prevAddon.planSnapshot.price * enrolled.taxSnapshot.taxCost) / 100;
+
+              totalCouponAmount += addonBalanceAmount + prevTax; // Minus Used Amount with Tax
+            } else {
+              totalCouponAmount += addonBalanceAmount; // Minus Used Amount
+            }
+
+            extraPayableAmount += convertToSelectedCurrency - addonBalanceAmount; // Send to Frontend
+
+            // Only tax apply
+            if (taxStatus === "on") {
+              taxValue = (finalPrice * taxCost) / 100;
+              finalPrice += taxValue;
+            }
+
+            const enrollSubscription = await EnrollSubscription.create({
+              enrollmentId: enrollment?._id,
+              planSnapshot: prevAddon.planSnapshot,
+              couponSnapshot: null,
+              planCurrentPrice: (finalPrice - taxValue).toFixed(2),
+            });
+
+            line_items.push({
+              price_data: {
+                currency: currency.toLowerCase(),
+                product_data: {
+                  name: `${prevAddon.planSnapshot.title} Add-On (Previous)`,
+                  ...(taxStatus === "on" && {
+                    description: `${prevAddon.planSnapshot.title} Add-On (including ${taxTitle} ${taxCost}%)`,
+                  }),
+                  metadata: {
+                    enrollSubscriptionId: String(enrollSubscription._id),
+                  },
+                },
+                unit_amount:
+                  selectCurrency?.name === "JPY"
+                    ? Math.round(Number(finalPrice))
+                    : Math.round(Number(finalPrice) * 100), // convert into cent
+                recurring: {
+                  interval: "month",
+                },
+              },
+              quantity: 1,
+            });
+          }
+
+          // Add New Plan & Add-on into new enrollment
+          for (const subscription of subscriptions) {
+            let finalPrice = 0;
+            let taxValue = 0;
+
+            finalPrice = Number((selectCurrency.exchangeRate * subscription.price).toFixed(2));
+
+            // Only tax apply
+            if (taxStatus === "on") {
+              taxValue = (finalPrice * taxCost) / 100;
+              finalPrice += taxValue;
+            }
+
+            const enrollSubscription = await EnrollSubscription.create({
+              enrollmentId: enrollment?._id,
+              planSnapshot: subscription,
+              couponSnapshot: null,
+              planCurrentPrice: (finalPrice - taxValue).toFixed(2),
+            });
+
+            const isPlan = [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug);
+
+            line_items.push({
+              price_data: {
+                currency: currency.toLowerCase(),
+                product_data: {
+                  name: `${subscription.title} ${isPlan ? "Plan" : "Add-On"}`,
+                  ...(taxStatus === "on" && {
+                    description: `${subscription.title} ${isPlan ? "Plan" : "Add-On"} (including ${taxTitle} ${taxCost}%)`,
+                  }),
+                  metadata: {
+                    enrollSubscriptionId: String(enrollSubscription._id),
+                  },
+                },
+                unit_amount:
+                  selectCurrency?.name === "JPY"
+                    ? Math.round(Number(finalPrice))
+                    : Math.round(Number(finalPrice) * 100), // convert into cent
+                recurring: {
+                  interval: "month",
+                },
+              },
+              quantity: 1,
+            });
+          }
+
+          const applyCoupon = await stripe.coupons.create({
+            name: "Current Balance",
+            amount_off:
+              selectCurrency?.name === "JPY"
+                ? Math.round(Number(totalCouponAmount))
+                : Math.round(Number(totalCouponAmount) * 100),
+            currency,
+            duration: "once",
+          });
+
+          coupons.push({
+            coupon: applyCoupon.id,
+          });
         }
       }
 
