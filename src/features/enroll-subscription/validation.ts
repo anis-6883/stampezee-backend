@@ -72,3 +72,7 @@ export const couponSchema = Joi.object({
       "array.includesRequiredUnknowns": "At least one slug is required!",
     }),
 });
+
+export const extraAddonSchema = Joi.object({
+  currency: requiredStringField("currency"),
+});
