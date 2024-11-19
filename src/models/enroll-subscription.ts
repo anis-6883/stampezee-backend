@@ -1,4 +1,4 @@
-import { Document, Schema, Types, model } from "mongoose";
+import { Document, model, Schema, Types } from "mongoose";
 
 interface ISubscription {
   title: string;
@@ -28,34 +28,15 @@ interface ICoupon {
   softDeleted: boolean;
 }
 
-interface IEnrollSubscription extends Document {
-  retailerId: Types.ObjectId;
-  stripe: {
-    subscriptionId?: string;
-    customerId?: string;
-    paymentMethodId?: string;
-    renewCancelAt?: Date;
-    renewCanceledAtByCustomer?: Date;
-  };
+export interface IEnrollSubscription extends Document {
+  enrollmentId: Types.ObjectId;
   planSnapshot: ISubscription;
   couponSnapshot?: ICoupon;
-  taxSnapshot: {
-    taxTitle?: string;
-    taxCost: number;
-  };
-  balanceInfo: {
-    currentBalance: number;
-    planCurrentPrice: number;
-    currency: string;
-    currencyRate: number;
-  };
-  planChangeCost: number;
-  refundAmount: number;
-  paymentStatus: "trial" | "pending" | "completed";
-  enrollStatus: "trial" | "purchase" | "upgrade" | "downgrade";
-  validityFrom?: Date;
-  validityTo?: Date;
+  subscriptionItemId?: string;
+  currentBalance: number;
+  planCurrentPrice: number;
   status: boolean;
+  deletedByRetailer: boolean;
 }
 
 const subscriptionSchema = new Schema<ISubscription>({
@@ -94,33 +75,14 @@ const couponSchema = new Schema<ICoupon>({
 
 const enrollSubscriptionSchema = new Schema<IEnrollSubscription>(
   {
-    retailerId: { type: "ObjectId", ref: "Retailer", required: true },
-    stripe: {
-      subscriptionId: { type: String, default: null },
-      customerId: { type: String, default: null },
-      paymentMethodId: { type: String, default: null },
-      renewCancelAt: { type: Date, default: null },
-      renewCanceledAtByCustomer: { type: Date, default: null },
-    },
+    enrollmentId: { type: "ObjectId", ref: "Enrollment", required: true },
     planSnapshot: { type: subscriptionSchema, required: true },
     couponSnapshot: { type: couponSchema, default: null },
-    taxSnapshot: {
-      taxTitle: { type: String, default: null },
-      taxCost: { type: Number, default: 0 },
-    },
-    balanceInfo: {
-      currentBalance: { type: Number, default: 0 },
-      planCurrentPrice: { type: Number, default: 0 },
-      currency: { type: String, default: "USD" },
-      currencyRate: { type: Number, default: 0 },
-    },
-    planChangeCost: { type: Number, default: 0 },
-    refundAmount: { type: Number, default: 0 },
-    paymentStatus: { type: String, enum: ["trial", "pending", "completed"], required: true },
-    enrollStatus: { type: String, enum: ["trial", "purchase", "upgrade", "downgrade"], required: true },
-    validityFrom: { type: Date, default: null },
-    validityTo: { type: Date, default: null },
-    status: { type: Boolean, default: true },
+    subscriptionItemId: { type: String, default: null },
+    currentBalance: { type: Number, default: 0 },
+    planCurrentPrice: { type: Number, default: 0 },
+    status: { type: Boolean, default: false },
+    deletedByRetailer: { type: Boolean, default: false },
   },
   {
     timestamps: true,

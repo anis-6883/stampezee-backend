@@ -3,7 +3,8 @@ import { PACKAGES, ROLE } from "../../configs/constants";
 import { apiResponse, asyncHandler, getUTC, makePaginate } from "../../helpers";
 import Branch from "../../models/branch";
 import Category from "../../models/category";
-import EnrollSubscription from "../../models/enroll-subscription";
+import { IEnrollSubscription } from "../../models/enroll-subscription";
+import Enrollment from "../../models/enrollment";
 import Settings from "../../models/settings";
 import Sorting from "../../models/sorting";
 import Stamp from "../../models/stamp";
@@ -24,23 +25,48 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
 
   const { softDeleted, branchId, categoryId, stampImageId, ...createBody } = result;
 
+  const enrollments = await Enrollment.aggregate([
+    {
+      $match: {
+        retailerId: req.user._id,
+        paymentStatus: { $in: ["completed", "trial"] },
+        validityTo: { $gt: new Date() },
+        status: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "enroll_subscriptions",
+        localField: "_id",
+        foreignField: "enrollmentId",
+        as: "enrollSubscription",
+        pipeline: [
+          {
+            $match: {
+              status: true,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: "$enrollSubscription",
+    },
+    {
+      $match: {
+        $or: [
+          { "enrollSubscription.planSnapshot.type": "subscription" },
+          { "enrollSubscription.planSnapshot.slug": PACKAGES.STAMP },
+        ],
+      },
+    },
+    {
+      $replaceRoot: { newRoot: "$enrollSubscription" }, // Replace root with enrollSubscription
+    },
+  ]);
+
   // Check Subscription & Addon Enrollment
-  const [subscription, addons, retailerTotalStamp, branch, stampImage, category] = await Promise.all([
-    EnrollSubscription.findOne({
-      retailerId: req.user._id,
-      "planSnapshot.type": "subscription",
-      paymentStatus: { $in: ["completed", "trial"] },
-      validityTo: { $gt: new Date() },
-      status: true,
-    }),
-    EnrollSubscription.find({
-      retailerId: req.user._id,
-      "planSnapshot.type": "addon",
-      "planSnapshot.slug": PACKAGES.STAMP,
-      paymentStatus: "completed",
-      validityTo: { $gt: new Date() },
-      status: true,
-    }),
+  const [retailerTotalStamp, branch, stampImage, category] = await Promise.all([
     Stamp.countDocuments({ retailerId: req.user._id, softDeleted: false }),
     Branch.findOne({ _id: branchId, retailerId: req.user._id }),
     StampImage.findById(stampImageId),
@@ -50,9 +76,19 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
   if (!branch) throw "Branch not found!";
   if (!stampImage) throw "Stamp Image not found!";
   if (!category) throw "Category not found!";
-  if (!subscription) throw "No one is allowed to create a stamp without a plan!";
+  if (enrollments.length === 0) throw "No one is allowed to create a stamp without a plan!";
 
-  const allowTotalStamp = (subscription?.planSnapshot?.allowTotalStamp ?? 0) + addons.length;
+  const subscription: IEnrollSubscription = enrollments.find((enrollment: IEnrollSubscription) => {
+    return enrollment.planSnapshot.type === "subscription";
+  });
+
+  const addons = enrollments
+    .filter((enrollment: IEnrollSubscription) => {
+      return enrollment.planSnapshot.type === "addon";
+    })
+    .map((enrollment: IEnrollSubscription) => enrollment._id);
+
+  const allowTotalStamp = subscription?.planSnapshot?.allowTotalStamp + addons.length;
   if (retailerTotalStamp >= allowTotalStamp) throw "Your stamp limit is over. Take new Add-on!";
 
   if (!createBody.hasValidity) {
@@ -248,9 +284,20 @@ export const getBranchCategoryImageList = asyncHandler(async (req: IApiRequest, 
           as: "enrollSubscription",
           pipeline: [
             {
+              $lookup: {
+                from: "enrollments",
+                localField: "enrollmentId",
+                foreignField: "_id",
+                as: "enrollment",
+              },
+            },
+            {
+              $unwind: "$enrollment",
+            },
+            {
               $project: {
-                validityFrom: 1,
-                validityTo: 1,
+                validityFrom: "$enrollment.validityFrom",
+                validityTo: "$enrollment.validityTo",
               },
             },
           ],

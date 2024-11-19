@@ -1,8 +1,8 @@
 import { Response } from "express";
-import { PACKAGES } from "../../configs/constants";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import Branch from "../../models/branch";
-import EnrollSubscription from "../../models/enroll-subscription";
+import { IEnrollSubscription } from "../../models/enroll-subscription";
+import Enrollment from "../../models/enrollment";
 import Stamp from "../../models/stamp";
 import SubAdmin from "../../models/sub-admin";
 import { IApiRequest } from "../../types";
@@ -19,44 +19,76 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
 
   const { name, address, longitude, latitude } = result;
 
-  // Check Subscription & Addon Enrollment
-  const [subscription, addons, retailerTotalBranch] = await Promise.all([
-    EnrollSubscription.findOne({
-      retailerId: req.user._id,
-      "planSnapshot.type": "subscription",
-      paymentStatus: { $in: ["completed", "trial"] },
-      validityTo: { $gt: new Date() },
-      status: true,
-    }),
-    EnrollSubscription.find({
-      retailerId: req.user._id,
-      "planSnapshot.type": "addon",
-      "planSnapshot.slug": PACKAGES.BRANCH,
-      paymentStatus: "completed",
-      validityTo: { $gt: new Date() },
-      status: true,
-    }),
-    Branch.find({ retailerId: req.user._id, softDeleted: false }),
+  const enrollments = await Enrollment.aggregate([
+    {
+      $match: {
+        retailerId: req.user._id,
+        paymentStatus: { $in: ["completed", "trial"] },
+        validityTo: { $gt: new Date() },
+        status: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "enroll_subscriptions",
+        localField: "_id",
+        foreignField: "enrollmentId",
+        as: "enrollSubscription",
+        pipeline: [
+          {
+            $match: {
+              status: true,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: "$enrollSubscription",
+    },
+    {
+      $match: {
+        $or: [
+          { "enrollSubscription.planSnapshot.type": "subscription" },
+          { "enrollSubscription.planSnapshot.slug": "branch" },
+        ],
+      },
+    },
+    {
+      $replaceRoot: { newRoot: "$enrollSubscription" }, // Replace root with enrollSubscription
+    },
   ]);
 
-  if (!subscription) throw "No one is allowed to create a branch without a plan!";
+  if (enrollments.length === 0) throw "No one is allowed to create a branch without a plan!";
 
-  const allowTotalBranch = (subscription?.planSnapshot?.allowTotalBranch ?? 0) + addons.length;
-  const branchWithoutSystemDisabled = retailerTotalBranch.filter((branch) => !branch.disabledBySystem).length;
+  const subscription: IEnrollSubscription = enrollments.find((enrollment: IEnrollSubscription) => {
+    return enrollment.planSnapshot.type === "subscription";
+  });
 
+  const addons = enrollments
+    .filter((enrollment: IEnrollSubscription) => {
+      return enrollment.planSnapshot.type === "addon";
+    })
+    .map((enrollment: IEnrollSubscription) => enrollment._id);
+
+  const createdTotalBranch = await Branch.find({ retailerId: req.user._id, softDeleted: false });
+  const allowTotalBranch = subscription?.planSnapshot?.allowTotalBranch + addons.length;
+
+  const branchWithoutSystemDisabled = createdTotalBranch.filter((branch) => !branch.disabledBySystem).length;
   if (branchWithoutSystemDisabled >= allowTotalBranch) throw "Your branch limit is over. Take new Add-on!";
 
-  const retailerAddonIds = retailerTotalBranch
-    .filter((branch) => branch.source === "addon")
-    .map((branch) => branch.enrollSubscriptionId.toString());
-  const addonIds = addons.map((enroll) => enroll._id.toString());
-  const unUsedIds = addonIds.filter((item) => !retailerAddonIds.includes(item));
-
-  const subscriptionBranchSlot = retailerTotalBranch.filter(
+  const subscriptionBranchSlot = createdTotalBranch.filter(
     (branch) => branch.source === "subscription" && !branch.disabledBySystem
   ).length;
 
   const source = subscriptionBranchSlot < subscription?.planSnapshot?.allowTotalBranch ? "subscription" : "addon";
+
+  const retailerAddonIds = createdTotalBranch
+    .filter((branch) => branch.source === "addon")
+    .map((branch) => branch.enrollSubscriptionId.toString());
+
+  const addonIds = addons.map((enrollSubscription: IEnrollSubscription) => enrollSubscription._id.toString());
+  const unUsedIds = addonIds.filter((id) => !retailerAddonIds.includes(id));
 
   await Branch.create({
     name,
@@ -65,8 +97,8 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
       name: address,
     },
     retailerId: req.user._id,
+    enrollSubscriptionId: source === "subscription" ? subscription?._id : unUsedIds[0],
     source,
-    enrollSubscriptionId: source === "subscription" ? subscription._id : unUsedIds[0],
   });
 
   return apiResponse(res, 201, true, "Branch created successfully!");
@@ -112,9 +144,20 @@ export const getAllBranches = asyncHandler(async (req: IApiRequest, res: Respons
           as: "enrollSubscription",
           pipeline: [
             {
+              $lookup: {
+                from: "enrollments",
+                localField: "enrollmentId",
+                foreignField: "_id",
+                as: "enrollment",
+              },
+            },
+            {
+              $unwind: "$enrollment",
+            },
+            {
               $project: {
-                validityFrom: 1,
-                validityTo: 1,
+                validityFrom: "$enrollment.validityFrom",
+                validityTo: "$enrollment.validityTo",
               },
             },
           ],
@@ -222,21 +265,57 @@ export const updateBranchStatus = asyncHandler(async (req: IApiRequest, res: Res
 export const activateSystemDisabledBranch = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
-  // Check Subscription & Addon Enrollment
-  const [subscription, retailerTotalActiveBranch] = await Promise.all([
-    EnrollSubscription.findOne({
-      retailerId: req.user._id,
-      "planSnapshot.type": "subscription",
-      paymentStatus: { $in: ["completed", "trial"] },
-      validityTo: { $gt: new Date() },
-      status: true,
-    }),
-    Branch.find({ retailerId: req.user._id, softDeleted: false, source: "subscription", disabledBySystem: false }),
+  const enrollments = await Enrollment.aggregate([
+    {
+      $match: {
+        retailerId: req.user._id,
+        paymentStatus: { $in: ["completed", "trial"] },
+        validityTo: { $gt: new Date() },
+        status: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "enroll_subscriptions",
+        localField: "_id",
+        foreignField: "enrollmentId",
+        as: "enrollSubscription",
+        pipeline: [
+          {
+            $match: {
+              status: true,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: "$enrollSubscription",
+    },
+    {
+      $match: {
+        "enrollSubscription.planSnapshot.type": "subscription",
+      },
+    },
+    {
+      $replaceRoot: { newRoot: "$enrollSubscription" }, // Replace root with enrollSubscription
+    },
   ]);
 
-  if (!subscription) throw "No one is allowed to activate branch without a plan!";
+  if (enrollments.length === 0) throw "No one is allowed to create a branch without a plan!";
 
+  const subscription: IEnrollSubscription = enrollments.find((enrollment: IEnrollSubscription) => {
+    return enrollment.planSnapshot.type === "subscription";
+  });
+
+  const retailerTotalActiveBranch = await Branch.find({
+    retailerId: req.user._id,
+    softDeleted: false,
+    source: "subscription",
+    disabledBySystem: false,
+  });
   const allowTotalBranch = subscription?.planSnapshot?.allowTotalBranch ?? 0;
+
   if (retailerTotalActiveBranch.length >= allowTotalBranch) throw "Your branch limit is over to activate!";
 
   const updateBranch = await Branch.findByIdAndUpdate(id, { status: true, disabledBySystem: false }, { new: true });
@@ -254,28 +333,62 @@ export const activateSystemDisabledBranch = asyncHandler(async (req: IApiRequest
 export const convertToAddonBranch = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
-  // Check Addon Enrollment
-  const [addons, retailerTotalBranch] = await Promise.all([
-    EnrollSubscription.find({
-      retailerId: req.user._id,
-      "planSnapshot.type": "addon",
-      "planSnapshot.slug": PACKAGES.BRANCH,
-      paymentStatus: "completed",
-      validityTo: { $gt: new Date() },
-      status: true,
-    }),
-    Branch.find({ retailerId: req.user._id, softDeleted: false }),
+  const enrollments = await Enrollment.aggregate([
+    {
+      $match: {
+        retailerId: req.user._id,
+        paymentStatus: { $in: ["completed", "trial"] },
+        validityTo: { $gt: new Date() },
+        status: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "enroll_subscriptions",
+        localField: "_id",
+        foreignField: "enrollmentId",
+        as: "enrollSubscription",
+        pipeline: [
+          {
+            $match: {
+              status: true,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: "$enrollSubscription",
+    },
+    {
+      $match: {
+        $or: [
+          { "enrollSubscription.planSnapshot.type": "subscription" },
+          { "enrollSubscription.planSnapshot.slug": "branch" },
+        ],
+      },
+    },
+    {
+      $replaceRoot: { newRoot: "$enrollSubscription" }, // Replace root with enrollSubscription
+    },
   ]);
 
-  const retailerAddonIds = retailerTotalBranch
+  const createdTotalBranch = await Branch.find({ retailerId: req.user._id, softDeleted: false });
+
+  const addons = enrollments
+    .filter((enrollment: IEnrollSubscription) => {
+      return enrollment.planSnapshot.type === "addon";
+    })
+    .map((enrollment: IEnrollSubscription) => enrollment._id);
+
+  const retailerAddonIds = createdTotalBranch
     .filter((branch) => branch.source === "addon")
     .map((branch) => branch.enrollSubscriptionId.toString());
-  const addonIds = addons.map((enroll) => enroll._id.toString());
-  const unUsedIds = addonIds.filter((item) => !retailerAddonIds.includes(item));
 
-  if (unUsedIds.length <= 0) {
-    throw "You have to purchase another add-on to convert!";
-  }
+  const addonIds = addons.map((enrollSubscription: IEnrollSubscription) => enrollSubscription._id.toString());
+  const unUsedIds = addonIds.filter((id) => !retailerAddonIds.includes(id));
+
+  if (unUsedIds.length <= 0) throw "You have to purchase another add-on to convert!";
 
   const branch = await Branch.findOneAndUpdate(
     { _id: id },

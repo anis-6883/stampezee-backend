@@ -5,7 +5,7 @@ import notification from "../../configs/fcm";
 import { uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, getUTC, makePaginate } from "../../helpers";
 import Customer from "../../models/customer";
-import EnrollSubscription from "../../models/enroll-subscription";
+import Enrollment from "../../models/enrollment";
 import Notification from "../../models/notification";
 import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
@@ -24,35 +24,49 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
   let notificationObj = { title, description, image };
 
   // Check Subscription & Addon Enrollment
-  const [subscription, addons, totalNotification, settings] = await Promise.all([
-    EnrollSubscription.findOne({
-      retailerId: req.user._id,
-      "planSnapshot.type": "subscription",
-      paymentStatus: { $in: ["completed", "trial"] },
-      validityTo: { $gt: new Date() },
-      status: true,
-    }),
-    EnrollSubscription.find({
-      retailerId: req.user._id,
-      "planSnapshot.type": "addon",
-      "planSnapshot.slug": PACKAGES.PUSH_NOTIFICATION_USER,
-      paymentStatus: "completed",
-      validityTo: { $gt: new Date() },
-      status: true,
-    }),
+  const [addons, totalNotification, settings] = await Promise.all([
+    Enrollment.aggregate([
+      {
+        $match: {
+          retailerId: req.user._id,
+          paymentStatus: { $in: ["completed", "trial"] },
+          validityTo: { $gt: new Date() },
+          status: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "enroll_subscriptions",
+          localField: "_id",
+          foreignField: "enrollmentId",
+          as: "enrollSubscription",
+          pipeline: [
+            {
+              $match: {
+                status: true,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: "$enrollSubscription",
+      },
+      {
+        $match: {
+          "enrollSubscription.planSnapshot.slug": PACKAGES.PUSH_NOTIFICATION_USER,
+        },
+      },
+      {
+        $replaceRoot: { newRoot: "$enrollSubscription" }, // Replace root with enrollSubscription
+      },
+    ]),
     Notification.countDocuments({ retailerId: req.user._id, type: "all" }),
     Settings.findOne().select("notification"),
   ]);
 
-  if (!subscription) throw "No one is allowed to send a notification without a plan!";
-
-  let allowTotalNotification = 0;
-
-  for (const addon of addons) {
-    allowTotalNotification += addon.planSnapshot?.limit;
-  }
-
-  if (totalNotification >= allowTotalNotification) throw "Your notification limit is over. Take Another Add-on!";
+  if (addons.length === 0) throw "No one is allowed to create a branch without a plan!";
+  if (totalNotification >= addons.length) throw "Your notification limit is over. Take Another Add-on!";
 
   // File Validation
   if (req.file) {
@@ -101,35 +115,48 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
   const { title, description, imageType, image, address, radius, longitude, latitude } = result;
   let notificationObj = { title, description, image };
 
-  // Check Subscription & Addon Enrollment
-  const [subscription, addons, totalNotification] = await Promise.all([
-    EnrollSubscription.findOne({
-      retailerId: req.user._id,
-      "planSnapshot.type": "subscription",
-      paymentStatus: { $in: ["completed", "trial"] },
-      validityTo: { $gt: new Date() },
-      status: true,
-    }),
-    EnrollSubscription.find({
-      retailerId: req.user._id,
-      "planSnapshot.type": "addon",
-      "planSnapshot.slug": PACKAGES.PUSH_NOTIFICATION_LOCATION,
-      paymentStatus: "completed",
-      validityTo: { $gt: new Date() },
-      status: true,
-    }),
+  const [addons, totalNotification] = await Promise.all([
+    Enrollment.aggregate([
+      {
+        $match: {
+          retailerId: req.user._id,
+          paymentStatus: { $in: ["completed", "trial"] },
+          validityTo: { $gt: new Date() },
+          status: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "enroll_subscriptions",
+          localField: "_id",
+          foreignField: "enrollmentId",
+          as: "enrollSubscription",
+          pipeline: [
+            {
+              $match: {
+                status: true,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: "$enrollSubscription",
+      },
+      {
+        $match: {
+          "enrollSubscription.planSnapshot.slug": PACKAGES.PUSH_NOTIFICATION_LOCATION,
+        },
+      },
+      {
+        $replaceRoot: { newRoot: "$enrollSubscription" }, // Replace root with enrollSubscription
+      },
+    ]),
     Notification.countDocuments({ retailerId: req.user._id, type: "location" }),
   ]);
 
-  if (!subscription) throw "No one is allowed to send a notification without a plan!";
-
-  let allowTotalNotification = 0;
-
-  for (const addon of addons) {
-    allowTotalNotification += addon.planSnapshot?.limit;
-  }
-
-  if (totalNotification >= allowTotalNotification) throw "Your notification limit is over. Take Another Add-on!";
+  if (addons.length === 0) throw "No one is allowed to send a notification without a plan!";
+  if (totalNotification >= addons.length) throw "Your notification limit is over. Take Another Add-on!";
 
   // File Validation
   if (req.file) {
@@ -248,27 +275,49 @@ export const getAllNotificationsForRetailer = asyncHandler(async (req: IApiReque
       },
     ]),
     Notification.countDocuments(query),
-    EnrollSubscription.find({
-      retailerId: req.user._id,
-      "planSnapshot.type": "addon",
-      "planSnapshot.slug": type === "location" ? PACKAGES.PUSH_NOTIFICATION_LOCATION : PACKAGES.PUSH_NOTIFICATION_USER,
-      paymentStatus: "completed",
-      validityTo: { $gt: new Date() },
-      status: true,
-    }),
+    Enrollment.aggregate([
+      {
+        $match: {
+          retailerId: req.user._id,
+          paymentStatus: { $in: ["completed", "trial"] },
+          validityTo: { $gt: new Date() },
+          status: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "enroll_subscriptions",
+          localField: "_id",
+          foreignField: "enrollmentId",
+          as: "enrollSubscription",
+          pipeline: [
+            {
+              $match: {
+                status: true,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: "$enrollSubscription",
+      },
+      {
+        $match: {
+          "enrollSubscription.planSnapshot.slug":
+            type === "location" ? PACKAGES.PUSH_NOTIFICATION_LOCATION : PACKAGES.PUSH_NOTIFICATION_USER,
+        },
+      },
+      {
+        $replaceRoot: { newRoot: "$enrollSubscription" }, // Replace root with enrollSubscription
+      },
+    ]),
     Notification.countDocuments({ retailerId: req.user._id, type }),
   ]);
 
   const data: any = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  let allowTotalNotification = 0;
-
-  for (const addon of addons) {
-    allowTotalNotification += addon.planSnapshot?.limit;
-  }
-
-  data.notificationLimit =
-    allowTotalNotification - totalNotification < 0 ? 0 : allowTotalNotification - totalNotification;
+  data.notificationLimit = addons.length - totalNotification < 0 ? 0 : addons.length - totalNotification;
 
   return apiResponse(res, 200, true, "Notification fetched successfully!", data);
 });

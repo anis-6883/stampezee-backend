@@ -2,7 +2,7 @@ import { Response } from "express";
 import Stripe from "stripe";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import CriticalPayment from "../../models/critical-payment";
-import EnrollSubscription from "../../models/enroll-subscription";
+import Enrollment from "../../models/enrollment";
 import Settings from "../../models/settings";
 import { IApiRequest } from "../../types";
 import { criticalPaymentSchema } from "./validation";
@@ -112,9 +112,9 @@ export const resolveCriticalPayment = asyncHandler(async (req: IApiRequest, res:
     const criticalPayment = await CriticalPayment.findOne({ stripeInvoiceId });
     if (!criticalPayment) throw "Provided invalid stripe invoice id!";
 
-    const enrollUpdated = await EnrollSubscription.findOneAndUpdate(
+    const enrollUpdated = await Enrollment.findOneAndUpdate(
       {
-        _id: criticalPayment.enrollSubscriptionId,
+        _id: { $in: criticalPayment.enrollmentId },
       },
       {
         "stripe.paymentMethodId": invoice?.payment_intent?.payment_method?.id,

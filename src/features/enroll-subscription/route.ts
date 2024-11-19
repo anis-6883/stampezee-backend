@@ -1,12 +1,15 @@
 import express from "express";
 import { ROLE } from "../../configs/constants";
 import { authAndPermissionCheck } from "../../middlewares/authMiddleware";
-import { couponValidityCheck, enrollSubscription, getAllPlans } from "./controller";
+import { couponValidityCheck, enrollSubscription, extraAddonCheck, getAllPlans } from "./controller";
 
 const router = express.Router();
 
 router.get("/", getAllPlans);
-router.post("/coupon-validity-check", authAndPermissionCheck(ROLE.RETAILER), couponValidityCheck);
-router.post("/checkout", authAndPermissionCheck(ROLE.RETAILER), enrollSubscription);
+
+router.use(authAndPermissionCheck(ROLE.RETAILER));
+router.post("/coupon-validity-check", couponValidityCheck);
+router.post("/extra-addon-check", extraAddonCheck);
+router.post("/checkout", enrollSubscription);
 
 export default router;

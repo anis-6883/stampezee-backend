@@ -1,6 +1,6 @@
 import { Document, model, Schema } from "mongoose";
 
-interface ISubscription extends Document {
+export interface ISubscription extends Document {
   title: string;
   slug: string;
   descriptions: string[];

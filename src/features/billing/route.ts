@@ -1,11 +1,24 @@
 import express from "express";
-import { getAllBillings, getRetailerBillingPdf, getRetailerBillingPortal, getSingleBilling } from "./controller";
+import {
+  attachPaymentMethod,
+  cancelAddOnSubscription,
+  getAllBillings,
+  getAllPaymentMethod,
+  getRetailerBillingPdf,
+  getRetailerBillingPortal,
+  getSingleBilling,
+  setupPaymentIntent,
+} from "./controller";
 
 const router = express.Router();
 
 router.get("/all", getAllBillings);
-router.post("/portal", getRetailerBillingPortal);
-router.post("/download-pdf/:id", getRetailerBillingPdf);
 router.get("/find/:id", getSingleBilling);
+router.post("/portal", getRetailerBillingPortal);
+router.delete("/cancel-addon-subscription", cancelAddOnSubscription);
+router.post("/attach-payment-method", attachPaymentMethod);
+router.get("/payment-method/all/:customerId", getAllPaymentMethod);
+router.post("/setup-payment-intent", setupPaymentIntent);
+router.post("/download-pdf/:id", getRetailerBillingPdf);
 
 export default router;
