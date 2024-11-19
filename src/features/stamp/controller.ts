@@ -284,9 +284,20 @@ export const getBranchCategoryImageList = asyncHandler(async (req: IApiRequest, 
           as: "enrollSubscription",
           pipeline: [
             {
+              $lookup: {
+                from: "enrollments",
+                localField: "enrollmentId",
+                foreignField: "_id",
+                as: "enrollment",
+              },
+            },
+            {
+              $unwind: "$enrollment",
+            },
+            {
               $project: {
-                validityFrom: 1,
-                validityTo: 1,
+                validityFrom: "$enrollment.validityFrom",
+                validityTo: "$enrollment.validityTo",
               },
             },
           ],

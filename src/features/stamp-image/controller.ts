@@ -80,7 +80,7 @@ export const createStampImage = asyncHandler(async (req: IApiRequest, res: Respo
     });
 
     const retailerAddonIds = retailerTotalStamp.map((stamp) => stamp.enrollSubscriptionId.toString());
-    const addonIds = addons.map((enrollSubscription) => enrollSubscription._id.toString());
+    const addonIds = addons.map((enrollSubscription: IEnrollSubscription) => enrollSubscription._id.toString());
     const unUsedIds = addonIds.filter((id) => !retailerAddonIds.includes(id));
 
     if (unUsedIds.length === 0) throw "Your stamp image limit is over. Take new Add-on!";
