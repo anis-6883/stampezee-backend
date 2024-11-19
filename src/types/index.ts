@@ -17,7 +17,7 @@ export interface IEnrollPayment {
   amount_total: number;
 }
 export interface IEnrollSubscriptionBody {
-  slug: string;
+  slugs: string[];
   branchIds?: string[];
   stampIds?: string[];
   code: string;
