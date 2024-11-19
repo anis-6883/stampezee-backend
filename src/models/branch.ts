@@ -2,7 +2,7 @@ import { Document, Schema, Types, model } from "mongoose";
 
 interface IBranch extends Document {
   retailerId: Types.ObjectId;
-  enrollmentId: Types.ObjectId;
+  enrollSubscriptionId: Types.ObjectId;
   name: string;
   address: {
     loc: {
@@ -20,7 +20,7 @@ interface IBranch extends Document {
 const branchSchema = new Schema<IBranch>(
   {
     retailerId: { type: "ObjectId", ref: "Retailer", required: true },
-    enrollmentId: { type: "ObjectId", ref: "Enrollment", required: true },
+    enrollSubscriptionId: { type: "ObjectId", ref: "EnrollSubscription", required: true },
     name: { type: String, required: true, trim: true },
     address: {
       loc: {
