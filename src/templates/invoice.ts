@@ -1425,9 +1425,10 @@ export const getInvoiceTemplate = ({
                 </tr>
               </thead>
               <tbody style="font-family:Tahoma; font-size:15px">
-                 ${purchasedItems?.map(
-                   (item: any) =>
-                     `<tr>
+                 ${purchasedItems
+                   ?.map(
+                     (item: any) =>
+                       `<tr>
                   <td class="border-b py-3">${item?.title}</td>
 
                   <td class="border-b py-3 text-center">${item?.quantity}</td>
@@ -1435,7 +1436,8 @@ export const getInvoiceTemplate = ({
                   <td class="border-b py-3 text-center">${item?.unitPrice}</td>
                   <td class="border-b py-3 pr-3 text-center">${item?.total}</td>
                 </tr>`
-                 )}
+                   )
+                   .join("")}
               </tbody>
              
               <!-- Footer Section -->
@@ -1479,6 +1481,14 @@ export const getInvoiceTemplate = ({
     </tr>`
       : ""
   }
+  ${
+    invoiceMetadata?.extraPayableAmount
+      ? `<tr>
+      <td style="padding-left: 10px; text-align: left;" colspan="3" class="title">Extra Pay for Prev. Add-ons</td>
+      <td class="text-right pr-45">${invoiceMetadata?.extraPayableAmount}</td>
+    </tr>`
+      : ""
+  }
   <tr>
     <td></td>
   </tr>
@@ -1502,7 +1512,7 @@ export const getInvoiceTemplate = ({
   </tr>
   <tr>
     <td colspan="3">
-      <div style="padding-top: 40px; text-align: center;">
+      <div style="padding-top: 40px; text-align: left;">
         <img
           src="https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/thank-you.jpg"
           width="150"
@@ -2038,9 +2048,10 @@ export const getInvoiceTemplatePdf = ({
                 </tr>
               </thead>
               <tbody>
-                ${purchasedItems?.map(
-                  (item: any) =>
-                    `<tr>
+                ${purchasedItems
+                  ?.map(
+                    (item: any) =>
+                      `<tr>
                   <td class="border-b py-3">${item?.title}</td>
 
                   <td class="border-b py-3 text-center">${item?.quantity}</td>
@@ -2048,7 +2059,8 @@ export const getInvoiceTemplatePdf = ({
                   <td class="border-b py-3 text-center pr-3">${item?.unitPrice}</td>
                   <td class="border-b py-3 pr-3 text-center">${item?.total}</td>
                 </tr>`
-                )}
+                  )
+                  .join("")}
                 <tr>
                   <td style="border-bottom: none"></td>
                 </tr>
@@ -2086,6 +2098,14 @@ export const getInvoiceTemplatePdf = ({
                   <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Tax (${invoiceMetadata?.tax?.taxCost}%)</td>
                   <td style="border-bottom: none" class="text-right pr-45">${invoiceMetadata?.taxDiscount}</td>
                 </tr>`
+                    : ""
+                }
+                ${
+                  invoiceMetadata?.extraPayableAmount
+                    ? `<tr>
+                    <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Extra Pay for Prev. Add-ons</td>
+                    <td style="border-bottom: none" class="text-right pr-45">${invoiceMetadata?.extraPayableAmount}</td>
+                  </tr>`
                     : ""
                 }
                 <tr>

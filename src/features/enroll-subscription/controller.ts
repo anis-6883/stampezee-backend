@@ -27,6 +27,7 @@ import Stamp from "../../models/stamp";
 import Subscription, { ISubscription } from "../../models/subscription";
 import { getInvoiceTemplate } from "../../templates/invoice";
 import { IApiRequest, IEnrollSubscriptionBody, ILineItem, Object } from "../../types";
+import { sendInvoiceToEmail } from "./service";
 import { couponSchema, enrollmentSchema, extraAddonSchema } from "./validation";
 
 /**
@@ -340,8 +341,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     ////////////////////////////////////////////////////////////////////////
     //////// Decision -> (Upgrade or Downgrade) or New Subscription ////////
     ////////////////////////////////////////////////////////////////////////
-    const enrollIdDuration: { [key: string]: number | string } = {};
-    enrollIdDuration["currency"] = currency;
+    const metadata: { [key: string]: number | string } = {};
+    metadata["currency"] = currency;
     const line_items: ILineItem[] = [];
     const coupons: { coupon: string }[] = [];
     let extraPayableAmount = 0;
@@ -386,7 +387,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         status: false,
       });
 
-      enrollIdDuration["enrollmentId"] = String(enrollment._id);
+      metadata["enrollmentId"] = String(enrollment._id);
+      metadata["balanceAmount"] = balanceAmount;
 
       const prevAddons = await EnrollSubscription.find({
         enrollmentId: enrolled?._id,
@@ -448,6 +450,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                 }),
                 metadata: {
                   enrollSubscriptionId: String(enrollSubscription._id),
+                  prev: "true",
                 },
               },
               unit_amount:
@@ -492,6 +495,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                 }),
                 metadata: {
                   enrollSubscriptionId: String(enrollSubscription._id),
+                  prev: "false",
                 },
               },
               unit_amount:
@@ -637,6 +641,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               }),
               metadata: {
                 enrollSubscriptionId: String(enrollSubscription._id),
+                prev: "true",
               },
             });
 
@@ -685,6 +690,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               }),
               metadata: {
                 enrollSubscriptionId: String(enrollSubscription._id),
+                prev: "false",
               },
             });
 
@@ -768,6 +774,99 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           }
 
           await Promise.all(updateQueries);
+
+          // send invoice mail
+          const enrollSubscriptions = await EnrollSubscription.find({
+            enrollmentId: enrollment?._id,
+          });
+
+          const prevOrCurrentSubscriptionsMap = Object.fromEntries(
+            subscriptionItems.data.map((item: any) => [
+              item.plan.product.metadata.enrollSubscriptionId,
+              item.plan.product.metadata.prev,
+            ])
+          );
+
+          const newEnrollSubscriptions = enrollSubscriptions?.filter(
+            (item: any) => prevOrCurrentSubscriptionsMap[item?._id] === "false"
+          );
+
+          const customerInfo = {
+            name: req?.user.firstName + req?.user?.lastName,
+            phone: `${req?.user?.dialCode}-${req?.user?.phone}`,
+            address: `${req?.user?.address}, ${req?.user?.city}, ${req?.user?.postalCode}`,
+          };
+
+          let taxValue = 0;
+          let couponValue = 0;
+          let subTotal = 0;
+
+          let coupon: any = null;
+          const purchasedItems = newEnrollSubscriptions?.map((purchasedSubscription: any) => {
+            // Check coupon eligibility & apply
+            if (purchasedSubscription?.couponSnapshot) {
+              couponValue +=
+                purchasedSubscription?.couponSnapshot?.discountType === "percentage"
+                  ? (purchasedSubscription?.planSnapshot?.price * purchasedSubscription?.couponSnapshot?.discount) / 100
+                  : enrollment?.currencyRate * purchasedSubscription?.couponSnapshot?.discount;
+              coupon = purchasedSubscription?.couponSnapshot;
+            }
+
+            // Only tax apply
+            if (enrollment?.taxSnapshot) {
+              taxValue += (purchasedSubscription?.planSnapshot?.price * enrollment?.taxSnapshot?.taxCost) / 100;
+            }
+
+            subTotal += purchasedSubscription?.planSnapshot?.price * enrollment?.currencyRate;
+
+            return {
+              title: purchasedSubscription?.planSnapshot?.title,
+              quantity: 1,
+              unitPrice: `${Number(purchasedSubscription?.planSnapshot?.price * enrollment?.currencyRate).toFixed(2)} ${enrollment?.currency}`,
+              total: `${Number(purchasedSubscription?.planSnapshot?.price * enrollment?.currencyRate).toFixed(2)} ${enrollment?.currency}`,
+            };
+          });
+
+          const invoiceMetadata = {
+            invoiceNo: "",
+            subtotal: `${Number(subTotal).toFixed(2)} ${enrollment?.currency}`,
+            remainingAmount:
+              enrollment?.enrollStatus === "purchase" ? null : `${balanceAmount} ${enrollment?.currency}`,
+            planChangeCost:
+              enrollment?.enrollStatus === "purchase"
+                ? null
+                : `${enrollment?.planChangeCost.toFixed(2)} ${enrollment?.currency}`,
+            couponDiscount: couponValue !== 0 ? `${couponValue.toFixed(2)} ${enrollment?.currency}` : null,
+            taxDiscount: enrollment?.taxSnapshot ? `${taxValue?.toFixed(2)} ${enrollment?.currency}` : null,
+            coupon,
+            tax: enrollment?.taxSnapshot
+              ? {
+                  taxTitle: enrollment?.taxSnapshot?.taxTitle,
+                  taxCost: enrollment?.taxSnapshot?.taxCost,
+                }
+              : null,
+            total: `${parseFloat(Math.abs(totalAmount).toFixed(2))} ${enrollment?.currency}`,
+            extraPayableAmount:
+              enrollment?.enrollStatus === "purchase" || !Number(extraPayableAmount)
+                ? null
+                : Number(extraPayableAmount)?.toFixed(2),
+          };
+
+          // console.log({ purchasedItems, subTotal, taxValue, couponValue, balanceAmount, invoiceMetadata });
+
+          const paymentInfo = {
+            bankName: "Fauget Bank",
+            accountName: "Juliana Silva",
+            accountNo: "123-456-7890",
+          };
+
+          await sendInvoiceToEmail({
+            email: req?.user?.email,
+            customerInfo,
+            purchasedItems,
+            invoiceMetadata,
+            paymentInfo,
+          });
 
           return apiResponse(res, 200, true, `Your plan successfully downgraded!`, {
             plan: pickPlan?.slug,
@@ -940,7 +1039,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       });
 
       let totalCouponAmount = 0;
-      enrollIdDuration["enrollmentId"] = String(enrollment._id);
+      metadata["enrollmentId"] = String(enrollment._id);
 
       // Package push into line items
       for (const subscription of subscriptions) {
@@ -985,6 +1084,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               }),
               metadata: {
                 enrollSubscriptionId: String(enrollSubscription._id),
+                prev: "false",
               },
             },
             unit_amount:
@@ -1015,11 +1115,13 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       }
     }
 
+    metadata["extraPayableAmount"] = extraPayableAmount;
+
     const session = await stripe.checkout.sessions.create({
       line_items,
       mode: "subscription",
       payment_method_types: ["card"],
-      metadata: enrollIdDuration, // Need for update info after complete payment
+      metadata, // Need for update info after complete payment
       discounts: coupons,
       success_url: `${process.env.FRONTEND_URL}/payment/complete`,
       cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
@@ -1211,6 +1313,13 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       subscriptionItems.data.map((item: any) => [item.plan.product.metadata.enrollSubscriptionId, item.id])
     );
 
+    const prevOrCurrentSubscriptionsMap = Object.fromEntries(
+      subscriptionItems.data.map((item: any) => [
+        item.plan.product.metadata.enrollSubscriptionId,
+        item.plan.product.metadata.prev,
+      ])
+    );
+
     // If a user takes a plan without taking the free trial, then the free trial isn't applicable anymore
     if (!retailer.takeFreeTrial) {
       if (freeTrailSubscription) {
@@ -1237,13 +1346,15 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     }
 
     let updateSubscriptions: any = [];
-    const { enrollmentId = null } = checkoutSession?.metadata;
+    const { enrollmentId = null, balanceAmount = 0, extraPayableAmount = 0 } = checkoutSession?.metadata;
 
     const enrollment = await Enrollment.findById(enrollmentId);
 
     // Deactivate last previous active plan
+    let prevEnrollment;
+
     if (enrollment?.planExists) {
-      const prevEnrollment = await Enrollment.findOneAndUpdate(
+      prevEnrollment = await Enrollment.findOneAndUpdate(
         {
           retailerId: retailer._id,
           planExists: { $ne: null },
@@ -1267,6 +1378,11 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
         await stripe.subscriptions.cancel(prevEnrollment?.stripe?.subscriptionId);
       }
 
+      const enrollSubscription = await EnrollSubscription.findOne({
+        enrollmentId,
+        "planSnapshot.type": "subscription",
+      });
+
       // Update expiration for already created branch
       if (enrollment?.planExists) {
         updateSubscriptions.push(
@@ -1275,7 +1391,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
               retailerId: retailer._id,
               source: "subscription",
             },
-            { enrollmentId }
+            { enrollSubscriptionId: enrollSubscription._id }
           )
         );
       }
@@ -1313,12 +1429,18 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       })
     );
 
-    for (const key in subscriptionItemsMap) {
-      await EnrollSubscription.findByIdAndUpdate(key, {
-        subscriptionItemId: subscriptionItemsMap[key],
-        status: true,
-      });
-    }
+    const updatedEnrollSubscriptions = await Promise.all(
+      Object.keys(subscriptionItemsMap).map(async (key) => {
+        return EnrollSubscription.findByIdAndUpdate(
+          key,
+          {
+            subscriptionItemId: subscriptionItemsMap[key],
+            status: true,
+          },
+          { new: true }
+        );
+      })
+    );
 
     // Handle Critical Payment (if payment method id is missing)
     if (!invoice?.payment_intent?.payment_method?.id) {
@@ -1336,66 +1458,66 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       phone: `${retailer?.dialCode}-${retailer?.phone}`,
       address: `${retailer?.address}, ${retailer?.city}, ${retailer?.postalCode}`,
     };
-    // const purchasedItems = [
-    //   {
-    //     title: purchasedSubscription?.planSnapshot?.title,
-    //     quantity: 1,
-    //     unitPrice: `${Number(purchasedSubscription?.planSnapshot?.price * purchasedSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
-    //     total: `${Number(purchasedSubscription?.planSnapshot?.price * purchasedSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
-    //   },
-    // ];
+
+    const newEnrollSubscriptions = updatedEnrollSubscriptions?.filter(
+      (item: any) => prevOrCurrentSubscriptionsMap[item?._id] === "false"
+    );
 
     let taxValue = 0;
     let couponValue = 0;
+    let subTotal = 0;
 
-    // Check coupon eligibility & apply
-    // if (purchasedSubscription?.couponSnapshot) {
-    //   couponValue =
-    //     purchasedSubscription?.couponSnapshot?.discountType === "percentage"
-    //       ? (purchasedSubscription?.balanceInfo?.planCurrentPrice * purchasedSubscription?.couponSnapshot?.discount) /
-    //         100
-    //       : purchasedSubscription?.balanceInfo?.currencyRate * purchasedSubscription?.couponSnapshot?.discount;
-    //   couponValue = Number(couponValue.toFixed(2));
-    // }
+    let coupon: any = null;
+    const purchasedItems = newEnrollSubscriptions?.map((purchasedSubscription: any) => {
+      // Check coupon eligibility & apply
+      if (purchasedSubscription?.couponSnapshot) {
+        couponValue +=
+          purchasedSubscription?.couponSnapshot?.discountType === "percentage"
+            ? (purchasedSubscription?.planSnapshot?.price * purchasedSubscription?.couponSnapshot?.discount) / 100
+            : enrollment?.currencyRate * purchasedSubscription?.couponSnapshot?.discount;
+        coupon = purchasedSubscription?.couponSnapshot;
+      }
 
-    // Only tax apply
-    // if (purchasedSubscription?.taxSnapshot) {
-    //   taxValue =
-    //     (purchasedSubscription?.balanceInfo?.planCurrentPrice * purchasedSubscription?.taxSnapshot?.taxCost) / 100;
-    // }
+      // Only tax apply
+      if (enrollment?.taxSnapshot) {
+        taxValue += (purchasedSubscription?.planSnapshot?.price * enrollment?.taxSnapshot?.taxCost) / 100;
+      }
 
-    // const invoiceMetadata = {
-    //   invoiceNo: invoice?.number,
-    //   subtotal: `${Number(purchasedSubscription?.planSnapshot?.price * purchasedSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
-    //   remainingAmount:
-    //     purchasedSubscription?.enrollStatus === "purchase"
-    //       ? null
-    //       : `${purchasedSubscription?.balanceInfo?.currentBalance?.toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
-    //   planChangeCost:
-    //     purchasedSubscription?.enrollStatus === "purchase"
-    //       ? null
-    //       : `${purchasedSubscription?.planChangeCost.toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
-    //   couponDiscount: purchasedSubscription?.couponSnapshot
-    //     ? `${couponValue.toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`
-    //     : null,
-    //   taxDiscount: purchasedSubscription?.taxSnapshot
-    //     ? `${taxValue?.toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`
-    //     : null,
-    //   coupon: purchasedSubscription?.couponSnapshot
-    //     ? {
-    //         title: purchasedSubscription?.couponSnapshot?.title,
-    //         discountType: purchasedSubscription?.couponSnapshot?.discountType,
-    //         discount: purchasedSubscription?.couponSnapshot?.discount,
-    //       }
-    //     : null,
-    //   tax: purchasedSubscription?.taxSnapshot
-    //     ? {
-    //         taxTitle: purchasedSubscription?.taxSnapshot?.taxTitle,
-    //         taxCost: purchasedSubscription?.taxSnapshot?.taxCost,
-    //       }
-    //     : null,
-    //   total: `${(checkoutSession?.amount_total / 100).toFixed(2)} ${purchasedSubscription?.balanceInfo?.currency}`,
-    // };
+      subTotal += purchasedSubscription?.planSnapshot?.price * enrollment?.currencyRate;
+
+      return {
+        title: purchasedSubscription?.planSnapshot?.title,
+        quantity: 1,
+        unitPrice: `${Number(purchasedSubscription?.planSnapshot?.price * enrollment?.currencyRate).toFixed(2)} ${enrollment?.currency}`,
+        total: `${Number(purchasedSubscription?.planSnapshot?.price * enrollment?.currencyRate).toFixed(2)} ${enrollment?.currency}`,
+      };
+    });
+
+    const invoiceMetadata = {
+      invoiceNo: invoice?.number,
+      subtotal: `${Number(subTotal).toFixed(2)} ${enrollment?.currency}`,
+      remainingAmount: enrollment?.enrollStatus === "purchase" ? null : `${balanceAmount} ${enrollment?.currency}`,
+      planChangeCost:
+        enrollment?.enrollStatus === "purchase"
+          ? null
+          : `${enrollment?.planChangeCost.toFixed(2)} ${enrollment?.currency}`,
+      couponDiscount: couponValue !== 0 ? `${couponValue.toFixed(2)} ${enrollment?.currency}` : null,
+      taxDiscount: enrollment?.taxSnapshot ? `${taxValue?.toFixed(2)} ${enrollment?.currency}` : null,
+      coupon,
+      tax: enrollment?.taxSnapshot
+        ? {
+            taxTitle: enrollment?.taxSnapshot?.taxTitle,
+            taxCost: enrollment?.taxSnapshot?.taxCost,
+          }
+        : null,
+      total: `${(checkoutSession?.amount_total / 100).toFixed(2)} ${enrollment?.currency}`,
+      extraPayableAmount:
+        enrollment?.enrollStatus === "purchase" || !Number(extraPayableAmount)
+          ? null
+          : Number(extraPayableAmount)?.toFixed(2),
+    };
+
+    // console.log({ purchasedItems, subTotal, taxValue, couponValue, balanceAmount, invoiceMetadata });
 
     const paymentInfo = {
       bankName: "Fauget Bank",
@@ -1405,7 +1527,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
 
     await Promise.all(updateSubscriptions);
 
-    // await sendInvoiceToEmail({ email: retailer?.email, customerInfo, purchasedItems, invoiceMetadata, paymentInfo });
+    await sendInvoiceToEmail({ email: retailer?.email, customerInfo, purchasedItems, invoiceMetadata, paymentInfo });
   } catch (err) {
     console.log(err);
     // throw err.message || err || "Something went wrong!";

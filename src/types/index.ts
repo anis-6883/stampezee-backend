@@ -42,6 +42,11 @@ export interface IUser {
   _id: mongoose.Types.ObjectId;
   firstName: string;
   lastName: string;
+  fullName?: string;
+  postalCode?: string;
+  city?: string;
+  phone?: string;
+  dialCode?: string;
   storeName?: string;
   branchId?: string;
   retailerId?: string;
@@ -80,7 +85,7 @@ export interface ILineItem {
   price_data?: {
     unit_amount: number;
     currency: string;
-    product_data: { name: string; description?: string; metadata?: { enrollSubscriptionId: string } };
+    product_data: { name: string; description?: string; metadata?: { enrollSubscriptionId: string; prev?: string } };
     recurring?: { interval: "day" | "week" | "month" | "year" };
   };
   quantity: number;
