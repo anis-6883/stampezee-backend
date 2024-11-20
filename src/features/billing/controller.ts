@@ -10,6 +10,7 @@ import Branch from "../../models/branch";
 import EnrollSubscription from "../../models/enroll-subscription";
 import Enrollment from "../../models/enrollment";
 import Payment from "../../models/payment";
+import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
 import Stamp from "../../models/stamp";
 import { IApiRequest } from "../../types";
@@ -362,10 +363,11 @@ export const getRetailerBillingPdf = asyncHandler(async (req: IApiRequest, res: 
     },
   ]);
 
+  const retailer = await Retailer.findById(payment[0]?.enrollment?.retailerId);
   const customerInfo = {
-    name: req?.user.firstName + req?.user?.lastName,
-    phone: `${req?.user?.dialCode}-${req?.user?.phone}`,
-    address: `${req?.user?.address}, ${req?.user?.city}, ${req?.user?.postalCode}`,
+    name: retailer?.fullName,
+    phone: `${retailer?.dialCode}-${retailer?.phone}`,
+    address: `${retailer?.address}, ${retailer?.city}, ${retailer?.postalCode}`,
   };
   let taxValue = 0;
   let couponValue = 0;
