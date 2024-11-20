@@ -11,6 +11,7 @@ import EnrollSubscription from "../../models/enroll-subscription";
 import Enrollment from "../../models/enrollment";
 import Payment from "../../models/payment";
 import Settings from "../../models/settings";
+import Stamp from "../../models/stamp";
 import { IApiRequest } from "../../types";
 import { enrollSubscriptionSchema, portalSchema } from "./validation";
 
@@ -223,6 +224,17 @@ export const cancelAddOnSubscription = asyncHandler(async (req: IApiRequest, res
       // Attach Branch Check
       if (enrollSubscription.planSnapshot.slug === PACKAGES.BRANCH) {
         await Branch.findOneAndUpdate(
+          { enrollSubscriptionId },
+          {
+            status: false,
+            softDeleted: true,
+          }
+        );
+      }
+
+      // Attach Stamp Check
+      if (enrollSubscription.planSnapshot.slug === PACKAGES.STAMP) {
+        await Stamp.findOneAndUpdate(
           { enrollSubscriptionId },
           {
             status: false,

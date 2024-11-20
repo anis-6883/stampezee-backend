@@ -1,4 +1,5 @@
 import { Response } from "express";
+import { PACKAGES } from "../../configs/constants";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import Branch from "../../models/branch";
 import { IEnrollSubscription } from "../../models/enroll-subscription";
@@ -50,7 +51,7 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
       $match: {
         $or: [
           { "enrollSubscription.planSnapshot.type": "subscription" },
-          { "enrollSubscription.planSnapshot.slug": "branch" },
+          { "enrollSubscription.planSnapshot.slug": PACKAGES.BRANCH },
         ],
       },
     },

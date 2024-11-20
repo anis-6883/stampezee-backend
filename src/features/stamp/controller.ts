@@ -7,7 +7,7 @@ import { IEnrollSubscription } from "../../models/enroll-subscription";
 import Enrollment from "../../models/enrollment";
 import Settings from "../../models/settings";
 import Sorting from "../../models/sorting";
-import Stamp from "../../models/stamp";
+import Stamp, { IStamp } from "../../models/stamp";
 import StampImage from "../../models/stamp-image";
 import { IApiRequest } from "../../types";
 import { stampSchema, stampStatusSchema, updateStampSchema } from "./validation";
@@ -25,49 +25,48 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
 
   const { softDeleted, branchId, categoryId, stampImageId, ...createBody } = result;
 
-  const enrollments = await Enrollment.aggregate([
-    {
-      $match: {
-        retailerId: req.user._id,
-        paymentStatus: { $in: ["completed", "trial"] },
-        validityTo: { $gt: new Date() },
-        status: true,
-      },
-    },
-    {
-      $lookup: {
-        from: "enroll_subscriptions",
-        localField: "_id",
-        foreignField: "enrollmentId",
-        as: "enrollSubscription",
-        pipeline: [
-          {
-            $match: {
-              status: true,
-            },
-          },
-        ],
-      },
-    },
-    {
-      $unwind: "$enrollSubscription",
-    },
-    {
-      $match: {
-        $or: [
-          { "enrollSubscription.planSnapshot.type": "subscription" },
-          { "enrollSubscription.planSnapshot.slug": PACKAGES.STAMP },
-        ],
-      },
-    },
-    {
-      $replaceRoot: { newRoot: "$enrollSubscription" }, // Replace root with enrollSubscription
-    },
-  ]);
-
   // Check Subscription & Addon Enrollment
-  const [retailerTotalStamp, branch, stampImage, category] = await Promise.all([
-    Stamp.countDocuments({ retailerId: req.user._id, softDeleted: false }),
+  const [enrollments, retailerTotalStamp = [], branch, stampImage, category] = await Promise.all([
+    Enrollment.aggregate([
+      {
+        $match: {
+          retailerId: req.user._id,
+          paymentStatus: { $in: ["completed", "trial"] },
+          validityTo: { $gt: new Date() },
+          status: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "enroll_subscriptions",
+          localField: "_id",
+          foreignField: "enrollmentId",
+          as: "enrollSubscription",
+          pipeline: [
+            {
+              $match: {
+                status: true,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: "$enrollSubscription",
+      },
+      {
+        $match: {
+          $or: [
+            { "enrollSubscription.planSnapshot.type": "subscription" },
+            { "enrollSubscription.planSnapshot.slug": PACKAGES.STAMP },
+          ],
+        },
+      },
+      {
+        $replaceRoot: { newRoot: "$enrollSubscription" }, // Replace root with enrollSubscription
+      },
+    ]),
+    Stamp.find({ retailerId: req.user._id, softDeleted: false }),
     Branch.findOne({ _id: branchId, retailerId: req.user._id }),
     StampImage.findById(stampImageId),
     Category.findById(categoryId),
@@ -89,11 +88,24 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
     .map((enrollment: IEnrollSubscription) => enrollment._id);
 
   const allowTotalStamp = subscription?.planSnapshot?.allowTotalStamp + addons.length;
-  if (retailerTotalStamp >= allowTotalStamp) throw "Your stamp limit is over. Take new Add-on!";
+  if (retailerTotalStamp.length >= allowTotalStamp) throw "Your stamp limit is over. Take new Add-on!";
+
+  const subscriptionStampSlot = retailerTotalStamp.filter((stamp: IStamp) => stamp.source === "subscription").length;
+  const source = subscriptionStampSlot < subscription?.planSnapshot?.allowTotalStamp ? "subscription" : "addon";
+
+  const retailerAddonIds = retailerTotalStamp
+    .filter((stamp: IStamp) => stamp.source === "addon")
+    .map((stamp: IStamp) => stamp.enrollSubscriptionId.toString());
+
+  const addonIds = addons.map((enrollSubscription: IEnrollSubscription) => enrollSubscription._id.toString());
+  const unUsedIds = addonIds.filter((id: string) => !retailerAddonIds.includes(id));
+
+  createBody.source = source;
+  createBody.enrollSubscriptionId = source === "subscription" ? subscription?._id : unUsedIds[0];
 
   if (!createBody.hasValidity) {
     createBody.startedAt = new Date("2020-01-01");
-    createBody.expiredAt = new Date("3070-01-01");
+    createBody.expiredAt = new Date("3030-01-01");
   }
 
   createBody.retailerId = req.user._id;

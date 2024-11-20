@@ -1,6 +1,6 @@
 import { Document, model, Schema, Types } from "mongoose";
 
-interface IStamp extends Document {
+export interface IStamp extends Document {
   title: string;
   description?: string | null;
   rules?: string | null;
@@ -15,12 +15,14 @@ interface IStamp extends Document {
   expiredAt: Date;
   status?: boolean;
   softDeleted?: boolean;
+  source: string;
 
   // Relations
   retailerId: Types.ObjectId;
   branchId: Types.ObjectId;
   stampImageId: Types.ObjectId;
   categoryId: Types.ObjectId;
+  enrollSubscriptionId: Types.ObjectId;
 }
 
 const stampSchema = new Schema<IStamp>(
@@ -39,12 +41,14 @@ const stampSchema = new Schema<IStamp>(
     expiredAt: { type: Date, required: true },
     status: { type: Boolean, default: true },
     softDeleted: { type: Boolean, default: false },
+    source: { type: String, enum: ["subscription", "addon"], required: true },
 
     // Relations
     retailerId: { type: "ObjectId", ref: "Retailer", required: true },
     branchId: { type: "ObjectId", ref: "Branch", required: true },
     stampImageId: { type: "ObjectId", ref: "StampImage", required: true },
     categoryId: { type: "ObjectId", ref: "Category", required: true },
+    enrollSubscriptionId: { type: "ObjectId", ref: "EnrollSubscription", required: true },
   },
   {
     timestamps: true,
