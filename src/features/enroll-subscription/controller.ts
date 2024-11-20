@@ -1189,7 +1189,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
       ) {
         console.log("Subscription is updated!");
 
-        const updatedSubscription = await Enrollment.findOneAndUpdate(
+        const updatedEnrollment = await Enrollment.findOneAndUpdate(
           { "stripe.subscriptionId": invoicePaymentEvent.subscription },
           {
             validityFrom: moment(),
@@ -1198,17 +1198,25 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
           { new: true }
         );
 
+        const enrollSubscriptionIds = (
+          await EnrollSubscription.find({
+            enrollmentId: updatedEnrollment?._id,
+            status: true,
+          })
+        ).map((subscription) => subscription?._id);
+
         await Payment.create({
-          enrollmentId: updatedSubscription?._id,
+          enrollmentId: updatedEnrollment?._id,
+          enrollSubscriptionIds,
           paymentIntentId: invoicePaymentEvent.payment_intent,
           invoiceNumber: invoicePaymentEvent.number,
           invoicePdf: invoicePaymentEvent.invoice_pdf,
           paymentStatus: "succeeded",
           amountTotal:
-            updatedSubscription?.currency === "JPY"
+            updatedEnrollment?.currency === "JPY"
               ? invoicePaymentEvent?.total
               : (invoicePaymentEvent?.total / 100).toFixed(2),
-          currency: updatedSubscription?.currency,
+          currency: updatedEnrollment?.currency,
           paymentMethodDetails: invoice?.payment_intent?.payment_method, // Kind of Log Store
         });
       }
@@ -1400,6 +1408,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     // Store Payment Info
     const payment = await Payment.create({
       enrollmentId: enrollment?._id,
+      enrollSubscriptionIds: Object.keys(subscriptionItemsMap),
       invoiceNumber: invoice?.number,
       invoicePdf: invoice?.invoice_pdf,
       paymentIntentId: invoice?.payment_intent?.id,
