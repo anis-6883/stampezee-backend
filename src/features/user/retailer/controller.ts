@@ -206,6 +206,12 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
           as: "enrollSubscriptions",
           pipeline: [
             {
+              $match: {
+                status: true,
+                deletedByRetailer: false,
+              },
+            },
+            {
               $project: {
                 slug: "$planSnapshot.slug",
               },
@@ -335,6 +341,12 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
           foreignField: "enrollmentId",
           as: "enrollSubscriptions",
           pipeline: [
+            {
+              $match: {
+                status: true,
+                deletedByRetailer: false,
+              },
+            },
             {
               $project: {
                 slug: "$planSnapshot.slug",
