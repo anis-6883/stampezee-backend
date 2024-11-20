@@ -1343,6 +1343,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
             validityFrom: now,
             validityTo: expireDate,
             enrollStatus: "trial",
+            status: false,
           }),
           Retailer.findByIdAndUpdate(retailer._id, { takeFreeTrial: true }),
         ]);
@@ -1350,6 +1351,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
         await EnrollSubscription.create({
           enrollmentId: enrollment?._id,
           planSnapshot: freeTrailSubscription,
+          status: true,
         });
       }
     }
