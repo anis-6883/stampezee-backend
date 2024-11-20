@@ -269,7 +269,7 @@ export const cancelAddOnSubscription = asyncHandler(async (req: IApiRequest, res
         );
 
         if (branch) {
-          await Stamp.findOneAndUpdate(
+          await Stamp.updateMany(
             { branchId: branch?._id },
             {
               status: false,
