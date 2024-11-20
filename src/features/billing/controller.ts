@@ -13,6 +13,7 @@ import Payment from "../../models/payment";
 import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
 import Stamp from "../../models/stamp";
+import SubAdmin from "../../models/sub-admin";
 import { IApiRequest } from "../../types";
 import { enrollSubscriptionSchema, portalSchema } from "./validation";
 
@@ -270,13 +271,10 @@ export const cancelAddOnSubscription = asyncHandler(async (req: IApiRequest, res
         );
 
         if (branch) {
-          await Stamp.updateMany(
-            { branchId: branch?._id },
-            {
-              status: false,
-              softDeleted: true,
-            }
-          );
+          await Promise.all([
+            Stamp.updateMany({ branchId: branch?._id }, { status: false, softDeleted: true }),
+            SubAdmin.updateMany({ branchId: branch?._id }, { status: false, softDeleted: true }),
+          ]);
         }
       }
 
