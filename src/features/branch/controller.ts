@@ -52,6 +52,7 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
         $or: [
           { "enrollSubscription.planSnapshot.type": "subscription" },
           { "enrollSubscription.planSnapshot.slug": PACKAGES.BRANCH },
+          { "enrollSubscription.planSnapshot.slug": PACKAGES.TRIAL },
         ],
       },
     },

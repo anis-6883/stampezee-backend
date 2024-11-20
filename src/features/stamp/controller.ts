@@ -59,6 +59,7 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
           $or: [
             { "enrollSubscription.planSnapshot.type": "subscription" },
             { "enrollSubscription.planSnapshot.slug": PACKAGES.STAMP },
+            { "enrollSubscription.planSnapshot.slug": PACKAGES.TRIAL },
           ],
         },
       },

@@ -216,6 +216,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         await EnrollSubscription.create({
           enrollmentId: enrollment?._id,
           planSnapshot: subscription,
+          status: true,
         });
 
         return apiResponse(res, 200, true, "Free trial enrolled successfully!", {
@@ -1342,6 +1343,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
             validityFrom: now,
             validityTo: expireDate,
             enrollStatus: "trial",
+            status: false,
           }),
           Retailer.findByIdAndUpdate(retailer._id, { takeFreeTrial: true }),
         ]);
@@ -1349,6 +1351,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
         await EnrollSubscription.create({
           enrollmentId: enrollment?._id,
           planSnapshot: freeTrailSubscription,
+          status: false,
         });
       }
     }
