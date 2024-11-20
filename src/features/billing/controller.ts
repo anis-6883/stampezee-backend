@@ -257,13 +257,26 @@ export const cancelAddOnSubscription = asyncHandler(async (req: IApiRequest, res
 
       // Attach Branch Check
       if (enrollSubscription.planSnapshot.slug === PACKAGES.BRANCH) {
-        await Branch.findOneAndUpdate(
+        const branch = await Branch.findOneAndUpdate(
           { enrollSubscriptionId },
           {
             status: false,
             softDeleted: true,
+          },
+          {
+            new: true,
           }
         );
+
+        if (branch) {
+          await Stamp.findOneAndUpdate(
+            { branchId: branch?._id },
+            {
+              status: false,
+              softDeleted: true,
+            }
+          );
+        }
       }
 
       // Attach Stamp Check
