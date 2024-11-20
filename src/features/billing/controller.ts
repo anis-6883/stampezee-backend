@@ -3,8 +3,10 @@ import fs from "fs";
 import { Types } from "mongoose";
 import path from "path";
 import Stripe from "stripe";
+import { PACKAGES } from "../../configs/constants";
 import { apiResponse, asyncHandler, htmlToPdf } from "../../helpers";
 import { makePaginate } from "../../helpers/index";
+import Branch from "../../models/branch";
 import EnrollSubscription from "../../models/enroll-subscription";
 import Enrollment from "../../models/enrollment";
 import Payment from "../../models/payment";
@@ -99,12 +101,29 @@ export const getSingleBilling = asyncHandler(async (req: IApiRequest, res: Respo
         as: "enrollSubscriptions",
         pipeline: [
           {
+            $lookup: {
+              from: "branches",
+              localField: "_id",
+              foreignField: "enrollSubscriptionId",
+              as: "branch",
+              pipeline: [
+                {
+                  $project: {
+                    name: 1,
+                    address: "$branch.address",
+                  },
+                },
+              ],
+            },
+          },
+          {
             $project: {
               subscriptionItemId: 1,
               title: "$planSnapshot.title",
               slug: "$planSnapshot.slug",
               type: "$planSnapshot.type",
               deletedByRetailer: 1,
+              branch: 1,
             },
           },
           {
@@ -200,6 +219,17 @@ export const cancelAddOnSubscription = asyncHandler(async (req: IApiRequest, res
         status: false,
         deletedByRetailer: true,
       });
+
+      // Attach Branch Check
+      if (enrollSubscription.planSnapshot.slug === PACKAGES.BRANCH) {
+        await Branch.findOneAndUpdate(
+          { enrollSubscriptionId },
+          {
+            status: false,
+            softDeleted: true,
+          }
+        );
+      }
     }
 
     return apiResponse(res, 200, true, "Add-on Subscription Cancelled Successfully!");
