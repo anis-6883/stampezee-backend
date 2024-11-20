@@ -1418,6 +1418,8 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
           ? checkoutSession?.amount_total
           : (checkoutSession?.amount_total / 100).toFixed(2),
       currency: checkoutSession.metadata["currency"],
+      extraPayableAmount: Number(extraPayableAmount)?.toFixed(2),
+      balanceAmount,
       paymentMethodDetails: invoice?.payment_intent?.payment_method, // Kind of Log Store
     });
 

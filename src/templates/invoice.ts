@@ -1906,7 +1906,7 @@ export const getInvoiceTemplatePdf = ({
 
       tbody .title {
         font-weight: bold;
-        padding-right: 45px;
+        
       }
 
       tbody .pr-45 {
@@ -2039,14 +2039,14 @@ export const getInvoiceTemplatePdf = ({
           <!-- Invoice Table -->
           <div class="sub-container">
             <table class="w-full border-collapse border-spacing-0 relative">
-              <thead>
+              
                 <tr>
                   <td class="border-b-2 py-3 border-main pb-3 text-left font-bold text-main">Item</td>
                   <td class="border-b-2 py-3 border-main pb-3 text-center font-bold text-main">Quantity</td>
                   <td class="border-b-2 py-3 border-main pb-3 text-center font-bold text-main">Unit Price</td>
                   <td class="border-b-2 py-3 border-main pb-3 text-center font-bold text-main">Total</td>
                 </tr>
-              </thead>
+              
               <tbody>
                 ${purchasedItems
                   ?.map(
@@ -2066,13 +2066,13 @@ export const getInvoiceTemplatePdf = ({
                 </tr>
                 <tr>
                   <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Subtotal</td>
-                  <td style="border-bottom: none" class="text-right pr-45">${invoiceMetadata?.subtotal}</td>
+                  <td style="border-bottom: none" class="text-right">${invoiceMetadata?.subtotal}</td>
                 </tr>
                 ${
                   invoiceMetadata?.remainingAmount
                     ? `<tr>
                   <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Remaining Amount</td>
-                  <td style="border-bottom: none" class="text-right pr-45">-${invoiceMetadata?.remainingAmount}</td>
+                  <td style="border-bottom: none" class="text-right">-${invoiceMetadata?.remainingAmount}</td>
                 </tr>`
                     : ""
                 }
@@ -2080,7 +2080,7 @@ export const getInvoiceTemplatePdf = ({
                   invoiceMetadata?.planChangeCost
                     ? `<tr>
                   <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Plan Change Cost</td>
-                  <td style="border-bottom: none" class="text-right pr-45">${invoiceMetadata?.planChangeCost}</td>
+                  <td style="border-bottom: none" class="text-right">${invoiceMetadata?.planChangeCost}</td>
                 </tr>`
                     : ""
                 }
@@ -2088,7 +2088,7 @@ export const getInvoiceTemplatePdf = ({
                  invoiceMetadata?.couponDiscount
                    ? ` <tr>
                   <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Coupon (${invoiceMetadata?.coupon?.discount}%)</td>
-                  <td style="border-bottom: none" class="text-right pr-45">-${invoiceMetadata?.couponDiscount}</td>
+                  <td style="border-bottom: none" class="text-right">-${invoiceMetadata?.couponDiscount}</td>
                 </tr>`
                    : ""
                }
@@ -2096,7 +2096,7 @@ export const getInvoiceTemplatePdf = ({
                   invoiceMetadata?.taxDiscount
                     ? `<tr>
                   <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Tax (${invoiceMetadata?.tax?.taxCost}%)</td>
-                  <td style="border-bottom: none" class="text-right pr-45">${invoiceMetadata?.taxDiscount}</td>
+                  <td style="border-bottom: none" class="text-right">${invoiceMetadata?.taxDiscount}</td>
                 </tr>`
                     : ""
                 }
@@ -2104,7 +2104,7 @@ export const getInvoiceTemplatePdf = ({
                   invoiceMetadata?.extraPayableAmount
                     ? `<tr>
                     <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Extra Pay for Prev. Add-ons</td>
-                    <td style="border-bottom: none" class="text-right pr-45">${invoiceMetadata?.extraPayableAmount}</td>
+                    <td style="border-bottom: none" class="text-right">${invoiceMetadata?.extraPayableAmount}</td>
                   </tr>`
                     : ""
                 }

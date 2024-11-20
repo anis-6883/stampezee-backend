@@ -340,100 +340,91 @@ export const getRetailerBillingPdf = asyncHandler(async (req: IApiRequest, res: 
     },
     {
       $lookup: {
-        from: "retailers",
-        localField: "retailerId",
+        from: "enroll_subscriptions",
+        localField: "enrollSubscriptionIds",
         foreignField: "_id",
-        as: "retailer",
+        as: "enrollSubscriptions",
       },
     },
     {
       $lookup: {
-        from: "enroll_subscriptions",
-        localField: "enrollSubscriptionId",
+        from: "enrollments",
+        localField: "enrollmentId",
         foreignField: "_id",
-        as: "enrollSubscription",
+        as: "enrollment",
       },
     },
     {
       $unwind: {
-        path: "$retailer",
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-    {
-      $unwind: {
-        path: "$enrollSubscription",
+        path: "$enrollment",
         preserveNullAndEmptyArrays: true,
       },
     },
   ]);
 
-  const { invoiceNumber, amountTotal, retailer, enrollSubscription } = payment[0];
-
   const customerInfo = {
-    name: retailer?.fullName,
-    phone: `${retailer?.dialCode}-${retailer?.phone}`,
-    address: `${retailer?.address}, ${retailer?.city}, ${retailer?.postalCode}`,
+    name: req?.user.firstName + req?.user?.lastName,
+    phone: `${req?.user?.dialCode}-${req?.user?.phone}`,
+    address: `${req?.user?.address}, ${req?.user?.city}, ${req?.user?.postalCode}`,
   };
-  const purchasedItems = [
-    {
-      title: enrollSubscription?.planSnapshot?.title,
-      quantity: 1,
-      unitPrice: `${Number(enrollSubscription?.planSnapshot?.price * enrollSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
-      total: `${Number(enrollSubscription?.planSnapshot?.price * enrollSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
-    },
-  ];
-
   let taxValue = 0;
   let couponValue = 0;
+  let subTotal = 0;
 
-  // Check coupon eligibility & apply
-  if (enrollSubscription?.couponSnapshot) {
-    couponValue =
-      enrollSubscription?.couponSnapshot?.discountType === "percentage"
-        ? (enrollSubscription?.balanceInfo?.planCurrentPrice * enrollSubscription?.couponSnapshot?.discount) / 100
-        : enrollSubscription?.balanceInfo?.currencyRate * enrollSubscription?.couponSnapshot?.discount;
-    couponValue = Number(couponValue.toFixed(2));
-  }
+  let coupon: any = null;
+  const purchasedItems = payment[0]?.enrollSubscriptions?.map((purchasedSubscription: any) => {
+    // Check coupon eligibility & apply
+    if (purchasedSubscription?.couponSnapshot) {
+      couponValue +=
+        purchasedSubscription?.couponSnapshot?.discountType === "percentage"
+          ? (purchasedSubscription?.planSnapshot?.price * purchasedSubscription?.couponSnapshot?.discount) / 100
+          : payment[0]?.enrollment?.currencyRate * purchasedSubscription?.couponSnapshot?.discount;
+      coupon = purchasedSubscription?.couponSnapshot;
+    }
 
-  // Only tax apply
-  if (enrollSubscription?.taxSnapshot) {
-    taxValue = (enrollSubscription?.balanceInfo?.planCurrentPrice * enrollSubscription?.taxSnapshot?.taxCost) / 100;
-  }
+    // Only tax apply
+    if (payment[0]?.enrollment?.taxSnapshot) {
+      taxValue += (purchasedSubscription?.planSnapshot?.price * payment[0]?.enrollment?.taxSnapshot?.taxCost) / 100;
+    }
+
+    subTotal += purchasedSubscription?.planSnapshot?.price * payment[0]?.enrollment?.currencyRate;
+
+    return {
+      title: purchasedSubscription?.planSnapshot?.title,
+      quantity: 1,
+      unitPrice: `${Number(purchasedSubscription?.planSnapshot?.price * payment[0]?.enrollment?.currencyRate).toFixed(2)} ${payment[0]?.enrollment?.currency}`,
+      total: `${Number(purchasedSubscription?.planSnapshot?.price * payment[0]?.enrollment?.currencyRate).toFixed(2)} ${payment[0]?.enrollment?.currency}`,
+    };
+  });
 
   const invoiceMetadata = {
-    invoiceNo: invoiceNumber,
-    subtotal: `${Number(enrollSubscription?.planSnapshot?.price * enrollSubscription?.balanceInfo?.currencyRate).toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
+    invoiceNo: payment[0]?.invoiceNumber,
+    subtotal: `${Number(subTotal).toFixed(2)} ${payment[0]?.enrollment?.currency}`,
     remainingAmount:
-      enrollSubscription?.enrollStatus === "purchase"
+      payment[0]?.enrollment?.enrollStatus === "purchase" || !payment[0]?.balanceAmount
         ? null
-        : `${enrollSubscription?.balanceInfo?.currentBalance?.toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
+        : `${payment[0]?.balanceAmount} ${payment[0]?.enrollment?.currency}`,
     planChangeCost:
-      enrollSubscription?.enrollStatus === "purchase"
+      payment[0]?.enrollment?.enrollStatus === "purchase"
         ? null
-        : `${enrollSubscription?.planChangeCost.toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
-    couponDiscount: enrollSubscription?.couponSnapshot
-      ? `${couponValue.toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`
+        : `${payment[0]?.enrollment?.planChangeCost.toFixed(2)} ${payment[0]?.enrollment?.currency}`,
+    couponDiscount: couponValue !== 0 ? `${couponValue.toFixed(2)} ${payment[0]?.enrollment?.currency}` : null,
+    taxDiscount: payment[0]?.enrollment?.taxSnapshot
+      ? `${taxValue?.toFixed(2)} ${payment[0]?.enrollment?.currency}`
       : null,
-    taxDiscount: enrollSubscription?.taxSnapshot
-      ? `${taxValue?.toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`
-      : null,
-    coupon: enrollSubscription?.couponSnapshot
+    coupon,
+    tax: payment[0]?.enrollment?.taxSnapshot
       ? {
-          title: enrollSubscription?.couponSnapshot?.title,
-          discountType: enrollSubscription?.couponSnapshot?.discountType,
-          discount: enrollSubscription?.couponSnapshot?.discount,
+          taxTitle: payment[0]?.enrollment?.taxSnapshot?.taxTitle,
+          taxCost: payment[0]?.enrollment?.taxSnapshot?.taxCost,
         }
       : null,
-    tax: enrollSubscription?.taxSnapshot
-      ? {
-          taxTitle: enrollSubscription?.taxSnapshot?.taxTitle,
-          taxCost: enrollSubscription?.taxSnapshot?.taxCost,
-        }
-      : null,
-    total: `${(amountTotal / 100).toFixed(2)} ${enrollSubscription?.balanceInfo?.currency}`,
+    total: `${parseFloat(Math.abs(payment[0]?.amountTotal).toFixed(2))} ${payment[0]?.enrollment?.currency}`,
+    extraPayableAmount:
+      payment[0]?.enrollment?.enrollStatus === "purchase" || !payment[0]?.extraPayableAmount
+        ? null
+        : `${payment[0]?.extraPayableAmount} ${payment[0]?.enrollment?.currency}`,
   };
-
   const paymentInfo = {
     bankName: "Fauget Bank",
     accountName: "Juliana Silva",

@@ -7,6 +7,8 @@ interface IPayment extends Document {
   invoiceNumber: string;
   invoicePdf: string;
   amountTotal: number;
+  balanceAmount: number;
+  extraPayableAmount: number;
   currency: string;
   paymentStatus: string;
   paymentMethodDetails: Record<string, any>;
@@ -20,6 +22,8 @@ const paymentSchema = new Schema<IPayment>(
     invoiceNumber: { type: String, required: true },
     invoicePdf: { type: String, required: true },
     amountTotal: { type: Number, required: true },
+    balanceAmount: { type: Number, default: 0 },
+    extraPayableAmount: { type: Number, default: 0 },
     currency: { type: String, default: "CAD" },
     paymentStatus: { type: String, required: true },
     paymentMethodDetails: { type: Schema.Types.Mixed, required: true },
