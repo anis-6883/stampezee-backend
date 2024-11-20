@@ -111,7 +111,23 @@ export const getSingleBilling = asyncHandler(async (req: IApiRequest, res: Respo
                 {
                   $project: {
                     name: 1,
-                    address: "$branch.address",
+                    address: "$address.name",
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $lookup: {
+              from: "stamps",
+              localField: "_id",
+              foreignField: "enrollSubscriptionId",
+              as: "stamp",
+              pipeline: [
+                {
+                  $project: {
+                    title: 1,
+                    description: 1,
                   },
                 },
               ],
@@ -125,6 +141,7 @@ export const getSingleBilling = asyncHandler(async (req: IApiRequest, res: Respo
               type: "$planSnapshot.type",
               deletedByRetailer: 1,
               branch: 1,
+              stamp: 1,
             },
           },
           {
