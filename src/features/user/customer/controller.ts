@@ -138,7 +138,11 @@ export const customerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     }
   );
 
-  return apiResponse(res, 200, true, "Otp verified & Login successfully!", { token, ...customer._doc });
+  return apiResponse(res, 200, true, "Otp verified & Login successfully!", {
+    token,
+    ...customer._doc,
+    role: ROLE.CUSTOMER,
+  });
 });
 
 /**
