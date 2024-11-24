@@ -66,7 +66,7 @@ export const createCoupon = asyncHandler(async (req: IApiRequest, res: Response)
  */
 export const getAllRetailersAndPlans = asyncHandler(async (req: IApiRequest, res: Response) => {
   const [retailers, subscriptions] = await Promise.all([
-    Retailer.find({}, { storeName: 1, image: 1 }),
+    Retailer.find({ isVerified: true, softDeleted: false, status: true }, { storeName: 1, image: 1 }),
     Subscription.find({ slug: { $ne: "trial" } }, { title: 1 }).sort({ createdAt: "asc" }),
   ]);
 
