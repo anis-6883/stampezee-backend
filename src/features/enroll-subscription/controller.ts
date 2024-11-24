@@ -97,7 +97,9 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
   if (appliedSlugs.length <= 0) throw "Provided invalid coupon code!";
 
   if (coupon.allowFor === "specific") {
-    if (!coupon.allowedRetailers.includes(req.user._id as any)) throw "Provided invalid coupon code!";
+    if (!coupon.allowedRetailers.find((id: any) => String(id) === String(req.user._id))) {
+      throw "Provided invalid coupon code!";
+    }
   }
 
   // TODO: Check This Condition
