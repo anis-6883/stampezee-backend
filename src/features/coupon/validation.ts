@@ -5,10 +5,8 @@ const startedAt = Joi.date().messages({
   "date.base": "startedAt must be date!",
 });
 
-const expiredAt = Joi.date().greater(Joi.ref("startedAt")).messages({
+const expiredAt = Joi.date().messages({
   "date.base": "expiredAt must be date!",
-  "date.greater": "expiredAt must be greater than startedAt!",
-  "date.ref": "expiredAt must be greater than startedAt!",
 });
 
 const discountType = Joi.string().trim().lowercase().valid("percentage", "flat").messages({
