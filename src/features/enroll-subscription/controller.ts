@@ -329,7 +329,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       if (appliedSlugs.length <= 0) throw "Provided invalid coupon code!";
 
       if (coupon.allowFor === "specific") {
-        if (!coupon.allowedRetailers.includes(req.user._id as any)) throw "Provided invalid coupon code!";
+        if (!coupon.allowedRetailers.find((id: any) => String(id) === String(req.user._id))) {
+          throw "Provided invalid coupon code!";
+        }
       }
 
       const alreadyApplied = await Enrollment.countDocuments({
