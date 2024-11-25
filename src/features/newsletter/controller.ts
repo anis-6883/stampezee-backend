@@ -35,11 +35,22 @@ export const subscribedUserList = asyncHandler(async (req: IApiRequest, res: Res
   const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
-  const query: any = {};
+  // Flexible query type
+  const query: { $or?: Array<{ email?: RegExp; createdAt?: { $gte: Date; $lte: Date } }> } = {};
 
-  if (search) {
-    const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
-    query.email = regex;
+  if (search && typeof search === "string") {
+    const regex = new RegExp(`.*${search}.*`, "i"); // Case insensitive search for email
+    const orQuery: Array<{ email?: RegExp; createdAt?: { $gte: Date; $lte: Date } }> = [
+      { email: regex }, // Match email with regex
+    ];
+
+    // Attempt to parse search as a date
+    const searchDate = new Date(search);
+    if (!isNaN(searchDate.getTime())) {
+      orQuery.push({ createdAt: { $gte: searchDate, $lte: new Date(searchDate.getTime() + 24 * 60 * 60 * 1000) } });
+    }
+
+    query.$or = orQuery;
   }
 
   const [docs, total] = await Promise.all([
@@ -49,5 +60,5 @@ export const subscribedUserList = asyncHandler(async (req: IApiRequest, res: Res
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  return apiResponse(res, 200, true, "Thank you for joining our newsletter!", data);
+  return apiResponse(res, 200, true, "Newsletter request fetched successfully!", data);
 });
