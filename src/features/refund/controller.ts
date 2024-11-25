@@ -17,21 +17,21 @@ export const getRetailerRefunds = asyncHandler(async (req: IApiRequest, res: Res
     Refund.aggregate([
       {
         $lookup: {
-          from: "enroll_subscriptions",
-          localField: "enrollSubscriptionId",
+          from: "enrollments",
+          localField: "enrollmentId",
           foreignField: "_id",
-          as: "enrollsubscription",
+          as: "enrollment",
         },
       },
       {
         $unwind: {
-          path: "$enrollsubscription",
+          path: "$enrollment",
           preserveNullAndEmptyArrays: true,
         },
       },
       {
         $match: {
-          "enrollsubscription.retailerId": req.user._id,
+          "enrollment.retailerId": req.user._id,
         },
       },
       {
@@ -49,21 +49,21 @@ export const getRetailerRefunds = asyncHandler(async (req: IApiRequest, res: Res
     Refund.aggregate([
       {
         $lookup: {
-          from: "enroll_subscriptions",
-          localField: "enrollSubscriptionId",
+          from: "enrollments",
+          localField: "enrollmentId",
           foreignField: "_id",
-          as: "enrollsubscription",
+          as: "enrollment",
         },
       },
       {
         $unwind: {
-          path: "$enrollsubscription",
+          path: "$enrollment",
           preserveNullAndEmptyArrays: true,
         },
       },
       {
         $match: {
-          "enrollsubscription.retailerId": req.user._id,
+          "enrollment.retailerId": req.user._id,
         },
       },
     ]),
@@ -88,10 +88,10 @@ export const getAllRefundsForSuperAdmin = asyncHandler(async (req: IApiRequest, 
     Refund.aggregate([
       {
         $lookup: {
-          from: "enroll_subscriptions",
-          localField: "enrollSubscriptionId",
+          from: "enrollments",
+          localField: "enrollmentId",
           foreignField: "_id",
-          as: "enrollsubscription",
+          as: "enrollment",
           pipeline: [
             {
               $lookup: {
@@ -123,7 +123,7 @@ export const getAllRefundsForSuperAdmin = asyncHandler(async (req: IApiRequest, 
       },
       {
         $unwind: {
-          path: "$enrollsubscription",
+          path: "$enrollment",
           preserveNullAndEmptyArrays: true,
         },
       },
@@ -139,7 +139,7 @@ export const getAllRefundsForSuperAdmin = asyncHandler(async (req: IApiRequest, 
         $limit: Number(limit),
       },
     ]),
-    Refund.find({}).countDocuments(),
+    Refund.countDocuments(),
   ]);
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
