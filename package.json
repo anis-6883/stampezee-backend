@@ -5,7 +5,7 @@
   "main": "src/index.ts",
   "scripts": {
     "start": "node ./dist/index.js",
-    "dev": "nodemon",
+    "dev": "ts-node-dev src/index.ts",
     "build": "npm run clean && tsc",
     "format": "prettier --write .",
     "prepare": "husky",
@@ -53,13 +53,13 @@
     "multer": "^1.4.5-lts.1",
     "node-schedule": "^2.1.1",
     "nodemailer": "^6.9.13",
-    "nodemon": "^3.1.0",
     "prettier": "^3.2.5",
     "puppeteer": "^23.5.1",
     "rimraf": "^5.0.5",
     "socket.io": "^4.7.5",
     "stripe": "^15.10.0",
     "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
     "typescript": "^5.3.3"
   }
 }
