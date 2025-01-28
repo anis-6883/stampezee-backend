@@ -610,7 +610,7 @@ export const otpTemplate = (
                 <tr class="w-full">
                   <td colspan="3">
                     <div style="font-family: Verdana">
-                      <p class="font-bold mb-3">Don't share your otp with anyone!</p>
+                      <p class="font-bold mb-3">Don't share your OTP with anyone!</p>
                       <p>Thank you for signing up!</p>
                       <p>Best Regards,</p>
                       <p class="font-bold mb-3">${companyName} Team</p>

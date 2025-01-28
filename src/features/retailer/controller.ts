@@ -91,14 +91,15 @@ export const getAllRetailers = asyncHandler(async (req: IApiRequest, res: Respon
       },
       {
         $lookup: {
-          from: "enroll_subscriptions",
+          from: "enrollments",
           localField: "_id",
           foreignField: "retailerId",
-          as: "enrollSubscription",
+          as: "enrollment",
           pipeline: [
             {
               $match: {
-                "planSnapshot.type": "subscription",
+                planExists: { $ne: null },
+                validityTo: { $gt: new Date() },
                 status: true,
               },
             },
@@ -106,20 +107,11 @@ export const getAllRetailers = asyncHandler(async (req: IApiRequest, res: Respon
         },
       },
       {
-        $unwind: {
-          path: "$enrollSubscription",
-          preserveNullAndEmptyArrays: true,
-        },
+        $unwind: "$enrollment",
       },
       {
         $addFields: {
-          currentPlan: {
-            $cond: {
-              if: { $gt: [{ $type: "$enrollSubscription" }, "missing"] }, // Check if enrollSubscription exists
-              then: "$enrollSubscription.planSnapshot.title", // If true, set currentPlan to title
-              else: null, // If false, set it to null
-            },
-          },
+          currentPlan: "$enrollment.planExists",
         },
       },
       {
@@ -170,7 +162,7 @@ export const getAllRetailers = asyncHandler(async (req: IApiRequest, res: Respon
       },
       {
         $project: {
-          enrollSubscription: 0,
+          enrollment: 0,
           branches: 0,
           stamps: 0,
           password: 0,

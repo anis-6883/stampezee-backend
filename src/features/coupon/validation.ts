@@ -36,10 +36,10 @@ const limit = Joi.number().min(1).messages({
   "number.min": "limit must be greater than or equal to 1!",
 });
 
-const code = Joi.string().trim().min(6).messages({
+const code = Joi.string().trim().min(4).messages({
   "string.base": `code must be string!`,
   "string.empty": `code must not be empty!`,
-  "string.min": `code must be 6 characters long!`,
+  "string.min": `code must be 4 characters long!`,
 });
 
 const allowFor = Joi.string().trim().lowercase().valid("all", "specific").messages({

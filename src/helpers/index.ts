@@ -41,7 +41,7 @@ export const asyncHandler = (func: any) => async (req: Request, res: Response) =
       return apiResponse(res, 400, false, "Duplicate value found!");
     }
 
-    return apiResponse(res, 400, false, err.message || err || "Something went wrong!");
+    return apiResponse(res, 400, false, "Something went wrong!");
   }
 };
 
