@@ -251,5 +251,5 @@ export const collectStamp = asyncHandler(async (req: IApiRequest, res: Response)
     customerId: req.user._id,
   });
 
-  return apiResponse(res, 200, true, "Stamp collected successfully!");
+  return apiResponse(res, 200, true, "Stamp added successfully!");
 });

@@ -27,7 +27,7 @@ import {
 const ALARM_EXPIRE_TIME = 60 * 60 * 24 * 29 * 1000; // 29 Days
 
 /**
- * Retailer Registration & Send Otp
+ * Retailer Registration & Send OTP
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -63,13 +63,13 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
 
   sendVerificationEmail(retailerBody.email, retailerBody.otp);
 
-  return apiResponse(res, 201, true, "Otp send successfully!", {
+  return apiResponse(res, 201, true, "OTP send successfully!", {
     temp: tempToken,
   });
 });
 
 /**
- * Retailer Otp Verify & Login
+ * Retailer OTP Verify & Login
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -78,7 +78,7 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
   const result = await verifyOtpSchema.validateAsync(req.body);
 
   const isVerified = req.user.otp === Number(result.otp) && req.user.otpExpiry > new Date();
-  if (!isVerified) return apiResponse(res, 400, false, "Invalid Otp!");
+  if (!isVerified) return apiResponse(res, 400, false, "Invalid OTP!");
 
   await Retailer.updateOne(
     { email: req.user.email },
@@ -99,7 +99,7 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     "updatedAt",
   ]);
 
-  return apiResponse(res, 200, true, "Otp verified & Login successfully!", {
+  return apiResponse(res, 200, true, "OTP verified & Login successfully!", {
     ...data,
     accessToken,
     refreshToken,
@@ -109,7 +109,7 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
 });
 
 /**
- * Retailer Resend Otp
+ * Retailer Resend OTP
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -130,7 +130,7 @@ export const retailerResendOtp = asyncHandler(async (req: IApiRequest, res: Resp
 
   sendVerificationEmail(req.user.email, otp);
 
-  return apiResponse(res, 200, true, "Otp resend successfully!");
+  return apiResponse(res, 200, true, "OTP resend successfully!");
 });
 
 /**
@@ -453,14 +453,14 @@ export const retailerForgetPassword = asyncHandler(async (req: IApiRequest, res:
 
   const tempToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER, ott: true }, "15m"); // 15 min
 
-  // Send Otp to Email
+  // Send OTP to Email
   sendVerificationEmail(retailer.email, otp);
 
-  return apiResponse(res, 200, true, "Otp sent successfully!", { temp: tempToken });
+  return apiResponse(res, 200, true, "OTP sent successfully!", { temp: tempToken });
 });
 
 /**
- * Retailer Forget Password Resend Otp
+ * Retailer Forget Password Resend OTP
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -477,11 +477,11 @@ export const retailerForgetPasswordResendOtp = asyncHandler(async (req: IApiRequ
 
   sendVerificationEmail(req.user.email, otp);
 
-  return apiResponse(res, 200, true, "Otp resend successfully!");
+  return apiResponse(res, 200, true, "OTP resend successfully!");
 });
 
 /**
- * Retailer Forget Password Otp Verify
+ * Retailer Forget Password OTP Verify
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -490,11 +490,11 @@ export const retailerForgetPasswordOtpVerify = asyncHandler(async (req: IApiRequ
   const result = await verifyOtpSchema.validateAsync(req.body);
 
   const isVerified = req.user.otp === Number(result.otp) && req.user.otpExpiry > new Date();
-  if (!isVerified) return apiResponse(res, 400, false, "Invalid Otp!");
+  if (!isVerified) return apiResponse(res, 400, false, "Invalid OTP!");
 
   await Retailer.updateOne({ email: req.user.email }, { otp: null, otpExpiry: null });
 
-  return apiResponse(res, 200, true, "Otp verified successfully!");
+  return apiResponse(res, 200, true, "OTP verified successfully!");
 });
 
 /**

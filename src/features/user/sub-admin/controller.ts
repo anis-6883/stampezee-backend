@@ -170,14 +170,14 @@ export const subAdminForgetPassword = asyncHandler(async (req: IApiRequest, res:
 
   const token = generateSignature({ email: subAdmin.email, role: ROLE.SUB_ADMIN, ott: true }, "15m"); // 15 min
 
-  // Send Otp to Email
+  // Send OTP to Email
   sendVerificationEmail(subAdmin.email, otp);
 
-  return apiResponse(res, 200, true, "Otp sent successfully!", { token });
+  return apiResponse(res, 200, true, "OTP sent successfully!", { token });
 });
 
 /**
- * SubAdmin Forget Password Otp Verify
+ * SubAdmin Forget Password OTP Verify
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -187,15 +187,15 @@ export const subAdminForgetPasswordOtpVerify = asyncHandler(async (req: IApiRequ
   if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
 
   const isVerified = req.user.otp === Number(result.value.otp) && req.user.otpExpiry > new Date();
-  if (!isVerified) throw "Invalid Otp!";
+  if (!isVerified) throw "Invalid OTP!";
 
   await SubAdmin.updateOne({ email: req.user.email }, { otp: null, otpExpiry: null });
 
-  return apiResponse(res, 200, true, "Otp verified successfully!");
+  return apiResponse(res, 200, true, "OTP verified successfully!");
 });
 
 /**
- * SubAdmin Forget Password Resend Otp
+ * SubAdmin Forget Password Resend OTP
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -212,7 +212,7 @@ export const subAdminForgetPasswordResendOtp = asyncHandler(async (req: IApiRequ
 
   sendVerificationEmail(req.user.email, otp);
 
-  return apiResponse(res, 200, true, "Otp resend successfully!");
+  return apiResponse(res, 200, true, "OTP resend successfully!");
 });
 
 /**

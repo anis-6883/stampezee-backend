@@ -27,7 +27,7 @@ import {
 } from "../validation";
 
 /**
- * Customer Registration & Send Otp
+ * Customer Registration & Send OTP
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -106,12 +106,12 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
       await Customer.create(customerBody);
     }
 
-    return apiResponse(res, 201, true, "Otp send successfully!", { token });
+    return apiResponse(res, 201, true, "OTP send successfully!", { token });
   }
 });
 
 /**
- * Customer Otp Verify & Login
+ * Customer OTP Verify & Login
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -125,7 +125,7 @@ export const customerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
   }
 
   const isVerified = req.user.otp === Number(result.value.otp) && req.user.otpExpiry > new Date();
-  if (!isVerified) return apiResponse(res, 400, false, "Invalid Otp!");
+  if (!isVerified) return apiResponse(res, 400, false, "Invalid OTP!");
 
   const token = generateSignature({ email: req.user.email, role: ROLE.CUSTOMER }, "30 days");
 
@@ -138,7 +138,7 @@ export const customerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     }
   );
 
-  return apiResponse(res, 200, true, "Otp verified & Login successfully!", {
+  return apiResponse(res, 200, true, "OTP verified & Login successfully!", {
     token,
     ...customer._doc,
     role: ROLE.CUSTOMER,
@@ -146,7 +146,7 @@ export const customerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
 });
 
 /**
- * Customer Resend Otp
+ * Customer Resend OTP
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -167,7 +167,7 @@ export const customerResendOtp = asyncHandler(async (req: IApiRequest, res: Resp
 
   sendVerificationEmail(req.user.email, otp);
 
-  return apiResponse(res, 200, true, "Otp resend successfully!");
+  return apiResponse(res, 200, true, "OTP resend successfully!");
 });
 
 /**
@@ -401,10 +401,10 @@ export const forgetPassword = asyncHandler(async (req: IApiRequest, res: Respons
 
     const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER, ott: true }, "15m"); // 15 min
 
-    // Send Otp to Email
+    // Send OTP to Email
     sendVerificationEmail(customer.email, otp);
 
-    return apiResponse(res, 200, true, "Otp sent successfully!", { token });
+    return apiResponse(res, 200, true, "OTP sent successfully!", { token });
   }
 
   if (subAdmin) {
@@ -415,17 +415,17 @@ export const forgetPassword = asyncHandler(async (req: IApiRequest, res: Respons
 
     const token = generateSignature({ email: subAdmin.email, role: ROLE.SUB_ADMIN, ott: true }, "15m"); // 15 min
 
-    // Send Otp to Email
+    // Send OTP to Email
     sendVerificationEmail(subAdmin.email, otp);
 
-    return apiResponse(res, 200, true, "Otp sent successfully!", { token });
+    return apiResponse(res, 200, true, "OTP sent successfully!", { token });
   }
 
   return apiResponse(res, 500, true, "Something went wrong!");
 });
 
 /**
- * Customer & Sub-Admin Forget Password Otp Verify
+ * Customer & Sub-Admin Forget Password OTP Verify
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -435,16 +435,16 @@ export const customerAndSubAdminForgetPasswordOtpVerify = asyncHandler(async (re
   if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
 
   const isVerified = req.user.otp === Number(result.value.otp) && req.user.otpExpiry > new Date();
-  if (!isVerified) return apiResponse(res, 400, false, "Invalid Otp!");
+  if (!isVerified) return apiResponse(res, 400, false, "Invalid OTP!");
 
   if (req.role === ROLE.CUSTOMER) await Customer.updateOne({ email: req.user.email }, { otp: null, otpExpiry: null });
   if (req.role === ROLE.SUB_ADMIN) await SubAdmin.updateOne({ email: req.user.email }, { otp: null, otpExpiry: null });
 
-  return apiResponse(res, 200, true, "Otp verified successfully!");
+  return apiResponse(res, 200, true, "OTP verified successfully!");
 });
 
 /**
- * Customer & Sub-Admin Forget Password Resend Otp
+ * Customer & Sub-Admin Forget Password Resend OTP
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -459,7 +459,7 @@ export const customerForgetPasswordResendOtp = asyncHandler(async (req: IApiRequ
 
   sendVerificationEmail(req.user.email, otp);
 
-  return apiResponse(res, 200, true, "Otp resend successfully!");
+  return apiResponse(res, 200, true, "OTP resend successfully!");
 });
 
 /**
