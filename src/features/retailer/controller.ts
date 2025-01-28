@@ -227,21 +227,24 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
       },
     },
     {
-      // Lookup for the subscription type "plan"
       $lookup: {
-        from: "enroll_subscriptions",
+        from: "enrollments",
         localField: "_id",
         foreignField: "retailerId",
-        as: "enrollSubscription",
+        as: "enrollment",
         pipeline: [
           {
             $match: {
-              "planSnapshot.type": "subscription",
+              planExists: { $ne: null },
+              validityTo: { $gt: new Date() },
               status: true,
             },
           },
         ],
       },
+    },
+    {
+      $unwind: "$enrollment",
     },
     {
       // Lookup for the subscription type "addon"
@@ -273,12 +276,6 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
             },
           },
         ],
-      },
-    },
-    {
-      $unwind: {
-        path: "$enrollSubscription",
-        preserveNullAndEmptyArrays: true,
       },
     },
     {
@@ -388,13 +385,7 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
     },
     {
       $addFields: {
-        currentPlan: {
-          $cond: {
-            if: { $gt: [{ $type: "$enrollSubscription" }, "missing"] }, // Check if enrollSubscription exists
-            then: "$enrollSubscription.planSnapshot.title", // If true, set currentPlan to title
-            else: null, // If false, set it to null
-          },
-        },
+        currentPlan: "$enrollment.planExists",
         totalActiveBranch: { $size: "$branches" },
         totalSubAdmin: { $size: "$sub_admins" },
         totalActiveStamp: { $size: "$stamps" },
@@ -405,7 +396,7 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
     },
     {
       $project: {
-        enrollSubscription: 0,
+        enrollment: 0,
         stamps: 0,
         password: 0,
         otp: 0,
