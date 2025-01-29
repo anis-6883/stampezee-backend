@@ -102,7 +102,7 @@ export const getSubscriptionPayments = asyncHandler(async (req: IApiRequest, res
  */
 export const getSingleSubscriptionPayment = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
-  if (!Types.ObjectId.isValid(id)) throw "Please, provide valid id!";
+  if (!Types.ObjectId.isValid(id)) return apiResponse(res, 400, false, "Please, provide valid id!");
 
   const enrollment = await Enrollment.aggregate([
     {
@@ -161,7 +161,7 @@ export const getSingleSubscriptionPayment = asyncHandler(async (req: IApiRequest
     },
   ]);
 
-  if (enrollment.length <= 0) throw "No Billing Found!";
+  if (enrollment.length <= 0) return apiResponse(res, 400, false, "No Billing Found!");
 
   return apiResponse(res, 200, true, "Retailer single billing fetched successfully!", enrollment[0]);
 });
@@ -180,7 +180,7 @@ export const getRetailerBillingPortal = asyncHandler(async (req: IApiRequest, re
   const { customerId, returnUrl } = result;
 
   const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
-  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+  if (!paymentMetadata) return apiResponse(res, 400, false, "Something went wrong in Stripe settings!");
 
   const { stripeSecretKey } = paymentMetadata?.stripe;
   const stripe = new Stripe(stripeSecretKey);

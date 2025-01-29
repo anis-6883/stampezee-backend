@@ -530,6 +530,6 @@ export const deleteAccount = asyncHandler(async (req: IApiRequest, res: Response
   if (userResponse) {
     return apiResponse(res, 200, true, "Customer has been deleted successfully");
   } else {
-    throw "Something went wrong.";
+    return apiResponse(res, 400, false, "Something went wrong.");
   }
 });

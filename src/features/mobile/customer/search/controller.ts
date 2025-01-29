@@ -40,7 +40,7 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
   const long = req.user.address.loc.coordinates[0];
   const lat = req.user.address.loc.coordinates[1];
 
-  if (!long || !lat) throw "Latitude & Longitude must be set!";
+  if (!long || !lat) return apiResponse(res, 400, false, "Latitude & Longitude must be set!");
 
   // Find already collected stampIds
   const stampIds = (await CollectStamp.find({ customerId: req.user._id }, { stampId: 1, _id: 0 })).map(
@@ -238,11 +238,11 @@ export const collectStamp = asyncHandler(async (req: IApiRequest, res: Response)
   ]);
 
   if (alreadyCollected) {
-    throw "This stamp already collected!";
+    return apiResponse(res, 400, false, "This stamp already collected!");
   }
 
   if (!branch || !stamp) {
-    throw "Branch or Stamp not found!";
+    return apiResponse(res, 400, false, "Branch or Stamp not found!");
   }
 
   await CollectStamp.create({

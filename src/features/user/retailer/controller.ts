@@ -525,10 +525,10 @@ export const retailerChangePassword = asyncHandler(async (req: IApiRequest, res:
   const retailer = await Retailer.findById(req.user._id);
 
   const isPasswordValid = await bcrypt.compare(result.oldPassword, retailer.password);
-  if (!isPasswordValid) throw "Old password is incorrect!";
+  if (!isPasswordValid) return apiResponse(res, 400, false, "Old password is incorrect!");
 
   const isSame = await bcrypt.compare(result.newPassword, retailer.password);
-  if (isSame) throw "New password cannot be same as old password!";
+  if (isSame) return apiResponse(res, 400, false, "New password cannot be same as old password!");
 
   const hashedPassword = await bcrypt.hash(result.newPassword, 10);
 

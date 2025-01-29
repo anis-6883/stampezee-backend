@@ -25,8 +25,8 @@ export const createSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
     SubAdmin.findOne({ email: createBody.email }),
   ]);
 
-  if (!branch) throw "Branch not found!";
-  if (existingSubAdmin) throw "This email already exists!";
+  if (!branch) return apiResponse(res, 400, false, "Branch not found!");
+  if (existingSubAdmin) return apiResponse(res, 400, false, "This email already exists!");
 
   let imageKey = null;
 
@@ -169,11 +169,11 @@ export const updateSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
 
   if (updatedBody.branchId) {
     const branch = await Branch.findOne({ _id: updatedBody.branchId, retailerId: req.user._id });
-    if (!branch) throw "Branch not found!";
+    if (!branch) return apiResponse(res, 400, false, "Branch not found!");
   }
 
   const isExist = await SubAdmin.findOne({ email: updatedBody.email, _id: { $ne: id } });
-  if (isExist) throw "This email already exists!";
+  if (isExist) return apiResponse(res, 400, false, "This email already exists!");
 
   // Upload File to S3 Bucket
   if (req.file) {

@@ -73,10 +73,11 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
     Category.findById(categoryId),
   ]);
 
-  if (!branch) throw "Branch not found!";
-  if (!stampImage) throw "Stamp Image not found!";
-  if (!category) throw "Category not found!";
-  if (enrollments.length === 0) throw "No one is allowed to create a stamp without a plan!";
+  if (!branch) return apiResponse(res, 400, false, "Branch not found!");
+  if (!stampImage) return apiResponse(res, 400, false, "Stamp Image not found!");
+  if (!category) return apiResponse(res, 400, false, "Category not found!");
+  if (enrollments.length === 0)
+    return apiResponse(res, 400, false, "No one is allowed to create a stamp without a plan!");
 
   const subscription: IEnrollSubscription = enrollments.find((enrollment: IEnrollSubscription) => {
     return enrollment.planSnapshot.type === "subscription";
@@ -89,7 +90,8 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
     .map((enrollment: IEnrollSubscription) => enrollment._id);
 
   const allowTotalStamp = subscription?.planSnapshot?.allowTotalStamp + addons.length;
-  if (retailerTotalStamp.length >= allowTotalStamp) throw "Your stamp limit is over. Take new Add-on!";
+  if (retailerTotalStamp.length >= allowTotalStamp)
+    return apiResponse(res, 400, false, "Your stamp limit is over. Take new Add-on!");
 
   const subscriptionStampSlot = retailerTotalStamp.filter((stamp: IStamp) => stamp.source === "subscription").length;
   const source = subscriptionStampSlot < subscription?.planSnapshot?.allowTotalStamp ? "subscription" : "addon";
@@ -115,7 +117,7 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
   createBody.categoryId = categoryId;
 
   const settings = await Settings.findOne(null, { "general.timezone": 1 });
-  if (!settings?.general?.timezone) throw "Setup TimeZone First!";
+  if (!settings?.general?.timezone) return apiResponse(res, 400, false, "Setup TimeZone First!");
 
   const systemTime = getUTC(createBody.startedAt, Number(settings.general.timezone.value));
   const expireTime = getUTC(createBody.expiredAt, Number(settings.general.timezone.value), true);
@@ -366,22 +368,22 @@ export const updateStamp = asyncHandler(async (req: IApiRequest, res: Response) 
   const { branchId, categoryId, stampImageId, softDeleted, ...updatedBody } = result;
 
   const stamp = await Stamp.findOne({ _id: id });
-  if (!stamp) throw "Stamp not found!";
-  if (stamp.isPublished) throw "The published stamp cannot be edited!";
+  if (!stamp) return apiResponse(res, 400, false, "Stamp not found!");
+  if (stamp.isPublished) return apiResponse(res, 400, false, "The published stamp cannot be edited!");
 
   if (branchId) {
     const branch = await Branch.findOne({ _id: branchId, retailerId: req.user._id });
-    if (!branch) throw "Branch not found!";
+    if (!branch) return apiResponse(res, 400, false, "Branch not found!");
   }
 
   if (categoryId) {
     const category = await Category.findOne({ _id: categoryId });
-    if (!category) throw "Category not found!";
+    if (!category) return apiResponse(res, 400, false, "Category not found!");
   }
 
   if (stampImageId) {
     const stampImage = await StampImage.findOne({ _id: stampImageId });
-    if (!stampImage) throw "Stamp image not found!";
+    if (!stampImage) return apiResponse(res, 400, false, "Stamp Image not found!");
   }
 
   if (!updatedBody?.hasValidity) {
@@ -394,7 +396,7 @@ export const updateStamp = asyncHandler(async (req: IApiRequest, res: Response) 
   updatedBody.categoryId = categoryId;
 
   const settings = await Settings.findOne(null, { "general.timezone": 1 });
-  if (!settings?.general?.timezone) throw "Setup TimeZone First!";
+  if (!settings?.general?.timezone) return apiResponse(res, 400, false, "Setup TimeZone First!");
 
   const systemTime = getUTC(updatedBody.startedAt, Number(settings.general.timezone.value));
   const expireTime = getUTC(updatedBody.expiredAt, Number(settings.general.timezone.value), true);
@@ -446,9 +448,9 @@ export const publishStamp = asyncHandler(async (req: IApiRequest, res: Response)
   const { id } = req.params;
 
   const stamp = await Stamp.findOne({ _id: id });
-  if (!stamp) throw "Stamp not found!";
+  if (!stamp) return apiResponse(res, 400, false, "Stamp not found!");
 
-  if (stamp.isPublished) throw "The stamp is already published";
+  if (stamp.isPublished) return apiResponse(res, 400, false, "The stamp is already published");
 
   const updatedData = await Stamp.findOneAndUpdate({ _id: id }, { isPublished: true }, { new: true });
 
@@ -471,7 +473,7 @@ export const softDeleteStamp = asyncHandler(async (req: IApiRequest, res: Respon
     }
   );
 
-  if (!stamp) throw "Stamp not found!";
+  if (!stamp) return apiResponse(res, 400, false, "Stamp not found!");
 
   return apiResponse(res, 200, true, "Stamp deleted successfully!");
 });
@@ -509,7 +511,7 @@ export const confirmDeleteStamp = asyncHandler(async (req: IApiRequest, res: Res
   const { id } = req.params;
 
   const stamp = await Stamp.findOneAndDelete({ _id: id });
-  if (!stamp) throw "Stamp not found!";
+  if (!stamp) return apiResponse(res, 400, false, "Stamp not found!");
 
   return apiResponse(res, 200, true, "Stamp deleted successfully!");
 });

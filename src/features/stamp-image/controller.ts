@@ -65,7 +65,8 @@ export const createStampImage = asyncHandler(async (req: IApiRequest, res: Respo
       },
     ]);
 
-    if (enrollments.length === 0) throw "No one is allowed to create a branch without a plan!";
+    if (enrollments.length === 0)
+      return apiResponse(res, 400, false, "No one is allowed to create a branch without a plan!");
 
     const addons = enrollments
       .filter((enrollment: IEnrollSubscription) => {
@@ -83,7 +84,7 @@ export const createStampImage = asyncHandler(async (req: IApiRequest, res: Respo
     const addonIds = addons.map((enrollSubscription: IEnrollSubscription) => enrollSubscription._id.toString());
     const unUsedIds = addonIds.filter((id) => !retailerAddonIds.includes(id));
 
-    if (unUsedIds.length === 0) throw "Your stamp image limit is over. Take new Add-on!";
+    if (unUsedIds.length === 0) return apiResponse(res, 400, false, "Your stamp image limit is over. Take new Add-on!");
     createBody.enrollSubscriptionId = unUsedIds[0];
   }
 

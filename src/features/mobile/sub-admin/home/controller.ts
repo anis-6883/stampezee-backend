@@ -29,7 +29,7 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
     if (alreadyScanned.invoice == null) {
       await OrderStamp.deleteOne({ _id: alreadyScanned._id });
     } else {
-      throw "This stamp has already been used!";
+      return apiResponse(res, 400, false, "This stamp has already been used!");
     }
   }
 
@@ -117,11 +117,11 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
 
   const currencyExchange = await CurrencyExchange.findOne({ name: retailer?.businessCurrency });
 
-  if (stampIsCollected.length < 1) throw "Invalid QR Code!";
+  if (stampIsCollected.length < 1) return apiResponse(res, 400, false, "Invalid QR Code!");
 
-  if (stampIsCollected[0].stamps.length < 1) throw "Stamp Expired!";
+  if (stampIsCollected[0].stamps.length < 1) return apiResponse(res, 400, false, "Stamp Expired!");
 
-  if (stampIsCollected[0].rewardTaken) throw "You have already collected the reward!";
+  if (stampIsCollected[0].rewardTaken) return apiResponse(res, 400, false, "You have already collected the reward!");
 
   let orderBody: Object = {
     collectStampId,
@@ -215,7 +215,7 @@ export const uploadInvoice = asyncHandler(async (req: IApiRequest, res: Response
     Retailer.findById(req?.user?.retailerId, { businessCurrency: 1 }),
   ]);
 
-  if (orderIsAvailable.length < 1) throw "Invalid Order!";
+  if (orderIsAvailable.length < 1) return apiResponse(res, 400, false, "Invalid Order!");
   if (orderIsAvailable[0].subAdmin.length < 1) return apiResponse(res, 401, false, "Unauthorized Request!");
 
   const updatedBody: any = { amount };
@@ -505,7 +505,7 @@ export const orderDetails = asyncHandler(async (req: IApiRequest, res: Response)
    * customer account is hard deleted from db
    * stamp is hard deleted
    */
-  if (orderDetails.length < 1) throw "Invalid order!";
+  if (orderDetails.length < 1) return apiResponse(res, 400, false, "Invalid order!");
 
   return apiResponse(res, 200, true, "Order details have fetched successfully!", orderDetails[0]);
 });

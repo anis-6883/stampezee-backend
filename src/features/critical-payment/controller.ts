@@ -99,7 +99,7 @@ export const resolveCriticalPayment = asyncHandler(async (req: IApiRequest, res:
   const { stripeInvoiceId } = result;
 
   const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
-  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+  if (!paymentMetadata) return apiResponse(res, 400, false, "Something went wrong in Stripe settings!");
 
   const { stripeSecretKey } = paymentMetadata.stripe;
   const stripe = new Stripe(stripeSecretKey, { apiVersion: "2024-04-10", typescript: true });
@@ -110,7 +110,7 @@ export const resolveCriticalPayment = asyncHandler(async (req: IApiRequest, res:
 
   if (invoice?.id && invoice?.payment_intent?.payment_method?.id) {
     const criticalPayment = await CriticalPayment.findOne({ stripeInvoiceId });
-    if (!criticalPayment) throw "Provided invalid stripe invoice id!";
+    if (!criticalPayment) return apiResponse(res, 400, false, "Provided invalid stripe invoice id!");
 
     const enrollUpdated = await Enrollment.findOneAndUpdate(
       {
@@ -124,7 +124,7 @@ export const resolveCriticalPayment = asyncHandler(async (req: IApiRequest, res:
 
     if (enrollUpdated) await CriticalPayment.findOneAndUpdate({ stripeInvoiceId }, { status: "resolved" });
   } else {
-    throw "Try again to resolve!";
+    return apiResponse(res, 400, false, "Try again to resolve!");
   }
 
   return apiResponse(res, 200, true, "Critical payment resolved successfully!");

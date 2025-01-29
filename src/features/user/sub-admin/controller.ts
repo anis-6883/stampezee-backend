@@ -187,7 +187,7 @@ export const subAdminForgetPasswordOtpVerify = asyncHandler(async (req: IApiRequ
   if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
 
   const isVerified = req.user.otp === Number(result.value.otp) && req.user.otpExpiry > new Date();
-  if (!isVerified) throw "Invalid OTP!";
+  if (!isVerified) return apiResponse(res, 400, false, "Invalid OTP!");
 
   await SubAdmin.updateOne({ email: req.user.email }, { otp: null, otpExpiry: null });
 
@@ -228,7 +228,7 @@ export const subAdminChangeForgetPassword = asyncHandler(async (req: IApiRequest
   const subAdmin = await SubAdmin.findById(req.user._id);
 
   const isSame = await bcrypt.compare(result.value.password, subAdmin.password);
-  if (isSame) throw "New password cannot be same as old password!";
+  if (isSame) return apiResponse(res, 400, false, "New password cannot be same as old password!");
 
   const hashedPassword = await bcrypt.hash(result.value.password, 10);
   await SubAdmin.updateOne({ email: req.user.email }, { password: hashedPassword });

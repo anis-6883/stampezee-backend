@@ -90,7 +90,7 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
  */
 export const getSingleBilling = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
-  if (!Types.ObjectId.isValid(id)) throw "Please, provide valid id!";
+  if (!Types.ObjectId.isValid(id)) return apiResponse(res, 400, false, "Please, provide valid id!");
 
   const enrollment = await Enrollment.aggregate([
     {
@@ -200,7 +200,7 @@ export const getSingleBilling = asyncHandler(async (req: IApiRequest, res: Respo
     },
   ]);
 
-  if (enrollment.length <= 0) throw "No Billing Found!";
+  if (enrollment.length <= 0) return apiResponse(res, 400, false, "No Billing Found!");
 
   return apiResponse(res, 200, true, "Retailer single billing fetched successfully!", enrollment[0]);
 });
@@ -218,7 +218,7 @@ export const cancelAddOnSubscription = asyncHandler(async (req: IApiRequest, res
 
   const { enrollSubscriptionId } = result;
   const enrollSubscription = await EnrollSubscription.findById(enrollSubscriptionId);
-  if (!enrollSubscription) throw "Enroll Subscription Not Found!";
+  if (!enrollSubscription) return apiResponse(res, 400, false, "Enroll Subscription Not Found!");
 
   if (enrollSubscription?.planSnapshot?.type !== "subscription") {
     const totalPackage = await EnrollSubscription.countDocuments({
@@ -227,7 +227,7 @@ export const cancelAddOnSubscription = asyncHandler(async (req: IApiRequest, res
       deletedByRetailer: false,
     });
 
-    if (totalPackage < 2) throw "At least one package is needed for subscription!";
+    if (totalPackage < 2) return apiResponse(res, 400, false, "At least one package is needed for subscription!");
 
     const paymentMetadata = await Settings.findOne(
       {},
@@ -243,7 +243,7 @@ export const cancelAddOnSubscription = asyncHandler(async (req: IApiRequest, res
 
     const { stripeSecretKey } = paymentMetadata.stripe ?? {};
 
-    if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+    if (!paymentMetadata) return apiResponse(res, 400, false, "Something went wrong in Stripe settings!");
 
     const stripe = new Stripe(stripeSecretKey);
 
@@ -292,7 +292,7 @@ export const cancelAddOnSubscription = asyncHandler(async (req: IApiRequest, res
 
     return apiResponse(res, 200, true, "Add-on Subscription Cancelled Successfully!");
   } else {
-    throw "Cancel a Subscription Plan is not Allowed!";
+    return apiResponse(res, 400, false, "Cancel a Subscription Plan is not Allowed!");
   }
 });
 
@@ -310,7 +310,7 @@ export const getRetailerBillingPortal = asyncHandler(async (req: IApiRequest, re
   const { customerId, returnUrl } = result;
 
   const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
-  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+  if (!paymentMetadata) return apiResponse(res, 400, false, "Something went wrong in Stripe settings!");
 
   const { stripeSecretKey } = paymentMetadata?.stripe;
   const stripe = new Stripe(stripeSecretKey);
@@ -331,7 +331,7 @@ export const getRetailerBillingPortal = asyncHandler(async (req: IApiRequest, re
  */
 export const getRetailerBillingPdf = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
-  if (!Types.ObjectId.isValid(id)) throw "Please, provide valid id!";
+  if (!Types.ObjectId.isValid(id)) return apiResponse(res, 400, false, "Please, provide valid id!");
 
   const payment = await Payment.aggregate([
     {
@@ -433,7 +433,7 @@ export const getRetailerBillingPdf = asyncHandler(async (req: IApiRequest, res: 
 
   await htmlToPdf({ customerInfo, purchasedItems, invoiceMetadata, paymentInfo });
 
-  const pdfFileBuffer = path.join(process.cwd(), "/src/features/enroll-subscription/temp/invoice.pdf");
+  const pdfFileBuffer = path.join(process.cwd(), "/src/templates/invoice.pdf");
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", 'attachment; filename="invoice.pdf"');
@@ -453,10 +453,10 @@ export const getAllPaymentMethod = asyncHandler(async (req: IApiRequest, res: Re
   const { customerId } = req.params;
   const { limit = 3 } = req.query;
 
-  if (!customerId) throw "No provide customer id!";
+  if (!customerId) return apiResponse(res, 400, false, "No provide customer id!");
 
   const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
-  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+  if (!paymentMetadata) return apiResponse(res, 400, false, "Something went wrong in Stripe settings!");
 
   const { stripeSecretKey } = paymentMetadata?.stripe;
   const stripe = new Stripe(stripeSecretKey);
@@ -508,7 +508,7 @@ export const getAllPaymentMethod = asyncHandler(async (req: IApiRequest, res: Re
  */
 export const setupPaymentIntent = asyncHandler(async (req: IApiRequest, res: Response) => {
   const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
-  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+  if (!paymentMetadata) return apiResponse(res, 400, false, "Something went wrong in Stripe settings!");
 
   const { stripeSecretKey } = paymentMetadata?.stripe;
   const stripe = new Stripe(stripeSecretKey);
@@ -529,11 +529,11 @@ export const setupPaymentIntent = asyncHandler(async (req: IApiRequest, res: Res
 export const attachPaymentMethod = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { paymentMethodId, customerId } = req.body;
 
-  if (!paymentMethodId) throw "No provide payment method id!";
-  if (!customerId) throw "No provide customer id!";
+  if (!paymentMethodId) return apiResponse(res, 400, false, "No provide payment method id!");
+  if (!customerId) return apiResponse(res, 400, false, "No provide customer id!");
 
   const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
-  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+  if (!paymentMetadata) return apiResponse(res, 400, false, "Something went wrong in Stripe settings!");
 
   const { stripeSecretKey } = paymentMetadata?.stripe;
   const stripe = new Stripe(stripeSecretKey);
@@ -553,10 +553,10 @@ export const attachPaymentMethod = asyncHandler(async (req: IApiRequest, res: Re
 export const detachPaymentMethod = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { paymentMethodId } = req.body;
 
-  if (!paymentMethodId) throw "No provide payment method id!";
+  if (!paymentMethodId) return apiResponse(res, 400, false, "No provide payment method id!");
 
   const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
-  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+  if (!paymentMetadata) return apiResponse(res, 400, false, "Something went wrong in Stripe settings!");
 
   const { stripeSecretKey } = paymentMetadata?.stripe;
   const stripe = new Stripe(stripeSecretKey);
@@ -575,11 +575,11 @@ export const detachPaymentMethod = asyncHandler(async (req: IApiRequest, res: Re
 export const setDefaultPaymentMethod = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { paymentMethodId, customerId } = req.body;
 
-  if (!paymentMethodId) throw "No provide payment method id!";
-  if (!customerId) throw "No provide customer id!";
+  if (!paymentMethodId) return apiResponse(res, 400, false, "No provide payment method id!");
+  if (!customerId) return apiResponse(res, 400, false, "No provide customer id!");
 
   const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
-  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+  if (!paymentMetadata) return apiResponse(res, 400, false, "Something went wrong in Stripe settings!");
 
   const { stripeSecretKey } = paymentMetadata?.stripe;
   const stripe = new Stripe(stripeSecretKey);

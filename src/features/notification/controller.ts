@@ -65,7 +65,7 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
     Settings.findOne().select("notification"),
   ]);
 
-  if (addons.length === 0) throw "No one is allowed to create a branch without a plan!";
+  if (addons.length === 0) return apiResponse(res, 400, false, "No one is allowed to create a branch without a plan!");
   if (totalNotification >= addons.length) throw "Your notification limit is over. Take Another Add-on!";
 
   // File Validation
@@ -419,7 +419,7 @@ export const sendNotificationBySuperAdmin = asyncHandler(async (req: IApiRequest
   let notificationObj: any = { title, description, image };
 
   const settings = await Settings.findOne({}, { notification: 1, "general.timezone": 1 });
-  if (!settings?.general?.timezone) throw "Setup TimeZone First!";
+  if (!settings?.general?.timezone) return apiResponse(res, 400, false, "Setup TimeZone First!");
 
   // File Validation
   if (req.file) {
