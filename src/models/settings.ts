@@ -53,6 +53,7 @@ interface IS3Bucket extends Document {
 
 interface IStripe extends Document {
   stripeSecretKey: string;
+  stripePublishKey: string;
   stripeWebhookSecretKey: string;
   planChangeCost: number;
   refundableThreshold: number;
@@ -120,6 +121,7 @@ const settingsSchema = new Schema<ISettings>(
     },
     stripe: {
       stripeSecretKey: { type: String, default: "", trim: true },
+      stripePublishKey: { type: String, default: "", trim: true },
       stripeWebhookSecretKey: { type: String, default: "", trim: true },
       planChangeCost: { type: Number, default: 1 },
       refundableThreshold: { type: Number, default: 1 },

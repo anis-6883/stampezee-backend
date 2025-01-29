@@ -461,11 +461,43 @@ export const getAllPaymentMethod = asyncHandler(async (req: IApiRequest, res: Re
   const { stripeSecretKey } = paymentMetadata?.stripe;
   const stripe = new Stripe(stripeSecretKey);
 
-  const paymentMethods = await stripe.customers.listPaymentMethods(customerId, {
-    limit: Number(limit),
+  const [paymentMethods, customer]: any = await Promise.all([
+    stripe.customers.listPaymentMethods(customerId, {
+      limit: Number(limit),
+    }),
+    stripe.customers.retrieve(customerId),
+  ]);
+
+  const allPaymentMethod = paymentMethods?.data?.map((item: any) => {
+    if (customer?.invoice_settings?.default_payment_method === item?.id) {
+      return {
+        id: item?.id,
+        isDefault: true,
+        customer: item?.customer,
+        card: {
+          brand: item?.card?.brand,
+          country: item?.card?.country,
+          exp_month: item?.card?.exp_month,
+          exp_year: item?.card?.exp_year,
+          last4: item?.card?.last4,
+        },
+      };
+    }
+    return {
+      id: item?.id,
+      isDefault: false,
+      customer: item?.customer,
+      card: {
+        brand: item?.card?.brand,
+        country: item?.card?.country,
+        exp_month: item?.card?.exp_month,
+        exp_year: item?.card?.exp_year,
+        last4: item?.card?.last4,
+      },
+    };
   });
 
-  return apiResponse(res, 200, true, "Get all payment method successfully!", paymentMethods);
+  return apiResponse(res, 200, true, "Get all payment method successfully!", allPaymentMethod);
 });
 
 /**
@@ -506,9 +538,57 @@ export const attachPaymentMethod = asyncHandler(async (req: IApiRequest, res: Re
   const { stripeSecretKey } = paymentMetadata?.stripe;
   const stripe = new Stripe(stripeSecretKey);
 
-  const paymentMethod = await stripe.paymentMethods.attach(paymentMethodId, {
-    customer: customerId,
-  });
+  const paymentMethod = await stripe.paymentMethods.attach(paymentMethodId, { customer: customerId });
+  await stripe.customers.update(customerId, { invoice_settings: { default_payment_method: paymentMethodId } });
 
   return apiResponse(res, 200, true, "Attach payment method successfully!", paymentMethod);
+});
+
+/**
+ * Detach Payment Method with Payment Method Id
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const detachPaymentMethod = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { paymentMethodId } = req.body;
+
+  if (!paymentMethodId) throw "No provide payment method id!";
+
+  const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
+  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+
+  const { stripeSecretKey } = paymentMetadata?.stripe;
+  const stripe = new Stripe(stripeSecretKey);
+
+  const paymentMethod = await stripe.paymentMethods.detach(paymentMethodId);
+
+  return apiResponse(res, 200, true, "Detach payment method successfully!", paymentMethod);
+});
+
+/**
+ * Set Default Payment Method with Customer ID
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const setDefaultPaymentMethod = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { paymentMethodId, customerId } = req.body;
+
+  if (!paymentMethodId) throw "No provide payment method id!";
+  if (!customerId) throw "No provide customer id!";
+
+  const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
+  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+
+  const { stripeSecretKey } = paymentMetadata?.stripe;
+  const stripe = new Stripe(stripeSecretKey);
+
+  const updatedCustomer = await stripe.customers.update(customerId, {
+    invoice_settings: {
+      default_payment_method: paymentMethodId,
+    },
+  });
+
+  return apiResponse(res, 200, true, "Attach payment method successfully!", updatedCustomer);
 });

@@ -72,6 +72,7 @@ export const getCommonSettings = asyncHandler(async (req: Request, res: Response
       "general.linkedin": 1,
       "general.androidDownloadLink": 1,
       "general.iosDownloadLink": 1,
+      "stripe.stripePublishKey": 1,
       "stripe.planChangeCost": 1,
       "stripe.refundableThreshold": 1,
       "stripe.taxTitle": 1,

@@ -58,6 +58,7 @@ export const settingsSchema = Joi.object({
   }),
   stripe: Joi.object({
     stripeSecretKey: stringField("stripeSecretKey"),
+    stripePublishKey: stringField("stripeSecretKey"),
     stripeWebhookSecretKey: stringField("stripeWebhookSecretKey"),
     planChangeCost: numberField("planChangeCost"),
     refundableThreshold: numberField("refundableThreshold"),
