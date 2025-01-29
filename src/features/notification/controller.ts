@@ -20,8 +20,8 @@ import { notificationBasedOnLocationSchema, notificationSchema, superAdminNotifi
  */
 export const sendNotification = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await notificationSchema.validateAsync(req.body);
-  const { title, description, imageType, image } = result;
-  let notificationObj = { title, description, image };
+  const { title, description, imageType, image, scheduleAt } = result;
+  let notificationObj = { title, description, image, scheduleAt };
 
   // Check Subscription & Addon Enrollment
   const [addons, totalNotification, settings] = await Promise.all([
@@ -62,11 +62,18 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
       },
     ]),
     Notification.countDocuments({ retailerId: req.user._id, type: "all" }),
-    Settings.findOne().select("notification"),
+    Settings.findOne({}, { notification: 1, "general.timezone": 1 }),
   ]);
 
-  if (addons.length === 0) throw "No one is allowed to create a branch without a plan!";
-  if (totalNotification >= addons.length) throw "Your notification limit is over. Take Another Add-on!";
+  let totalLimit = 0;
+  for (const addon of addons) totalLimit += addon.planSnapshot.limit;
+
+  if (totalLimit === 0) {
+    return apiResponse(res, 400, false, "No one is allowed to create a notification without a plan!");
+  }
+  if (totalNotification >= totalLimit) {
+    return apiResponse(res, 400, false, "Your notification limit is over. Take Another Add-on!");
+  }
 
   // File Validation
   if (req.file) {
@@ -86,18 +93,39 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
     notificationObj.image = image;
   }
 
-  notification.sendNotification({
-    title,
-    description,
-    imageUrl: notificationObj.image,
-    data: { image: notificationObj.image },
-    topic: settings.notification.firebaseTopics,
-  });
+  // Function to send notifications
+  const sendNotification = async (tokens: string[] = []) => {
+    await notification.sendNotification({
+      title,
+      description,
+      imageUrl: notificationObj.image,
+      data: { image: notificationObj.image },
+      topic: settings.notification.firebaseTopics,
+      tokens, // Will be empty if not using location-based notifications
+    });
+  };
+
+  // Scheduling logic for notifications
+  const scheduleNotification = async (tokens: string[] = []) => {
+    if (scheduleAt) {
+      const isoDateString = `${scheduleAt.replace(" ", "T")}:00.000Z`;
+      const localTime = new Date(isoDateString);
+      const scheduleAtUTC = getUTC(localTime, Number(settings.general.timezone.value));
+      notificationObj.scheduleAt = scheduleAtUTC;
+
+      schedule.scheduleJob(scheduleAtUTC, async () => await sendNotification(tokens));
+    } else {
+      await sendNotification(tokens);
+    }
+  };
+
+  await scheduleNotification();
 
   await Notification.create({
     title,
     description,
     image: notificationObj.image,
+    scheduleAt: notificationObj.scheduleAt ?? null,
     retailerId: req?.user?._id,
   });
 
@@ -112,10 +140,10 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
  */
 export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await notificationBasedOnLocationSchema.validateAsync(req.body);
-  const { title, description, imageType, image, address, radius, longitude, latitude } = result;
-  let notificationObj = { title, description, image };
+  const { title, description, imageType, image, address, radius, longitude, latitude, scheduleAt } = result;
+  let notificationObj = { title, description, image, scheduleAt };
 
-  const [addons, totalNotification] = await Promise.all([
+  const [addons, totalNotification, settings] = await Promise.all([
     Enrollment.aggregate([
       {
         $match: {
@@ -153,10 +181,18 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
       },
     ]),
     Notification.countDocuments({ retailerId: req.user._id, type: "location" }),
+    Settings.findOne({}, { notification: 1, "general.timezone": 1 }),
   ]);
 
-  if (addons.length === 0) throw "No one is allowed to send a notification without a plan!";
-  if (totalNotification >= addons.length) throw "Your notification limit is over. Take Another Add-on!";
+  let totalLimit = 0;
+  for (const addon of addons) totalLimit += addon.planSnapshot.limit;
+
+  if (totalLimit === 0) {
+    return apiResponse(res, 400, false, "No one is allowed to create a notification without a plan!");
+  }
+  if (totalNotification >= totalLimit) {
+    return apiResponse(res, 400, false, "Your notification limit is over. Take Another Add-on!");
+  }
 
   // File Validation
   if (req.file) {
@@ -177,6 +213,32 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
   if (imageType == "url" && image) {
     notificationObj.image = image;
   }
+
+  // Function to send notifications
+  const sendNotification = async (tokens: string[] = []) => {
+    await notification.sendNotification({
+      title,
+      description,
+      imageUrl: notificationObj.image,
+      data: { image: notificationObj.image },
+      topic: settings.notification.firebaseTopics,
+      tokens, // Will be empty if not using location-based notifications
+    });
+  };
+
+  // Scheduling logic for notifications
+  const scheduleNotification = async (tokens: string[] = []) => {
+    if (scheduleAt) {
+      const isoDateString = `${scheduleAt.replace(" ", "T")}:00.000Z`;
+      const localTime = new Date(isoDateString);
+      const scheduleAtUTC = getUTC(localTime, Number(settings.general.timezone.value));
+      notificationObj.scheduleAt = scheduleAtUTC;
+
+      schedule.scheduleJob(scheduleAtUTC, async () => await sendNotification(tokens));
+    } else {
+      await sendNotification(tokens);
+    }
+  };
 
   const earthRadiusInMiles = 3959;
   const radiusInMiles = radius ** 0.621371;
@@ -208,13 +270,7 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
     ids.push(_id);
   });
 
-  notification.sendNotification({
-    title,
-    description,
-    imageUrl: notificationObj.image,
-    data: { image: notificationObj.image },
-    tokens,
-  });
+  await scheduleNotification(tokens);
 
   await Notification.create({
     title,
@@ -228,6 +284,7 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
     },
     retailerId: req?.user?._id,
     radius,
+    scheduleAt: notificationObj.scheduleAt ?? null,
   });
 
   return apiResponse(res, 200, true, "Location based notification sent successfully!");
@@ -317,7 +374,10 @@ export const getAllNotificationsForRetailer = asyncHandler(async (req: IApiReque
 
   const data: any = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  data.notificationLimit = addons.length - totalNotification < 0 ? 0 : addons.length - totalNotification;
+  let totalLimit = 0;
+  for (const addon of addons) totalLimit += addon.planSnapshot.limit;
+
+  data.notificationLimit = totalLimit - totalNotification < 0 ? 0 : totalLimit - totalNotification;
 
   return apiResponse(res, 200, true, "Notification fetched successfully!", data);
 });
@@ -419,7 +479,7 @@ export const sendNotificationBySuperAdmin = asyncHandler(async (req: IApiRequest
   let notificationObj: any = { title, description, image };
 
   const settings = await Settings.findOne({}, { notification: 1, "general.timezone": 1 });
-  if (!settings?.general?.timezone) throw "Setup TimeZone First!";
+  if (!settings?.general?.timezone) return apiResponse(res, 400, false, "Setup TimeZone First!");
 
   // File Validation
   if (req.file) {

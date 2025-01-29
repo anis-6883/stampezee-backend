@@ -6,6 +6,7 @@ export const notificationSchema = Joi.object({
   description: requiredStringField("description"),
   imageType: stringField("imageType"),
   image: stringField("image"),
+  scheduleAt: stringField("scheduleAt"),
 });
 
 export const superAdminNotificationSchema = Joi.object({
@@ -51,4 +52,5 @@ export const notificationBasedOnLocationSchema = Joi.object({
   radius: requiredNumberField("radius"),
   longitude: requiredStringField("longitude"),
   latitude: requiredStringField("latitude"),
+  scheduleAt: stringField("scheduleAt"),
 });
