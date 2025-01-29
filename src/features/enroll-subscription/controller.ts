@@ -12,6 +12,7 @@ import {
   checkPlanChange,
   exclude,
   htmlToPdf,
+  roundToNearestTen,
 } from "../../helpers";
 import Branch from "../../models/branch";
 import Coupon, { ICoupon } from "../../models/coupon";
@@ -445,6 +446,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             planCurrentPrice: (finalPrice - taxValue).toFixed(2),
           });
 
+          let unitAmount = Math.round(Number(finalPrice) * 100); // convert into cent
+          if (selectCurrency?.name === "JPY") unitAmount = Math.round(Number(finalPrice));
+          else if (selectCurrency?.name === "KWD") unitAmount = roundToNearestTen(finalPrice);
+
           line_items.push({
             price_data: {
               currency: currency.toLowerCase(),
@@ -458,8 +463,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                   prev: "true",
                 },
               },
-              unit_amount:
-                selectCurrency?.name === "JPY" ? Math.round(Number(finalPrice)) : Math.round(Number(finalPrice) * 100), // convert into cent
+              unit_amount: unitAmount,
               recurring: {
                 interval: "month",
               },
@@ -490,6 +494,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
           const isPlan = [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug);
 
+          let unitAmount = Math.round(Number(finalPrice) * 100); // convert into cent
+          if (selectCurrency?.name === "JPY") unitAmount = Math.round(Number(finalPrice));
+          else if (selectCurrency?.name === "KWD") unitAmount = roundToNearestTen(finalPrice);
+
           line_items.push({
             price_data: {
               currency: currency.toLowerCase(),
@@ -503,8 +511,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                   prev: "false",
                 },
               },
-              unit_amount:
-                selectCurrency?.name === "JPY" ? Math.round(Number(finalPrice)) : Math.round(Number(finalPrice) * 100), // convert into cent
+              unit_amount: unitAmount,
               recurring: {
                 interval: "month",
               },
@@ -650,10 +657,13 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               },
             });
 
+            let unitAmount = Math.round(Number(finalPrice) * 100); // convert into cent
+            if (selectCurrency?.name === "JPY") unitAmount = Math.round(Number(finalPrice));
+            else if (selectCurrency?.name === "KWD") unitAmount = roundToNearestTen(finalPrice);
+
             const price = await stripe.prices.create({
               currency: currency.toLocaleLowerCase(),
-              unit_amount:
-                selectCurrency?.name === "JPY" ? Math.round(Number(finalPrice)) : Math.round(Number(finalPrice * 100)),
+              unit_amount: unitAmount,
               recurring: {
                 interval: "month",
               },
@@ -699,10 +709,13 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               },
             });
 
+            let unitAmount = Math.round(Number(finalPrice) * 100); // convert into cent
+            if (selectCurrency?.name === "JPY") unitAmount = Math.round(Number(finalPrice));
+            else if (selectCurrency?.name === "KWD") unitAmount = roundToNearestTen(finalPrice);
+
             const price = await stripe.prices.create({
               currency: currency.toLocaleLowerCase(),
-              unit_amount:
-                selectCurrency?.name === "JPY" ? Math.round(Number(finalPrice)) : Math.round(Number(finalPrice * 100)),
+              unit_amount: unitAmount,
               recurring: {
                 interval: "month",
               },
@@ -924,6 +937,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               planCurrentPrice: (finalPrice - taxValue).toFixed(2),
             });
 
+            let unitAmount = Math.round(Number(finalPrice) * 100); // convert into cent
+            if (selectCurrency?.name === "JPY") unitAmount = Math.round(Number(finalPrice));
+            else if (selectCurrency?.name === "KWD") unitAmount = roundToNearestTen(finalPrice);
+
             line_items.push({
               price_data: {
                 currency: currency.toLowerCase(),
@@ -936,10 +953,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                     enrollSubscriptionId: String(enrollSubscription._id),
                   },
                 },
-                unit_amount:
-                  selectCurrency?.name === "JPY"
-                    ? Math.round(Number(finalPrice))
-                    : Math.round(Number(finalPrice) * 100), // convert into cent
+                unit_amount: unitAmount,
                 recurring: {
                   interval: "month",
                 },
@@ -970,6 +984,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
             const isPlan = [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug);
 
+            let unitAmount = Math.round(Number(finalPrice) * 100); // convert into cent
+            if (selectCurrency?.name === "JPY") unitAmount = Math.round(Number(finalPrice));
+            else if (selectCurrency?.name === "KWD") unitAmount = roundToNearestTen(finalPrice);
+
             line_items.push({
               price_data: {
                 currency: currency.toLowerCase(),
@@ -982,10 +1000,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                     enrollSubscriptionId: String(enrollSubscription._id),
                   },
                 },
-                unit_amount:
-                  selectCurrency?.name === "JPY"
-                    ? Math.round(Number(finalPrice))
-                    : Math.round(Number(finalPrice) * 100), // convert into cent
+                unit_amount: unitAmount,
                 recurring: {
                   interval: "month",
                 },
@@ -1010,6 +1025,11 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         }
       }
 
+      let unitAmount = Math.round(Number(planChangeCost * selectCurrency.exchangeRate) * 100); // convert into cent
+      if (selectCurrency?.name === "JPY") unitAmount = Math.round(Number(planChangeCost * selectCurrency.exchangeRate));
+      else if (selectCurrency?.name === "KWD")
+        unitAmount = roundToNearestTen(planChangeCost * selectCurrency.exchangeRate);
+
       // Add Plan Change Cost
       line_items.push({
         price_data: {
@@ -1017,10 +1037,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           product_data: {
             name: `Plan Change Cost`,
           },
-          unit_amount:
-            selectCurrency?.name === "JPY"
-              ? Math.round(Number(planChangeCost * selectCurrency.exchangeRate))
-              : Math.round(Number(planChangeCost * selectCurrency.exchangeRate) * 100), // convert into cent
+          unit_amount: unitAmount,
         },
         quantity: 1,
       });
@@ -1079,6 +1096,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
         const isPlan = [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug);
 
+        let unitAmount = Math.round(Number(finalPrice) * 100); // convert into cent
+        if (selectCurrency?.name === "JPY") unitAmount = Math.round(Number(finalPrice));
+        else if (selectCurrency?.name === "KWD") unitAmount = roundToNearestTen(finalPrice);
+
         line_items.push({
           price_data: {
             currency: currency.toLowerCase(),
@@ -1092,8 +1113,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                 prev: "false",
               },
             },
-            unit_amount:
-              selectCurrency?.name === "JPY" ? Math.round(Number(finalPrice)) : Math.round(Number(finalPrice) * 100), // convert into cent
+            unit_amount: unitAmount,
             recurring: {
               interval: "month",
             },

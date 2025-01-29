@@ -2377,3 +2377,11 @@ export function getSlugCountMap(data: DataItem[]): Record<string, number> {
 
   return slugCountMap;
 }
+
+export function roundToNearestTen(amount: number) {
+  // Multiply by 1000 to handle three decimal places
+  const amountInFils = Math.round(amount * 1000);
+  // Round to the nearest ten
+  const roundedAmount = Math.round(amountInFils / 10) * 10;
+  return roundedAmount;
+}
