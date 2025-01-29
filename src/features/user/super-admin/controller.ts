@@ -129,10 +129,10 @@ export const superAdminChangePassword = asyncHandler(async (req: IApiRequest, re
   const superAdmin = await SuperAdmin.findById(req.user._id);
 
   const isPasswordValid = await bcrypt.compare(result.oldPassword, superAdmin.password);
-  if (!isPasswordValid) throw "Old password is incorrect!";
+  if (!isPasswordValid) return apiResponse(res, 400, false, "Old password is incorrect!");
 
   const isSame = await bcrypt.compare(result.newPassword, superAdmin.password);
-  if (isSame) throw "New password cannot be same as old password!";
+  if (isSame) return apiResponse(res, 400, false, "New password cannot be same as old password!");
 
   const hashedPassword = await bcrypt.hash(result.newPassword, 10);
 

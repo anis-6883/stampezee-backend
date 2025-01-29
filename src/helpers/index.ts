@@ -2355,7 +2355,7 @@ export const htmlToPdf = async ({
     });
 
     await page.pdf({
-      path: path.join(process.cwd(), "/src/features/enroll-subscription/temp/invoice.pdf"),
+      path: path.join(process.cwd(), "/src/templates/invoice.pdf"),
       printBackground: true,
       waitForFonts: true,
       format: "A4",

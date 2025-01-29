@@ -18,7 +18,7 @@ export const subscribeNewsletter = asyncHandler(async (req: IApiRequest, res: Re
 
   const isEmailAlreadySubscribed = await Newsletter.findOne({ email });
   if (isEmailAlreadySubscribed) {
-    throw "You have already joined our newsletter";
+    return apiResponse(res, 400, false, "You have already joined our newsletter");
   }
   await Newsletter.create({ ip, email });
 

@@ -19,7 +19,7 @@ export const createSubscription = asyncHandler(async (req: IApiRequest, res: Res
   result.superAdminId = req.user._id;
 
   const existingSubscription = await Subscription.findOne({ slug: result.slug });
-  if (existingSubscription) throw "This subscription already exists!";
+  if (existingSubscription) return apiResponse(res, 400, false, "This subscription already exists!");
 
   let imageKey = null;
 
@@ -97,7 +97,7 @@ export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Res
   const { softDeleted, image, ...updatedBody } = result;
 
   const subscription = await Subscription.findOne({ slug: result.slug, _id: { $ne: id } });
-  if (subscription) throw "Slug must be unique!";
+  if (subscription) return apiResponse(res, 400, false, "Slug must be unique!");
 
   // File Validation
   if (req.file) {

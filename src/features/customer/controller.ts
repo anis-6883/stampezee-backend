@@ -509,7 +509,8 @@ export const createCustomerBySuperAdmin = asyncHandler(async (req: IApiRequest, 
     email: createBody.email,
   });
 
-  if (existingCustomer && existingCustomer.isVerified) throw "This customer already exists!";
+  if (existingCustomer && existingCustomer.isVerified)
+    return apiResponse(res, 400, false, "This customer already exists!");
 
   await Customer.create(createBody);
 
@@ -537,7 +538,7 @@ export const updateCustomerBySuperAdmin = asyncHandler(async (req: IApiRequest, 
     _id: { $ne: id },
   });
 
-  if (existingCustomer) throw "This customer already exists!";
+  if (existingCustomer) return apiResponse(res, 400, false, "This customer already exists!");
 
   updateBody["address.name"] = address;
 

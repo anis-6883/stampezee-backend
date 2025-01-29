@@ -86,7 +86,7 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
     ])
   )[0];
 
-  if (!coupon) throw "Provided invalid coupon code!";
+  if (!coupon) return apiResponse(res, 400, false, "Provided invalid coupon code!");
 
   const subscriptions = await Subscription.find({
     _id: { $in: coupon?.applicablePackages || [] },
@@ -95,11 +95,11 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
 
   const applicablePackages = subscriptions.map((subscription) => subscription.slug);
   const appliedSlugs = applicablePackages.filter((slug) => slugs.includes(slug));
-  if (appliedSlugs.length <= 0) throw "Provided invalid coupon code!";
+  if (appliedSlugs.length <= 0) return apiResponse(res, 400, false, "Provided invalid coupon code!");
 
   if (coupon.allowFor === "specific") {
     if (!coupon.allowedRetailers.find((id: any) => String(id) === String(req.user._id))) {
-      throw "Provided invalid coupon code!";
+      return apiResponse(res, 400, false, "Provided invalid coupon code!");
     }
   }
 
@@ -110,7 +110,7 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
     paymentStatus: "completed",
   });
 
-  if (alreadyApplied >= coupon.limit) throw "Your coupon limit is over!";
+  if (alreadyApplied >= coupon.limit) return apiResponse(res, 400, false, "Your coupon limit is over!");
 
   const data = exclude(coupon, ["applicablePackages", "allowedRetailers", "allowFor", "limit"]);
   data.appliedSlugs = appliedSlugs;
@@ -139,7 +139,7 @@ export const extraAddonCheck = asyncHandler(async (req: IApiRequest, res: Respon
     status: true,
   });
 
-  if (!enrolled) throw `No active enrollment yet!`;
+  if (!enrolled) return apiResponse(res, 400, false, `No active enrollment yet!`);
 
   let extraPayableAmount = 0;
 
@@ -149,7 +149,7 @@ export const extraAddonCheck = asyncHandler(async (req: IApiRequest, res: Respon
   ]);
 
   const selectCurrency = allowCurrencies.find((curr) => curr.name === currency);
-  if (!selectCurrency) throw "Provided currency is not allowed!";
+  if (!selectCurrency) return apiResponse(res, 400, false, "Provided currency is not allowed!");
 
   // Add Previous Add-on Payable Amount in totalAmount
   for (const prevAddon of prevAddons) {
@@ -192,7 +192,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
   const { slugs, code, branchIds, stampIds, currency }: IEnrollSubscriptionBody = result;
 
   if ((slugs.includes(PACKAGES.TRIAL) && slugs.length > 1) || (slugs.includes(PACKAGES.TRIAL) && code)) {
-    throw "You can't take additional packages or coupon in free trial!";
+    return apiResponse(res, 400, false, "You can't take additional packages or coupon in free trial!");
   }
 
   // Enroll Free Trial
@@ -230,9 +230,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           totalBranch: subscription?.allowTotalBranch,
         });
       }
-      throw "Free trial package not found!";
+      return apiResponse(res, 400, false, "Free trial package not found!");
     }
-    throw "Free trial already taken!";
+    return apiResponse(res, 400, false, "Free trial already taken!");
   }
 
   // Get Payment Metadata & Allowed Currencies
@@ -262,8 +262,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
   const selectCurrency = allowCurrencies.find((curr) => curr.name === currency);
 
-  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
-  if (!selectCurrency) throw "Provided currency is not allowed!";
+  if (!paymentMetadata) return apiResponse(res, 400, false, "Something went wrong in Stripe settings!");
+  if (!selectCurrency) return apiResponse(res, 400, false, "Provided currency is not allowed!");
 
   const stripe = new Stripe(stripeSecretKey);
 
@@ -281,10 +281,11 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       status: true,
     });
 
-    if (!enrolled && !pickPlan) throw `You can't purchase an add-on without an active plan!`;
+    if (!enrolled && !pickPlan)
+      return apiResponse(res, 400, false, `You can't purchase an add-on without an active plan!`);
 
     if (enrolled && slugs.includes(enrolled.planExists)) {
-      throw `You already take ${pickPlan.title} plan!`;
+      return apiResponse(res, 400, false, `You already take ${pickPlan.title} plan!`);
     }
 
     // Check & Get Coupon
@@ -318,7 +319,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         ])
       )[0];
 
-      if (!coupon) throw "Provided invalid coupon code!";
+      if (!coupon) return apiResponse(res, 400, false, "Provided invalid coupon code!");
 
       const subscriptions: ISubscription[] = await Subscription.find({
         _id: { $in: coupon?.applicablePackages || [] },
@@ -327,11 +328,11 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
       const applicablePackages = subscriptions.map((subscription) => subscription.slug);
       appliedSlugs = applicablePackages.filter((slug) => slugs.includes(slug));
-      if (appliedSlugs.length <= 0) throw "Provided invalid coupon code!";
+      if (appliedSlugs.length <= 0) return apiResponse(res, 400, false, "Provided invalid coupon code!");
 
       if (coupon.allowFor === "specific") {
         if (!coupon.allowedRetailers.find((id: any) => String(id) === String(req.user._id))) {
-          throw "Provided invalid coupon code!";
+          return apiResponse(res, 400, false, "Provided invalid coupon code!");
         }
       }
 
@@ -341,7 +342,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         paymentStatus: "completed",
       });
 
-      if (alreadyApplied >= coupon.limit) throw "Your coupon limit is over!";
+      if (alreadyApplied >= coupon.limit) return apiResponse(res, 400, false, "Your coupon limit is over!");
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -539,7 +540,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       //////// Plan Downgrade ///////
       ///////////////////////////////
       if (changeMode < 0) {
-        if (!enrolled?.stripe?.paymentMethodId) throw `Something went wrong on your payment method!`;
+        if (!enrolled?.stripe?.paymentMethodId)
+          return apiResponse(res, 400, false, `Something went wrong on your payment method!`);
 
         const downgradeBranchLimit = pickPlan?.allowTotalBranch;
         const downgradeStampLimit = pickPlan?.allowTotalStamp;
@@ -552,10 +554,15 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         const disabledBySystemBranch = branches.filter((branch) => !branch.disabledBySystem).length;
 
         if (branches.length > downgradeBranchLimit && disabledBySystemBranch > downgradeBranchLimit) {
-          if (!branchIds) throw "branchIds is required!";
+          if (!branchIds) return apiResponse(res, 400, false, "branchIds is required!");
 
           if (branchIds && branchIds.length !== disabledBySystemBranch - downgradeBranchLimit) {
-            throw `You have to inactive ${disabledBySystemBranch - downgradeBranchLimit} subscription branch/s before downgrade!`;
+            return apiResponse(
+              res,
+              400,
+              false,
+              `You have to inactive ${disabledBySystemBranch - downgradeBranchLimit} subscription branch/s before downgrade!`
+            );
           }
 
           if (branchIds && branchIds.length >= disabledBySystemBranch - downgradeBranchLimit) {
@@ -567,7 +574,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         }
 
         if (stamps.length > downgradeStampLimit) {
-          if (!stampIds) throw "stampIds is required!";
+          if (!stampIds) return apiResponse(res, 400, false, "stampIds is required!");
 
           if (stampIds) {
             await Stamp.updateMany(
@@ -1165,7 +1172,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     return apiResponse(res, 200, true, "Send to Payment Page!", data);
   }
 
-  throw "Only one subscription plan and no duplicate addons are allowed!";
+  return apiResponse(res, 400, false, "Only one subscription plan and no duplicate addons are allowed!");
 });
 
 /**
@@ -1182,7 +1189,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
     {},
     { "stripe.stripeSecretKey": 1, "stripe.stripeWebhookSecretKey": 1 }
   );
-  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+  if (!paymentMetadata) return apiResponse(res, 400, false, "Something went wrong in Stripe settings!");
 
   const { stripeSecretKey, stripeWebhookSecretKey } = paymentMetadata.stripe;
   const stripe = new Stripe(stripeSecretKey, { apiVersion: "2024-04-10", typescript: true });

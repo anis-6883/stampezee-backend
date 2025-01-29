@@ -31,19 +31,24 @@ export const createCoupon = asyncHandler(async (req: IApiRequest, res: Response)
     Subscription.find({ _id: { $in: createBody?.applicablePackages || [] }, slug: { $ne: "trial" } }),
   ]);
 
-  if (existingCoupon) throw "Coupon already exists within date range!";
-  if (subscriptions.length === 0) throw "Provided invalid packages!";
+  if (existingCoupon) return apiResponse(res, 400, false, "Coupon already exists within date range!");
+  if (subscriptions.length === 0) return apiResponse(res, 400, false, "Provided invalid packages!");
 
   if (createBody.discountType === "flat") {
     subscriptions.forEach((subscription: any) => {
       if (createBody.discount >= subscription.price / 2) {
-        throw `Discount must be less than ${Number(subscription.price / 2).toFixed(2)} CAD of the package price!`;
+        return apiResponse(
+          res,
+          400,
+          false,
+          `Discount must be less than ${Number(subscription.price / 2).toFixed(2)} CAD of the package price!`
+        );
       }
     });
   }
 
   const settings = await Settings.findOne(null, { "general.timezone": 1 });
-  if (!settings?.general?.timezone) throw "Setup TimeZone First!";
+  if (!settings?.general?.timezone) return apiResponse(res, 400, false, "Setup TimeZone First!");
 
   const systemTime = getUTC(createBody.startedAt, Number(settings.general.timezone.value));
   const expireTime = getUTC(createBody.expiredAt, Number(settings.general.timezone.value), true);
@@ -162,19 +167,24 @@ export const updateCoupon = asyncHandler(async (req: IApiRequest, res: Response)
     Subscription.find({ _id: { $in: updatedBody?.applicablePackages || [] }, slug: { $ne: "trial" } }),
   ]);
 
-  if (existingCoupon) throw "Coupon already exists within date range!";
-  if (subscriptions.length === 0) throw "Provided invalid packages!";
+  if (existingCoupon) return apiResponse(res, 400, false, "Coupon already exists within date range!");
+  if (subscriptions.length === 0) return apiResponse(res, 400, false, "Provided invalid packages!");
 
   if (updatedBody.discountType === "flat") {
     subscriptions.forEach((subscription: any) => {
       if (updatedBody.discount >= subscription.price / 2) {
-        throw `Discount must be less than ${Number(subscription.price / 2).toFixed(2)} CAD of the package price!`;
+        return apiResponse(
+          res,
+          400,
+          false,
+          `Discount must be less than ${Number(subscription.price / 2).toFixed(2)} CAD of the package price!`
+        );
       }
     });
   }
 
   const settings = await Settings.findOne(null, { "general.timezone": 1 });
-  if (!settings?.general?.timezone) throw "Setup TimeZone First!";
+  if (!settings?.general?.timezone) return apiResponse(res, 400, false, "Setup TimeZone First!");
 
   const systemTime = getUTC(updatedBody.startedAt, Number(settings.general.timezone.value));
   const expireTime = getUTC(updatedBody.expiredAt, Number(settings.general.timezone.value), true);

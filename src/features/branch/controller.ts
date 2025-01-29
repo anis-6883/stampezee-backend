@@ -61,7 +61,8 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
     },
   ]);
 
-  if (enrollments.length === 0) throw "No one is allowed to create a branch without a plan!";
+  if (enrollments.length === 0)
+    return apiResponse(res, 400, false, "No one is allowed to create a branch without a plan!");
 
   const subscription: IEnrollSubscription = enrollments.find((enrollment: IEnrollSubscription) => {
     return enrollment.planSnapshot.type === "subscription";
@@ -77,7 +78,9 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
   const allowTotalBranch = subscription?.planSnapshot?.allowTotalBranch + addons.length;
 
   const branchWithoutSystemDisabled = createdTotalBranch.filter((branch) => !branch.disabledBySystem).length;
-  if (branchWithoutSystemDisabled >= allowTotalBranch) throw "Your branch limit is over. Take new Add-on!";
+
+  if (branchWithoutSystemDisabled >= allowTotalBranch)
+    return apiResponse(res, 400, false, "Your branch limit is over. Take new Add-on!");
 
   const subscriptionBranchSlot = createdTotalBranch.filter(
     (branch) => branch.source === "subscription" && !branch.disabledBySystem
@@ -304,7 +307,8 @@ export const activateSystemDisabledBranch = asyncHandler(async (req: IApiRequest
     },
   ]);
 
-  if (enrollments.length === 0) throw "No one is allowed to create a branch without a plan!";
+  if (enrollments.length === 0)
+    return apiResponse(res, 400, false, "No one is allowed to create a branch without a plan!");
 
   const subscription: IEnrollSubscription = enrollments.find((enrollment: IEnrollSubscription) => {
     return enrollment.planSnapshot.type === "subscription";
@@ -318,10 +322,11 @@ export const activateSystemDisabledBranch = asyncHandler(async (req: IApiRequest
   });
   const allowTotalBranch = subscription?.planSnapshot?.allowTotalBranch ?? 0;
 
-  if (retailerTotalActiveBranch.length >= allowTotalBranch) throw "Your branch limit is over to activate!";
+  if (retailerTotalActiveBranch.length >= allowTotalBranch)
+    return apiResponse(res, 400, false, "Your branch limit is over to activate!");
 
   const updateBranch = await Branch.findByIdAndUpdate(id, { status: true, disabledBySystem: false }, { new: true });
-  if (!updateBranch) throw "Branch not found!";
+  if (!updateBranch) return apiResponse(res, 400, false, "Branch not found!");
 
   return apiResponse(res, 200, true, "Branch activated successfully!");
 });
@@ -390,7 +395,7 @@ export const convertToAddonBranch = asyncHandler(async (req: IApiRequest, res: R
   const addonIds = addons.map((enrollSubscription: IEnrollSubscription) => enrollSubscription._id.toString());
   const unUsedIds = addonIds.filter((id) => !retailerAddonIds.includes(id));
 
-  if (unUsedIds.length <= 0) throw "You have to purchase another add-on to convert!";
+  if (unUsedIds.length <= 0) return apiResponse(res, 400, false, "You have to purchase another add-on to convert!");
 
   const branch = await Branch.findOneAndUpdate(
     { _id: id },

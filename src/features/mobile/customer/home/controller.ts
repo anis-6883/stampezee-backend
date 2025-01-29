@@ -236,7 +236,7 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
     },
   ]);
 
-  if (collectedStamp.length < 1) throw "Please collect the stamp first";
+  if (collectedStamp.length < 1) return apiResponse(res, 400, false, "Please collect the stamp first");
 
   const stampCollectionDate: { createdAt: Date }[] = [];
   collectedStamp[0].totalStampCollected = collectedStamp[0].stampsTaken.length;
@@ -258,7 +258,8 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const deleteCollectedStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
-  if (!mongoose.Types.ObjectId.isValid(req?.params?.id)) throw "Please, provide valid id!";
+  if (!mongoose.Types.ObjectId.isValid(req?.params?.id))
+    return apiResponse(res, 400, false, "Please, provide valid id!");
 
   await CollectStamp.findByIdAndUpdate(req?.params?.id, {
     softDeleted: true,

@@ -166,7 +166,7 @@ export const refundConfirmBySuperAdmin = asyncHandler(async (req: IApiRequest, r
     { new: true }
   );
 
-  if (!refundUpdate) throw "Refund not found!";
+  if (!refundUpdate) return apiResponse(res, 400, false, "Refund not found!");
 
   return apiResponse(res, 200, true, "Refund completed successfully!");
 });

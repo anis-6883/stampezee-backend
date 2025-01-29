@@ -27,13 +27,19 @@ export const submitContact = asyncHandler(async (req: IApiRequest, res: Response
   const macRegex = /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/;
 
   if (!macRegex.test(macAddress)) {
-    throw "Invalid token!";
+    return apiResponse(res, 400, false, "Invalid token!");
   }
   const randomDecimal = Math.random();
   const randomNumber = 6 + randomDecimal * 2;
   const sixToEightHoursAgo = new Date(Date.now() - randomNumber * 60 * 60 * 1000);
   const alreadySubmittedForm = await Contact.findOne({ macAddress, ip, createdAt: { $gte: sixToEightHoursAgo } });
-  if (alreadySubmittedForm) throw "We have already received your message. Please wait, we will contact you shortly.";
+  if (alreadySubmittedForm)
+    return apiResponse(
+      res,
+      400,
+      false,
+      "We have already received your message. Please wait, we will contact you shortly."
+    );
   await Contact.create({ macAddress, name, dialCode, phone, ip, email, message });
 
   return apiResponse(res, 200, true, "Thank you for contacting with us! We will get back to you shortly");
