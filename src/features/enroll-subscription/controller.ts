@@ -1537,20 +1537,9 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     );
 
     let taxValue = 0;
-    let couponValue = 0;
     let subTotal = 0;
 
-    let coupon: any = null;
     const purchasedItems = newEnrollSubscriptions?.map((purchasedSubscription: any) => {
-      // Check coupon eligibility & apply
-      if (purchasedSubscription?.couponSnapshot) {
-        couponValue +=
-          purchasedSubscription?.couponSnapshot?.discountType === "percentage"
-            ? (purchasedSubscription?.planSnapshot?.price * purchasedSubscription?.couponSnapshot?.discount) / 100
-            : enrollment?.currencyRate * purchasedSubscription?.couponSnapshot?.discount;
-        coupon = purchasedSubscription?.couponSnapshot;
-      }
-
       // Only tax apply
       if (enrollment?.taxSnapshot) {
         taxValue += (purchasedSubscription?.planSnapshot?.price * enrollment?.taxSnapshot?.taxCost) / 100;
@@ -1574,9 +1563,11 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
         enrollment?.enrollStatus === "purchase"
           ? null
           : `${enrollment?.planChangeCost.toFixed(2)} ${enrollment?.currency}`,
-      couponDiscount: couponValue !== 0 ? `${couponValue.toFixed(2)} ${enrollment?.currency}` : null,
+      couponDiscount: payment?.coupon?._id
+        ? `${payment?.coupon?.discountAmount?.toFixed(2)} ${payment?.currency}`
+        : null,
       taxDiscount: enrollment?.taxSnapshot ? `${taxValue?.toFixed(2)} ${enrollment?.currency}` : null,
-      coupon,
+      coupon: payment.coupon,
       tax: enrollment?.taxSnapshot
         ? {
             taxTitle: enrollment?.taxSnapshot?.taxTitle,

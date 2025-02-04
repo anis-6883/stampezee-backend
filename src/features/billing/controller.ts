@@ -482,20 +482,10 @@ export const getRetailerBillingPdf = asyncHandler(async (req: IApiRequest, res: 
     address: `${retailer?.address}, ${retailer?.city}, ${retailer?.postalCode}`,
   };
   let taxValue = 0;
-  let couponValue = 0;
   let subTotal = 0;
 
   let coupon: any = null;
   const purchasedItems = payment[0]?.enrollSubscriptions?.map((purchasedSubscription: any) => {
-    // Check coupon eligibility & apply
-    if (purchasedSubscription?.couponSnapshot) {
-      couponValue +=
-        purchasedSubscription?.couponSnapshot?.discountType === "percentage"
-          ? (purchasedSubscription?.planSnapshot?.price * purchasedSubscription?.couponSnapshot?.discount) / 100
-          : payment[0]?.enrollment?.currencyRate * purchasedSubscription?.couponSnapshot?.discount;
-      coupon = purchasedSubscription?.couponSnapshot;
-    }
-
     // Only tax apply
     if (payment[0]?.enrollment?.taxSnapshot) {
       taxValue += (purchasedSubscription?.planSnapshot?.price * payment[0]?.enrollment?.taxSnapshot?.taxCost) / 100;
@@ -522,11 +512,15 @@ export const getRetailerBillingPdf = asyncHandler(async (req: IApiRequest, res: 
       payment[0]?.enrollment?.enrollStatus === "purchase"
         ? null
         : `${payment[0]?.enrollment?.planChangeCost.toFixed(2)} ${payment[0]?.enrollment?.currency}`,
-    couponDiscount: couponValue !== 0 ? `${couponValue.toFixed(2)} ${payment[0]?.enrollment?.currency}` : null,
+    couponDiscount: payment[0]?.coupon?._id
+      ? `${payment[0]?.coupon?.discountAmount?.toFixed(2)} ${payment[0]?.enrollment?.currency}`
+      : null,
     taxDiscount: payment[0]?.enrollment?.taxSnapshot
       ? `${taxValue?.toFixed(2)} ${payment[0]?.enrollment?.currency}`
       : null,
-    coupon,
+    coupon: {
+      discount: payment[0]?.coupon?.discount,
+    },
     tax: payment[0]?.enrollment?.taxSnapshot
       ? {
           taxTitle: payment[0]?.enrollment?.taxSnapshot?.taxTitle,
