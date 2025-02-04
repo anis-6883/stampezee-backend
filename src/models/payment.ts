@@ -3,6 +3,12 @@ import { Document, model, Schema, Types } from "mongoose";
 interface IPayment extends Document {
   enrollmentId: Types.ObjectId;
   enrollSubscriptionIds: Types.ObjectId[];
+  coupon: {
+    _id: Types.ObjectId | null;
+    discountType: "percentage" | "flat";
+    discount: number;
+    discountAmount: number;
+  };
   paymentIntentId: string;
   invoiceNumber: string;
   invoicePdf: string;
@@ -18,6 +24,12 @@ const paymentSchema = new Schema<IPayment>(
   {
     enrollmentId: { type: "ObjectId", ref: "Enrollment", required: true },
     enrollSubscriptionIds: { type: ["ObjectId"], ref: "EnrollSubscription", required: true },
+    coupon: {
+      _id: { type: "ObjectId", ref: "Coupon", default: null },
+      discountType: { type: String, enum: ["percentage", "flat", null], default: null },
+      discount: { type: Number, default: 0 },
+      discountAmount: { type: Number, default: 0 },
+    },
     paymentIntentId: { type: String, required: true },
     invoiceNumber: { type: String, required: true },
     invoicePdf: { type: String, required: true },

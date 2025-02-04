@@ -4,12 +4,14 @@ import { Types } from "mongoose";
 import path from "path";
 import Stripe from "stripe";
 import { PACKAGES } from "../../configs/constants";
-import { apiResponse, asyncHandler, htmlToPdf } from "../../helpers";
+import { apiResponse, asyncHandler, calculateBalanceAmount, htmlToPdf } from "../../helpers";
 import { makePaginate } from "../../helpers/index";
 import Branch from "../../models/branch";
+import CurrencyExchange, { ICurrencyExchange } from "../../models/currency-exchange";
 import EnrollSubscription from "../../models/enroll-subscription";
-import Enrollment from "../../models/enrollment";
+import Enrollment, { IEnrollment } from "../../models/enrollment";
 import Payment from "../../models/payment";
+import Refund from "../../models/refund";
 import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
 import Stamp from "../../models/stamp";
@@ -293,6 +295,133 @@ export const cancelAddOnSubscription = asyncHandler(async (req: IApiRequest, res
     return apiResponse(res, 200, true, "Add-on Subscription Cancelled Successfully!");
   } else {
     return apiResponse(res, 400, false, "Cancel a Subscription Plan is not Allowed!");
+  }
+});
+
+/**
+ * Cancel Base Plan or Addon
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await enrollSubscriptionSchema.validateAsync(req.body, {
+    abortEarly: false,
+  });
+
+  const { enrollSubscriptionId } = result;
+
+  const [enrollSubscription, paymentMetadata] = await Promise.all([
+    EnrollSubscription.findById(enrollSubscriptionId),
+    Settings.findOne(
+      {},
+      {
+        "stripe.planChangeCost": 1,
+        "stripe.refundableThreshold": 1,
+        "stripe.taxTitle": 1,
+        "stripe.taxCost": 1,
+        "stripe.taxStatus": 1,
+        "stripe.stripeSecretKey": 1,
+      }
+    ),
+  ]);
+
+  if (!enrollSubscription) throw "Enroll Subscription Not Found!";
+  if (enrollSubscription?.deletedByRetailerAt) throw "Enroll Subscription already deleted by client!";
+  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+
+  const { stripeSecretKey } = paymentMetadata.stripe ?? {};
+
+  const stripe = new Stripe(stripeSecretKey);
+
+  if (enrollSubscription?.planSnapshot?.type === "subscription") {
+    const enrollment: IEnrollment = await Enrollment.findById(enrollSubscription.enrollmentId);
+    const allowCurrencies: ICurrencyExchange[] = await CurrencyExchange.find({ status: true });
+    const selectCurrency: ICurrencyExchange = allowCurrencies.find(
+      (curr: ICurrencyExchange) => curr.name === enrollment.currency
+    );
+
+    const convertToSelectedCurrency = Number(
+      ((selectCurrency.exchangeRate / enrollment.currencyRate) * enrollSubscription.planCurrentPrice).toFixed(2)
+    );
+
+    const balanceAmount: number = calculateBalanceAmount(
+      enrollment.validityFrom,
+      enrollment.validityTo,
+      convertToSelectedCurrency
+    );
+
+    // Check Refund
+    const isRefunded = Math.abs(balanceAmount) >= paymentMetadata.stripe.refundableThreshold;
+    if (isRefunded) {
+      await Refund.create({
+        currency: enrollment.currency,
+        enrollmentId: enrollment._id,
+        refundAmount: parseFloat(Math.abs(balanceAmount).toFixed(2)),
+        refundStatus: "pending",
+      });
+    }
+
+    await Promise.all([
+      stripe.subscriptions.cancel(enrollment?.stripe?.subscriptionId),
+      Enrollment.findByIdAndUpdate(enrollSubscription.enrollmentId, { status: false }),
+      EnrollSubscription.updateMany(
+        { enrollmentId: enrollSubscription.enrollmentId },
+        { status: false, deletedByClientAt: new Date() }
+      ),
+    ]);
+
+    return apiResponse(res, 200, true, "Subscription Cancelled Successfully!");
+  } else {
+    const totalPackage = await EnrollSubscription.countDocuments({
+      enrollmentId: enrollSubscription.enrollmentId,
+      status: true,
+      deletedByClientAt: null,
+    });
+
+    // Cancel the subscription if it contains only one add-on
+    if (totalPackage < 2) {
+      const enrollment: IEnrollment = await Enrollment.findById(enrollSubscription.enrollmentId);
+
+      await Promise.all([
+        stripe.subscriptions.cancel(enrollment?.stripe?.subscriptionId),
+        Enrollment.findByIdAndUpdate(enrollSubscription.enrollmentId, { status: false }),
+        EnrollSubscription.findByIdAndUpdate(enrollSubscription._id, { status: false, deletedByClientAt: new Date() }),
+      ]);
+
+      // Attach Outlet Check
+      // if (
+      //   [PACKAGES.MONTHLY_ADDITIONAL_OUTLET, PACKAGES.YEARLY_ADDITIONAL_OUTLET].includes(
+      //     enrollSubscription.planSnapshot.slug
+      //   )
+      // ) {
+      //   await Outlet.findOneAndUpdate({ enrollSubscriptionId }, { status: false, softDeleted: true });
+      // }
+
+      return apiResponse(res, 200, true, "Add-on Subscription Cancelled Successfully!");
+    } else {
+      const deletedItem = await stripe.subscriptionItems.del(enrollSubscription?.subscriptionItemId, {
+        proration_behavior: "none", // Options: 'create_prorations', 'none', 'always_invoice'
+      });
+
+      if (deletedItem?.deleted) {
+        await EnrollSubscription.findByIdAndUpdate(enrollSubscriptionId, {
+          status: false,
+          deletedByClientAt: new Date(),
+        });
+
+        // Attach Outlet Check
+        // if (
+        //   [PACKAGES.MONTHLY_ADDITIONAL_OUTLET, PACKAGES.YEARLY_ADDITIONAL_OUTLET].includes(
+        //     enrollSubscription.planSnapshot.slug
+        //   )
+        // ) {
+        //   await Outlet.findOneAndUpdate({ enrollSubscriptionId }, { status: false, softDeleted: true });
+        // }
+      }
+
+      return apiResponse(res, 200, true, "Add-on Subscription Cancelled Successfully!");
+    }
   }
 });
 

@@ -30,10 +30,16 @@ const discount = Joi.alternatives().conditional("discountType", {
   }),
 });
 
-const limit = Joi.number().min(1).messages({
-  "number.base": "limit must be number!",
-  "any.required": "limit is required!",
-  "number.min": "limit must be greater than or equal to 1!",
+const totalUserLimit = Joi.number().min(0).default(0).messages({
+  "number.base": "totalUserLimit must be number!",
+  "any.required": "totalUserLimit is required!",
+  "number.min": "totalUserLimit must be greater than or equal to 0!",
+});
+
+const perUserLimit = Joi.number().min(1).default(1).messages({
+  "number.base": "perUserLimit must be number!",
+  "any.required": "perUserLimit is required!",
+  "number.min": "perUserLimit must be greater than or equal to 1!",
 });
 
 const code = Joi.string().trim().min(4).messages({
@@ -75,9 +81,8 @@ export const couponSchema = Joi.object({
   discount: discount.required().messages({
     "any.required": "discount is required!",
   }),
-  limit: limit.required().messages({
-    "any.required": "limit is required!",
-  }),
+  totalUserLimit,
+  perUserLimit,
   allowFor: allowFor.required().messages({
     "any.required": "allowFor is required!",
   }),
@@ -95,7 +100,8 @@ export const updateCouponSchema = Joi.object({
   expiredAt,
   discountType,
   discount,
-  limit,
+  totalUserLimit,
+  perUserLimit,
   allowFor,
   allowedRetailers,
   applicablePackages,

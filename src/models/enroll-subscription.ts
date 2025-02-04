@@ -16,27 +16,14 @@ interface ISubscription {
   softDeleted: boolean;
 }
 
-interface ICoupon {
-  title: string;
-  description?: string;
-  code: string;
-  startedAt?: Date;
-  expiredAt?: Date;
-  discountType: "percentage" | "flat";
-  discount: number;
-  status: boolean;
-  softDeleted: boolean;
-}
-
 export interface IEnrollSubscription extends Document {
   enrollmentId: Types.ObjectId;
   planSnapshot: ISubscription;
-  couponSnapshot?: ICoupon;
   subscriptionItemId?: string;
   currentBalance: number;
   planCurrentPrice: number;
   status: boolean;
-  deletedByRetailer: boolean;
+  deletedByRetailerAt: Date;
 }
 
 const subscriptionSchema = new Schema<ISubscription>({
@@ -61,28 +48,15 @@ const subscriptionSchema = new Schema<ISubscription>({
   softDeleted: { type: Boolean, default: false },
 });
 
-const couponSchema = new Schema<ICoupon>({
-  title: { type: String, required: true, trim: true },
-  description: { type: String, trim: true, default: null },
-  code: { type: String, required: true, trim: true },
-  startedAt: { type: Date, default: null },
-  expiredAt: { type: Date, default: null },
-  discountType: { type: String, enum: ["percentage", "flat"], required: true },
-  discount: { type: Number, required: true },
-  status: { type: Boolean, default: true },
-  softDeleted: { type: Boolean, default: false },
-});
-
 const enrollSubscriptionSchema = new Schema<IEnrollSubscription>(
   {
     enrollmentId: { type: "ObjectId", ref: "Enrollment", required: true },
     planSnapshot: { type: subscriptionSchema, required: true },
-    couponSnapshot: { type: couponSchema, default: null },
     subscriptionItemId: { type: String, default: null },
     currentBalance: { type: Number, default: 0 },
     planCurrentPrice: { type: Number, default: 0 },
     status: { type: Boolean, default: false },
-    deletedByRetailer: { type: Boolean, default: false },
+    deletedByRetailerAt: { type: Date, default: null },
   },
   {
     timestamps: true,

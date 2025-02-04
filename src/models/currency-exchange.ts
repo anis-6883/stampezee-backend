@@ -1,6 +1,6 @@
 import { Document, Schema, model } from "mongoose";
 
-interface ICurrencyExchange extends Document {
+export interface ICurrencyExchange extends Document {
   name: string;
   exchangeRate: number;
   status: boolean;

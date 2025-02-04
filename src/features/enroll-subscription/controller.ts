@@ -88,10 +88,13 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
 
   if (!coupon) return apiResponse(res, 400, false, "Provided invalid coupon code!");
 
-  const subscriptions = await Subscription.find({
-    _id: { $in: coupon?.applicablePackages || [] },
-    slug: { $ne: "trial" },
-  });
+  const [subscriptions, totalApplied] = await Promise.all([
+    Subscription.find({
+      _id: { $in: coupon?.applicablePackages || [] },
+      slug: { $ne: "trial" },
+    }),
+    Payment.countDocuments({ "coupon._id": coupon._id }),
+  ]);
 
   const applicablePackages = subscriptions.map((subscription) => subscription.slug);
   const appliedSlugs = applicablePackages.filter((slug) => slugs.includes(slug));
@@ -103,14 +106,17 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
     }
   }
 
-  // TODO: Check This Condition
-  const alreadyApplied = await Enrollment.countDocuments({
-    retailerId: req.user._id,
-    "couponSnapshot._id": coupon._id,
-    paymentStatus: "completed",
+  const enrollmentIds = (await Enrollment.find({ retailerId: req.user._id, paymentStatus: "completed" })).map(
+    (enrollment) => enrollment._id
+  );
+
+  const userApplied = await Payment.countDocuments({
+    enrollmentId: { $in: enrollmentIds },
+    "coupon._id": coupon._id,
   });
 
-  if (alreadyApplied >= coupon.limit) return apiResponse(res, 400, false, "Your coupon limit is over!");
+  if (totalApplied >= coupon.totalUserLimit) return apiResponse(res, 400, false, "Coupon has expired!");
+  if (userApplied >= coupon.perUserLimit) return apiResponse(res, 400, false, "Your coupon limit is over!");
 
   const data = exclude(coupon, ["applicablePackages", "allowedRetailers", "allowFor", "limit"]);
   data.appliedSlugs = appliedSlugs;
@@ -281,12 +287,16 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       status: true,
     });
 
-    if (!enrolled && !pickPlan)
+    if (!enrolled && !pickPlan) {
       return apiResponse(res, 400, false, `You can't purchase an add-on without an active plan!`);
+    }
 
     if (enrolled && slugs.includes(enrolled.planExists)) {
       return apiResponse(res, 400, false, `You already take ${pickPlan.title} plan!`);
     }
+
+    const metadata: { [key: string]: number | string } = {};
+    metadata["currency"] = currency;
 
     // Check & Get Coupon
     let coupon: ICoupon = null;
@@ -321,10 +331,13 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
       if (!coupon) return apiResponse(res, 400, false, "Provided invalid coupon code!");
 
-      const subscriptions: ISubscription[] = await Subscription.find({
-        _id: { $in: coupon?.applicablePackages || [] },
-        slug: { $ne: "trial" },
-      });
+      const [subscriptions, totalApplied] = await Promise.all([
+        Subscription.find({
+          _id: { $in: coupon?.applicablePackages || [] },
+          slug: { $ne: "trial" },
+        }),
+        Payment.countDocuments({ "coupon._id": coupon._id }),
+      ]);
 
       const applicablePackages = subscriptions.map((subscription) => subscription.slug);
       appliedSlugs = applicablePackages.filter((slug) => slugs.includes(slug));
@@ -336,20 +349,26 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         }
       }
 
-      const alreadyApplied = await Enrollment.countDocuments({
-        retailerId: req.user._id,
-        "couponSnapshot._id": coupon._id,
-        paymentStatus: "completed",
+      const enrollmentIds = (await Enrollment.find({ retailerId: req.user._id, paymentStatus: "completed" })).map(
+        (enrollment) => enrollment._id
+      );
+
+      const userApplied = await Payment.countDocuments({
+        enrollmentId: { $in: enrollmentIds },
+        "coupon._id": coupon._id,
       });
 
-      if (alreadyApplied >= coupon.limit) return apiResponse(res, 400, false, "Your coupon limit is over!");
+      if (totalApplied >= coupon.totalUserLimit) throw "Coupon has expired!";
+      if (userApplied >= coupon.perUserLimit) throw "Your coupon limit is over!";
+
+      metadata["couponId"] = String(coupon._id) || null;
+      metadata["couponDiscountType"] = String(coupon.discountType) || null;
+      metadata["couponDiscount"] = String(coupon.discount) || null;
     }
 
     ////////////////////////////////////////////////////////////////////////
     //////// Decision -> (Upgrade or Downgrade) or New Subscription ////////
     ////////////////////////////////////////////////////////////////////////
-    const metadata: { [key: string]: number | string } = {};
-    metadata["currency"] = currency;
     const line_items: ILineItem[] = [];
     const coupons: { coupon: string }[] = [];
     let extraPayableAmount = 0;
@@ -443,7 +462,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           const enrollSubscription = await EnrollSubscription.create({
             enrollmentId: enrollment?._id,
             planSnapshot: prevAddon.planSnapshot,
-            couponSnapshot: null,
             planCurrentPrice: (finalPrice - taxValue).toFixed(2),
           });
 
@@ -489,7 +507,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           const enrollSubscription = await EnrollSubscription.create({
             enrollmentId: enrollment?._id,
             planSnapshot: subscription,
-            couponSnapshot: null,
             planCurrentPrice: (finalPrice - taxValue).toFixed(2),
           });
 
@@ -648,7 +665,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             const enrollSubscription = await EnrollSubscription.create({
               enrollmentId: enrollment?._id,
               planSnapshot: prevAddon.planSnapshot,
-              couponSnapshot: null,
               planCurrentPrice: (finalPrice - taxValue).toFixed(2),
             });
 
@@ -698,7 +714,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             const enrollSubscription = await EnrollSubscription.create({
               enrollmentId: enrollment?._id,
               planSnapshot: subscription,
-              couponSnapshot: null,
               planCurrentPrice: (finalPrice - taxValue).toFixed(2),
             });
 
@@ -940,7 +955,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             const enrollSubscription = await EnrollSubscription.create({
               enrollmentId: enrollment?._id,
               planSnapshot: prevAddon.planSnapshot,
-              couponSnapshot: null,
               planCurrentPrice: (finalPrice - taxValue).toFixed(2),
             });
 
@@ -985,7 +999,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             const enrollSubscription = await EnrollSubscription.create({
               enrollmentId: enrollment?._id,
               planSnapshot: subscription,
-              couponSnapshot: null,
               planCurrentPrice: (finalPrice - taxValue).toFixed(2),
             });
 
@@ -1097,7 +1110,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         const enrollSubscription = await EnrollSubscription.create({
           enrollmentId: enrollment?._id,
           planSnapshot: subscription,
-          couponSnapshot: coupon && appliedSlugs.includes(subscription.slug) ? coupon : null,
           planCurrentPrice: (finalPrice - taxValue - couponValue).toFixed(2),
         });
 
@@ -1131,6 +1143,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
       // Create the coupon and push into line items
       if (coupon) {
+        metadata["couponDiscountAmount"] = totalCouponAmount;
+
         const applyCoupon = await stripe.coupons.create({
           name: coupon.title,
           amount_off:
@@ -1388,7 +1402,15 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     }
 
     let updateSubscriptions: any = [];
-    const { enrollmentId = null, balanceAmount = 0, extraPayableAmount = 0 } = checkoutSession?.metadata;
+    const {
+      enrollmentId = null,
+      balanceAmount = 0,
+      extraPayableAmount = 0,
+      couponId = null,
+      couponDiscountType = null,
+      couponDiscount = 0,
+      couponDiscountAmount = 0,
+    } = checkoutSession?.metadata;
 
     const enrollment = await Enrollment.findById(enrollmentId);
 
@@ -1443,6 +1465,12 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     const payment = await Payment.create({
       enrollmentId: enrollment?._id,
       enrollSubscriptionIds: Object.keys(subscriptionItemsMap),
+      coupon: {
+        _id: couponId,
+        discountType: couponDiscountType,
+        discount: couponDiscount,
+        discountAmount: couponDiscountAmount,
+      },
       invoiceNumber: invoice?.number,
       invoicePdf: invoice?.invoice_pdf,
       paymentIntentId: invoice?.payment_intent?.id,

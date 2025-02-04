@@ -1,6 +1,6 @@
 import { Document, Schema, Types, model } from "mongoose";
 
-interface IEnrollment extends Document {
+export interface IEnrollment extends Document {
   retailerId: Types.ObjectId;
   planExists: string | null;
   stripe: {
