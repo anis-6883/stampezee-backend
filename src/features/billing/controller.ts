@@ -256,7 +256,7 @@ export const cancelAddOnSubscription = asyncHandler(async (req: IApiRequest, res
     if (deletedItem?.deleted) {
       await EnrollSubscription.findByIdAndUpdate(enrollSubscriptionId, {
         status: false,
-        deletedByRetailer: true,
+        deletedByRetailerAt: new Date(),
       });
 
       // Attach Branch Check
@@ -367,7 +367,7 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
       Enrollment.findByIdAndUpdate(enrollSubscription.enrollmentId, { status: false }),
       EnrollSubscription.updateMany(
         { enrollmentId: enrollSubscription.enrollmentId },
-        { status: false, deletedByClientAt: new Date() }
+        { status: false, deletedByRetailerAt: new Date() }
       ),
     ]);
 
@@ -376,7 +376,7 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
     const totalPackage = await EnrollSubscription.countDocuments({
       enrollmentId: enrollSubscription.enrollmentId,
       status: true,
-      deletedByClientAt: null,
+      deletedByRetailerAt: null,
     });
 
     // Cancel the subscription if it contains only one add-on
@@ -386,17 +386,11 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
       await Promise.all([
         stripe.subscriptions.cancel(enrollment?.stripe?.subscriptionId),
         Enrollment.findByIdAndUpdate(enrollSubscription.enrollmentId, { status: false }),
-        EnrollSubscription.findByIdAndUpdate(enrollSubscription._id, { status: false, deletedByClientAt: new Date() }),
+        EnrollSubscription.findByIdAndUpdate(enrollSubscription._id, {
+          status: false,
+          deletedByRetailerAt: new Date(),
+        }),
       ]);
-
-      // Attach Outlet Check
-      // if (
-      //   [PACKAGES.MONTHLY_ADDITIONAL_OUTLET, PACKAGES.YEARLY_ADDITIONAL_OUTLET].includes(
-      //     enrollSubscription.planSnapshot.slug
-      //   )
-      // ) {
-      //   await Outlet.findOneAndUpdate({ enrollSubscriptionId }, { status: false, softDeleted: true });
-      // }
 
       return apiResponse(res, 200, true, "Add-on Subscription Cancelled Successfully!");
     } else {
@@ -407,17 +401,8 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
       if (deletedItem?.deleted) {
         await EnrollSubscription.findByIdAndUpdate(enrollSubscriptionId, {
           status: false,
-          deletedByClientAt: new Date(),
+          deletedByRetailerAt: new Date(),
         });
-
-        // Attach Outlet Check
-        // if (
-        //   [PACKAGES.MONTHLY_ADDITIONAL_OUTLET, PACKAGES.YEARLY_ADDITIONAL_OUTLET].includes(
-        //     enrollSubscription.planSnapshot.slug
-        //   )
-        // ) {
-        //   await Outlet.findOneAndUpdate({ enrollSubscriptionId }, { status: false, softDeleted: true });
-        // }
       }
 
       return apiResponse(res, 200, true, "Add-on Subscription Cancelled Successfully!");

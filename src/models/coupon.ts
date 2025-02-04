@@ -27,7 +27,7 @@ const couponSchema = new Schema<ICoupon>(
     discountType: { type: String, enum: ["percentage", "flat"], required: true },
     discount: { type: Number, required: true },
     totalUserLimit: { type: Number, default: 0 },
-    perUserLimit: { type: Number, default: 1 },
+    perUserLimit: { type: Number, default: 0 },
     startedAt: { type: Date, required: true },
     expiredAt: { type: Date, required: true },
     allowFor: { type: String, enum: ["all", "specific"], default: "all" },

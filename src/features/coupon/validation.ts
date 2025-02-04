@@ -36,7 +36,7 @@ const totalUserLimit = Joi.number().min(0).default(0).messages({
   "number.min": "totalUserLimit must be greater than or equal to 0!",
 });
 
-const perUserLimit = Joi.number().min(1).default(1).messages({
+const perUserLimit = Joi.number().min(0).default(0).messages({
   "number.base": "perUserLimit must be number!",
   "any.required": "perUserLimit is required!",
   "number.min": "perUserLimit must be greater than or equal to 1!",
