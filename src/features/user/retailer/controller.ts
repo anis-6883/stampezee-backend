@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
+import moment from "moment";
 import { PACKAGES, ROLE } from "../../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../../configs/s3Bucket";
 import {
@@ -10,8 +11,11 @@ import {
   getRandomInteger,
   getSlugCountMap,
 } from "../../../helpers";
+import Branch from "../../../models/branch";
+import EnrollSubscription from "../../../models/enroll-subscription";
 import Enrollment from "../../../models/enrollment";
 import Retailer from "../../../models/retailer";
+import Subscription from "../../../models/subscription";
 import { IApiRequest } from "../../../types";
 import { retailerSchemaUpdate } from "../../retailer/validation";
 import { sendVerificationEmail } from "../service";
@@ -40,24 +44,53 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
   retailerBody.password = await bcrypt.hash(retailerBody.password, 10);
   retailerBody.otp = getRandomInteger(100000, 999999);
   retailerBody.otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
+  retailerBody.takeFreeTrial = true; // 2 min
 
   const existingRetailer = await Retailer.findOne({ email: retailerBody.email });
-
   if (existingRetailer && existingRetailer.isVerified) {
     return apiResponse(res, 400, false, "This email already registered!");
   }
 
-  if (existingRetailer) {
-    await Retailer.updateOne(
-      { email: retailerBody.email },
-      { otp: retailerBody.otp, otpExpiry: retailerBody.otpExpiry }
-    );
-  } else {
-    await Retailer.create({
-      ...retailerBody,
-      fullName: retailerBody?.lastName ? `${retailerBody.firstName} ${retailerBody.lastName}` : retailerBody.firstName,
-    });
-  }
+  const retailer = existingRetailer
+    ? await Retailer.findOneAndUpdate(
+        { email: retailerBody.email },
+        { otp: retailerBody.otp, otpExpiry: retailerBody.otpExpiry }
+      )
+    : await Retailer.create({
+        ...retailerBody,
+        fullName: retailerBody?.lastName
+          ? `${retailerBody.firstName} ${retailerBody.lastName}`
+          : retailerBody.firstName,
+      });
+
+  const freeTrial = await Subscription.findOne({ slug: "trial" });
+  if (!freeTrial) return apiResponse(res, 400, false, "Free trial package not found!");
+
+  const enrollment = await Enrollment.create({
+    retailerId: retailer._id,
+    planExists: PACKAGES.TRIAL,
+    paymentStatus: "trial",
+    validityFrom: moment(),
+    validityTo: moment().add(freeTrial.duration, "days"),
+    enrollStatus: "trial",
+  });
+
+  const enrollSubscription = await EnrollSubscription.create({
+    enrollmentId: enrollment?._id,
+    planSnapshot: enrollment,
+    status: true,
+  });
+
+  await Branch.create({
+    name: "Default Branch",
+    address: {
+      loc: { type: "Point", coordinates: [retailerBody.longitude, retailerBody.latitude] },
+      name: retailerBody.address,
+    },
+    retailerId: retailer._id,
+    enrollSubscriptionId: enrollSubscription._id,
+    source: "subscription",
+  });
 
   const tempToken = generateSignature({ email: retailerBody.email, role: ROLE.RETAILER, ott: true }, "15m"); // 15 min
 

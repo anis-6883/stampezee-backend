@@ -82,6 +82,8 @@ export const retailerRegisterSchema = Joi.object({
   city: requiredStringField("city"),
   postalCode: requiredStringField("postalCode"),
   address: requiredStringField("address"),
+  longitude: requiredStringField("longitude"),
+  latitude: requiredStringField("latitude"),
 });
 
 export const superAdminRegisterSchema = Joi.object({
