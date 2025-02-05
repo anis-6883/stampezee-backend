@@ -768,7 +768,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             stripe.subscriptions.cancel(enrolled?.stripe?.subscriptionId),
             Branch.updateMany({ retailerId: req.user._id, source: "subscription" }, { enrollmentId: enrollment._id }),
             Enrollment.updateOne({ _id: enrolled._id }, { status: false }),
-            EnrollSubscription.updateMany({ enrollmentId: enrolled._id }, { status: false }),
+            EnrollSubscription.updateMany(
+              { enrollmentId: enrolled._id },
+              { status: false, deletedByRetailerAt: new Date() }
+            ),
             Enrollment.updateOne(
               { _id: enrollment._id },
               {
@@ -1435,6 +1438,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
         },
         {
           status: false,
+          deletedByRetailerAt: new Date(),
         }
       );
 
