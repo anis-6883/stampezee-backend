@@ -296,6 +296,57 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       return apiResponse(res, 400, false, `You already take ${pickPlan.title} plan!`);
     }
 
+    // Notification Package Validation
+    if (slugs.includes(PACKAGES.PUSH_NOTIFICATION_USER) || slugs.includes(PACKAGES.PUSH_NOTIFICATION_LOCATION)) {
+      const notificationEnrollments = await Enrollment.aggregate([
+        {
+          $match: {
+            retailerId: req.user._id,
+            paymentStatus: "completed",
+            validityTo: { $gt: new Date() },
+            status: true,
+          },
+        },
+        {
+          $lookup: {
+            from: "enroll_subscriptions",
+            localField: "_id",
+            foreignField: "enrollmentId",
+            as: "enrollSubscription",
+            pipeline: [
+              {
+                $match: {
+                  status: true,
+                  deletedByRetailerAt: null,
+                  "planSnapshot.slug": { $in: [PACKAGES.PUSH_NOTIFICATION_USER, PACKAGES.PUSH_NOTIFICATION_LOCATION] },
+                },
+              },
+              {
+                $project: {
+                  slug: "$planSnapshot.slug",
+                  title: "$planSnapshot.title",
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: "$enrollSubscription",
+        },
+        {
+          $project: {
+            enrollSubscription: 1,
+          },
+        },
+      ]);
+
+      for (const enrollment of notificationEnrollments) {
+        if (slugs.includes(enrollment.enrollSubscription.slug)) {
+          return apiResponse(res, 400, false, `You already take ${enrollment.enrollSubscription.title} plan!`);
+        }
+      }
+    }
+
     const metadata: { [key: string]: number | string } = {};
     metadata["currency"] = currency;
 
