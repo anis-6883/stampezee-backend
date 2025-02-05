@@ -1,7 +1,7 @@
 import express from "express";
 import {
   attachPaymentMethod,
-  cancelAddOnSubscription,
+  cancelBasePlanOrAddOn,
   detachPaymentMethod,
   getAllPaymentMethod,
   getRetailerBillingPdf,
@@ -14,7 +14,7 @@ const router = express.Router();
 
 router.get("/subscription/all", getSubscriptionPayments);
 router.post("/retailer-billing-portal", getRetailerBillingPortal);
-router.delete("/cancel-addon-subscription", cancelAddOnSubscription);
+router.delete("/cancel-subscription", cancelBasePlanOrAddOn);
 router.get("/subscription/find/:id", getSingleSubscriptionPayment);
 router.post("/download-pdf/:id", getRetailerBillingPdf);
 

@@ -3,10 +3,8 @@ import fs from "fs";
 import { Types } from "mongoose";
 import path from "path";
 import Stripe from "stripe";
-import { PACKAGES } from "../../configs/constants";
 import { apiResponse, asyncHandler, calculateBalanceAmount, htmlToPdf } from "../../helpers";
 import { makePaginate } from "../../helpers/index";
-import Branch from "../../models/branch";
 import CurrencyExchange, { ICurrencyExchange } from "../../models/currency-exchange";
 import EnrollSubscription from "../../models/enroll-subscription";
 import Enrollment, { IEnrollment } from "../../models/enrollment";
@@ -14,8 +12,6 @@ import Payment from "../../models/payment";
 import Refund from "../../models/refund";
 import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
-import Stamp from "../../models/stamp";
-import SubAdmin from "../../models/sub-admin";
 import { IApiRequest } from "../../types";
 import { enrollSubscriptionSchema, portalSchema } from "./validation";
 
@@ -205,97 +201,6 @@ export const getSingleBilling = asyncHandler(async (req: IApiRequest, res: Respo
   if (enrollment.length <= 0) return apiResponse(res, 400, false, "No Billing Found!");
 
   return apiResponse(res, 200, true, "Retailer single billing fetched successfully!", enrollment[0]);
-});
-
-/**
- * Cancel Subscription Item from Packages
- * @param {Request} req - The HTTP request object.
- * @param {Response} res - The HTTP response object.
- * @returns {Promise<void>} - A promise that resolves when the response is sent.
- */
-export const cancelAddOnSubscription = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = await enrollSubscriptionSchema.validateAsync(req.body, {
-    abortEarly: false,
-  });
-
-  const { enrollSubscriptionId } = result;
-  const enrollSubscription = await EnrollSubscription.findById(enrollSubscriptionId);
-  if (!enrollSubscription) return apiResponse(res, 400, false, "Enroll Subscription Not Found!");
-
-  if (enrollSubscription?.planSnapshot?.type !== "subscription") {
-    const totalPackage = await EnrollSubscription.countDocuments({
-      enrollmentId: enrollSubscription.enrollmentId,
-      status: true,
-      deletedByRetailer: false,
-    });
-
-    if (totalPackage < 2) return apiResponse(res, 400, false, "At least one package is needed for subscription!");
-
-    const paymentMetadata = await Settings.findOne(
-      {},
-      {
-        "stripe.planChangeCost": 1,
-        "stripe.refundableThreshold": 1,
-        "stripe.taxTitle": 1,
-        "stripe.taxCost": 1,
-        "stripe.taxStatus": 1,
-        "stripe.stripeSecretKey": 1,
-      }
-    );
-
-    const { stripeSecretKey } = paymentMetadata.stripe ?? {};
-
-    if (!paymentMetadata) return apiResponse(res, 400, false, "Something went wrong in Stripe settings!");
-
-    const stripe = new Stripe(stripeSecretKey);
-
-    const deletedItem = await stripe.subscriptionItems.del(enrollSubscription?.subscriptionItemId, {
-      proration_behavior: "none", // Options: 'create_prorations', 'none', 'always_invoice'
-    });
-
-    if (deletedItem?.deleted) {
-      await EnrollSubscription.findByIdAndUpdate(enrollSubscriptionId, {
-        status: false,
-        deletedByRetailerAt: new Date(),
-      });
-
-      // Attach Branch Check
-      if (enrollSubscription.planSnapshot.slug === PACKAGES.BRANCH) {
-        const branch = await Branch.findOneAndUpdate(
-          { enrollSubscriptionId },
-          {
-            status: false,
-            softDeleted: true,
-          },
-          {
-            new: true,
-          }
-        );
-
-        if (branch) {
-          await Promise.all([
-            Stamp.updateMany({ branchId: branch?._id }, { status: false, softDeleted: true }),
-            SubAdmin.updateMany({ branchId: branch?._id }, { status: false, softDeleted: true }),
-          ]);
-        }
-      }
-
-      // Attach Stamp Check
-      if (enrollSubscription.planSnapshot.slug === PACKAGES.STAMP) {
-        await Stamp.findOneAndUpdate(
-          { enrollSubscriptionId },
-          {
-            status: false,
-            softDeleted: true,
-          }
-        );
-      }
-    }
-
-    return apiResponse(res, 200, true, "Add-on Subscription Cancelled Successfully!");
-  } else {
-    return apiResponse(res, 400, false, "Cancel a Subscription Plan is not Allowed!");
-  }
 });
 
 /**
