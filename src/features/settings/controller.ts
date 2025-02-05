@@ -11,10 +11,7 @@ import { settingsSchema } from "./validation";
  */
 export const getSettings = asyncHandler(async (req: Request, res: Response) => {
   const settings = await Settings.findOne({});
-
-  if (!settings) {
-    return apiResponse(res, 404, false, "Settings not found!");
-  }
+  if (!settings) return apiResponse(res, 400, false, "Settings not found!");
 
   return apiResponse(res, 200, true, "Settings fetched Successfully!", settings);
 });
@@ -85,9 +82,7 @@ export const getCommonSettings = asyncHandler(async (req: Request, res: Response
     }
   );
 
-  if (!settings) {
-    return apiResponse(res, 404, false, "Settings not found!");
-  }
+  if (!settings) return apiResponse(res, 400, false, "Settings not found!");
 
   return apiResponse(res, 200, true, "Settings fetched Successfully!", settings);
 });
@@ -100,10 +95,7 @@ export const getCommonSettings = asyncHandler(async (req: Request, res: Response
  */
 export const getSecretSettings = asyncHandler(async (req: Request, res: Response) => {
   const settings = await Settings.findOne({}, { "general.timezone": 1 });
-
-  if (!settings) {
-    return apiResponse(res, 404, false, "Settings not found!");
-  }
+  if (!settings) return apiResponse(res, 400, false, "Settings not found!");
 
   return apiResponse(res, 200, true, "Settings fetched Successfully!", settings);
 });

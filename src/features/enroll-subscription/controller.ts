@@ -80,7 +80,8 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
           allowFor: 1,
           allowedRetailers: 1,
           applicablePackages: 1,
-          limit: 1,
+          totalUserLimit: 1,
+          perUserLimit: 1,
         },
       },
     ])
@@ -88,13 +89,10 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
 
   if (!coupon) return apiResponse(res, 400, false, "Provided invalid coupon code!");
 
-  const [subscriptions, totalApplied] = await Promise.all([
-    Subscription.find({
-      _id: { $in: coupon?.applicablePackages || [] },
-      slug: { $ne: "trial" },
-    }),
-    Payment.countDocuments({ "coupon._id": coupon._id }),
-  ]);
+  const subscriptions = await Subscription.find({
+    _id: { $in: coupon?.applicablePackages || [] },
+    slug: { $ne: "trial" },
+  });
 
   const applicablePackages = subscriptions.map((subscription) => subscription.slug);
   const appliedSlugs = applicablePackages.filter((slug) => slugs.includes(slug));
@@ -106,17 +104,20 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
     }
   }
 
-  const enrollmentIds = (await Enrollment.find({ retailerId: req.user._id, paymentStatus: "completed" })).map(
-    (enrollment) => enrollment._id
-  );
+  if (coupon.totalUserLimit !== 0) {
+    const totalApplied = await Payment.countDocuments({ "coupon._id": coupon._id });
+    if (totalApplied >= coupon.totalUserLimit) return apiResponse(res, 400, false, "Your coupon limit is over!");
+  }
 
-  const userApplied = await Payment.countDocuments({
-    enrollmentId: { $in: enrollmentIds },
-    "coupon._id": coupon._id,
-  });
-
-  if (totalApplied >= coupon.totalUserLimit) return apiResponse(res, 400, false, "Coupon has expired!");
-  if (userApplied >= coupon.perUserLimit) return apiResponse(res, 400, false, "Your coupon limit is over!");
+  if (coupon.perUserLimit !== 0) {
+    const retailerEnrollments = await Enrollment.find({ retailerId: req.user._id, paymentStatus: "completed" });
+    const enrollmentIds = retailerEnrollments.map((enrollment) => enrollment._id);
+    const userApplied = await Payment.countDocuments({
+      enrollmentId: { $in: enrollmentIds },
+      "coupon._id": coupon._id,
+    });
+    if (userApplied >= coupon.perUserLimit) return apiResponse(res, 400, false, "Your coupon limit is over!");
+  }
 
   const data = exclude(coupon, ["applicablePackages", "allowedRetailers", "allowFor", "limit"]);
   data.appliedSlugs = appliedSlugs;
@@ -323,7 +324,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               allowFor: 1,
               allowedRetailers: 1,
               applicablePackages: 1,
-              limit: 1,
+              totalUserLimit: 1,
+              perUserLimit: 1,
             },
           },
         ])
@@ -331,13 +333,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
       if (!coupon) return apiResponse(res, 400, false, "Provided invalid coupon code!");
 
-      const [subscriptions, totalApplied] = await Promise.all([
-        Subscription.find({
-          _id: { $in: coupon?.applicablePackages || [] },
-          slug: { $ne: "trial" },
-        }),
-        Payment.countDocuments({ "coupon._id": coupon._id }),
-      ]);
+      const subscriptions = await Subscription.find({
+        _id: { $in: coupon?.applicablePackages || [] },
+        slug: { $ne: "trial" },
+      });
 
       const applicablePackages = subscriptions.map((subscription) => subscription.slug);
       appliedSlugs = applicablePackages.filter((slug) => slugs.includes(slug));
@@ -349,17 +348,20 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         }
       }
 
-      const enrollmentIds = (await Enrollment.find({ retailerId: req.user._id, paymentStatus: "completed" })).map(
-        (enrollment) => enrollment._id
-      );
+      if (coupon.totalUserLimit !== 0) {
+        const totalApplied = await Payment.countDocuments({ "coupon._id": coupon._id });
+        if (totalApplied >= coupon.totalUserLimit) return apiResponse(res, 400, false, "Your coupon limit is over!");
+      }
 
-      const userApplied = await Payment.countDocuments({
-        enrollmentId: { $in: enrollmentIds },
-        "coupon._id": coupon._id,
-      });
-
-      if (totalApplied >= coupon.totalUserLimit) throw "Coupon has expired!";
-      if (userApplied >= coupon.perUserLimit) throw "Your coupon limit is over!";
+      if (coupon.perUserLimit !== 0) {
+        const retailerEnrollments = await Enrollment.find({ retailerId: req.user._id, paymentStatus: "completed" });
+        const enrollmentIds = retailerEnrollments.map((enrollment) => enrollment._id);
+        const userApplied = await Payment.countDocuments({
+          enrollmentId: { $in: enrollmentIds },
+          "coupon._id": coupon._id,
+        });
+        if (userApplied >= coupon.perUserLimit) return apiResponse(res, 400, false, "Your coupon limit is over!");
+      }
 
       metadata["couponId"] = String(coupon._id) || null;
       metadata["couponDiscountType"] = String(coupon.discountType) || null;
@@ -891,8 +893,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                 ? null
                 : Number(extraPayableAmount)?.toFixed(2),
           };
-
-          // console.log({ purchasedItems, subTotal, taxValue, couponValue, balanceAmount, invoiceMetadata });
 
           const paymentInfo = {
             bankName: "Fauget Bank",
