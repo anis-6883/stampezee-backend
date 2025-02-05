@@ -21,6 +21,8 @@ interface IRetailer extends Document {
   province: string;
   postalCode: string;
   address: string;
+  longitude: string;
+  latitude: string;
   about?: string;
   website?: string;
   takeFreeTrial: boolean;
@@ -50,6 +52,8 @@ const retailerSchema = new Schema<IRetailer>(
     province: { type: String, required: true, trim: true },
     postalCode: { type: String, required: true, trim: true },
     address: { type: String, required: true, trim: true },
+    longitude: { type: String, required: true, trim: true },
+    latitude: { type: String, required: true, trim: true },
     about: { type: String, trim: true, default: null },
     website: { type: String, trim: true, default: null },
     takeFreeTrial: { type: Boolean, default: false },
