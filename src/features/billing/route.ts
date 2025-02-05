@@ -1,7 +1,7 @@
 import express from "express";
 import {
   attachPaymentMethod,
-  cancelAddOnSubscription,
+  cancelBasePlanOrAddOn,
   detachPaymentMethod,
   getAllBillings,
   getAllPaymentMethod,
@@ -17,7 +17,7 @@ const router = express.Router();
 router.get("/all", getAllBillings);
 router.get("/find/:id", getSingleBilling);
 router.post("/portal", getRetailerBillingPortal);
-router.delete("/cancel-addon-subscription", cancelAddOnSubscription);
+router.delete("/cancel-subscription", cancelBasePlanOrAddOn);
 router.post("/attach-payment-method", attachPaymentMethod);
 router.post("/detach-payment-method", detachPaymentMethod);
 router.post("/default-payment-method", setDefaultPaymentMethod);
