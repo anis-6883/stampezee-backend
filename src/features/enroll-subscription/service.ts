@@ -48,7 +48,7 @@ export const sendInvoiceToEmail = async ({
     html: getInvoiceTemplate({ customerInfo, purchasedItems, invoiceMetadata, paymentInfo }),
     attachments: [
       {
-        path: path.join(process.cwd(), "/src/features/enroll-subscription/temp/invoice.pdf"),
+        path: path.join(process.cwd(), "/src/templates/invoice.pdf"),
         filename: "invoice.pdf",
         contentType: "contentType",
       },
