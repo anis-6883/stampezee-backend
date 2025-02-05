@@ -52,7 +52,7 @@ export const getSubscriptionPayments = asyncHandler(async (req: IApiRequest, res
                 title: "$planSnapshot.title",
                 slug: "$planSnapshot.slug",
                 type: "$planSnapshot.type",
-                deletedByRetailer: 1,
+                deletedByRetailerAt: 1,
               },
             },
             {
@@ -121,7 +121,7 @@ export const getSingleSubscriptionPayment = asyncHandler(async (req: IApiRequest
               title: "$planSnapshot.title",
               slug: "$planSnapshot.slug",
               type: "$planSnapshot.type",
-              deletedByRetailer: 1,
+              deletedByRetailerAt: 1,
             },
           },
           {
