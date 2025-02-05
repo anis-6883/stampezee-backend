@@ -208,7 +208,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
             {
               $match: {
                 status: true,
-                deletedByRetailer: false,
+                deletedByRetailerAt: null,
               },
             },
             {
@@ -239,14 +239,18 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   ]);
 
   const slugMap = getSlugCountMap(addonEnrollments);
-
+  const activeAddonSlugs = [];
   const { BRANCH, STAMP, CUSTOM_STAMP_IMAGE, PUSH_NOTIFICATION_USER, PUSH_NOTIFICATION_LOCATION } = PACKAGES;
+
+  for (const slug of [BRANCH, STAMP, CUSTOM_STAMP_IMAGE, PUSH_NOTIFICATION_USER, PUSH_NOTIFICATION_LOCATION]) {
+    if (Object.keys(slugMap).includes(slug)) activeAddonSlugs.push(slug);
+  }
 
   const accessToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "30d");
   const refreshToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "60d");
 
   // Remove Sensitive Data
-  const data = exclude(retailer._doc, ["password", "otp", "otpExpiry"]);
+  const data = exclude(retailer._doc, ["password", "otp", "otpExpiry", "createdAt", "updatedAt", "softDeleted"]);
 
   const { enrollSubscription, planExists, currency, validityFrom, validityTo } = planEnrollment[0] ?? {};
 
@@ -261,6 +265,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
     : null;
   data.planStartAt = validityFrom ?? null;
   data.planValidAt = validityTo ?? null;
+  data.activeAddonSlugs = activeAddonSlugs;
 
   data.totalBranch = (enrollSubscription?.planSnapshot?.allowTotalBranch ?? 0) + (slugMap[BRANCH] ?? 0);
   data.totalStamp = (enrollSubscription?.planSnapshot?.allowTotalStamp ?? 0) + (slugMap[STAMP] ?? 0);
@@ -289,7 +294,7 @@ export const retailerLogout = asyncHandler(async (_req: Request, res: Response) 
  */
 export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Response) => {
   // Remove Sensitive Data
-  const data = exclude(req.user, ["password", "otp", "otpExpiry"]);
+  const data = exclude(req.user, ["password", "otp", "otpExpiry", "createdAt", "updatedAt", "softDeleted"]);
 
   // Check Subscription & Addon Enrollment
   const [planEnrollment, addonEnrollments] = await Promise.all([
@@ -344,7 +349,7 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
             {
               $match: {
                 status: true,
-                deletedByRetailer: false,
+                deletedByRetailerAt: null,
               },
             },
             {
@@ -375,8 +380,13 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
   ]);
 
   const slugMap = getSlugCountMap(addonEnrollments);
-
+  const activeAddonSlugs = [];
   const { BRANCH, STAMP, CUSTOM_STAMP_IMAGE, PUSH_NOTIFICATION_USER, PUSH_NOTIFICATION_LOCATION } = PACKAGES;
+
+  for (const slug of [BRANCH, STAMP, CUSTOM_STAMP_IMAGE, PUSH_NOTIFICATION_USER, PUSH_NOTIFICATION_LOCATION]) {
+    if (Object.keys(slugMap).includes(slug)) activeAddonSlugs.push(slug);
+  }
+
   const { enrollSubscription, planExists, currency, validityFrom, validityTo } = planEnrollment[0] ?? {};
 
   data.role = ROLE.RETAILER;
@@ -387,6 +397,7 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
     : null;
   data.planStartAt = validityFrom ?? null;
   data.planValidAt = validityTo ?? null;
+  data.activeAddonSlugs = activeAddonSlugs;
 
   data.totalBranch = (enrollSubscription?.planSnapshot?.allowTotalBranch ?? 0) + (slugMap[BRANCH] ?? 0);
   data.totalStamp = (enrollSubscription?.planSnapshot?.allowTotalStamp ?? 0) + (slugMap[STAMP] ?? 0);
