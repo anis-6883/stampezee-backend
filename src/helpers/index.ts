@@ -310,21 +310,34 @@ export const checkDuplicates = (arr: string[]): boolean => {
   return true;
 };
 
-export const getUTC = (localTime: Date | string, timeZoneOffset: number, endOfDay: boolean = false) => {
+export const getUTC = (
+  localTime: Date | string,
+  timeZoneOffset: number,
+  startOfDay: boolean = false,
+  endOfDay: boolean = false
+) => {
+  if (startOfDay && endOfDay) {
+    throw new Error("startOfDay and endOfDay cannot both be true!");
+  }
+
   const currentTime = new Date(localTime);
 
-  // Adjust to UTC end of day
+  // Adjust to UTC start and end of day
+  const utcStartOfDay = new Date(
+    Date.UTC(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), 0, 0, 0, 0)
+  );
   const utcEndOfDay = new Date(
     Date.UTC(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), 23, 59, 59, 999)
   );
 
-  const currentTimeInMs = endOfDay ? utcEndOfDay.getTime() : currentTime.getTime();
+  let currentTimeInMs;
+
+  if (startOfDay) currentTimeInMs = utcStartOfDay.getTime();
+  else if (endOfDay) currentTimeInMs = utcEndOfDay.getTime();
+  else currentTimeInMs = currentTime.getTime();
 
   const utcTimeInMs = currentTimeInMs - timeZoneOffset * 60 * 60 * 1000;
-
-  const utcTime = new Date(utcTimeInMs);
-
-  return utcTime;
+  return new Date(utcTimeInMs);
 };
 
 export const checkPlanChange = (plans: string[], previousPlan: string, currentPlan: string): number => {
