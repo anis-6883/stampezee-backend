@@ -64,14 +64,10 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
     Settings.findOne({}, { notification: 1, "general.timezone": 1 }),
   ]);
 
-  // let totalLimit = 0;
-  // for (const addon of addons) totalLimit += addon.planSnapshot.limit;
-
+  // Always active one add-on if purchased
   if (!addon[0]) return apiResponse(res, 400, false, "No one is allowed to send notification without an add-on!");
 
   const enrollment = await Enrollment.findOne({ _id: addon[0].enrollmentId });
-
-  console.log({ enrollment });
 
   const totalNotification = await Notification.countDocuments({
     retailerId: req.user._id,
@@ -79,11 +75,9 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
     createdAt: { $gte: enrollment.validityFrom, $lte: enrollment.validityTo },
   });
 
-  // if (totalNotification >= totalLimit) {
-  //   return apiResponse(res, 400, false, "Your notification limit is over. Take Another Add-on!");
-  // }
-
-  // if (1 === 1) return apiResponse(res, 400, false, "Testing..!", totalNotification);
+  if (totalNotification >= addon[0]?.planSnapshot?.limit) {
+    return apiResponse(res, 400, false, "Limit is over for the current month!");
+  }
 
   // File Validation
   if (req.file) {
@@ -94,14 +88,10 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
   // Upload File to S3 Bucket
   if (req.file) {
     const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "notification");
-    if (status) {
-      notificationObj.image = `${process.env.S3_BASE_URL}/${key}`;
-    }
+    if (status) notificationObj.image = `${process.env.S3_BASE_URL}/${key}`;
   }
 
-  if (imageType == "url" && image) {
-    notificationObj.image = image;
-  }
+  if (imageType == "url" && image) notificationObj.image = image;
 
   // Function to send notifications
   const sendNotification = async (tokens: string[] = []) => {
@@ -153,7 +143,7 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
   const { title, description, imageType, image, address, radius, longitude, latitude, scheduleAt } = result;
   let notificationObj = { title, description, image, scheduleAt };
 
-  const [addons, totalNotification, settings] = await Promise.all([
+  const [addon, settings] = await Promise.all([
     Enrollment.aggregate([
       {
         $match: {
@@ -190,39 +180,37 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
         $replaceRoot: { newRoot: "$enrollSubscription" }, // Replace root with enrollSubscription
       },
     ]),
-    Notification.countDocuments({ retailerId: req.user._id, type: "location" }),
     Settings.findOne({}, { notification: 1, "general.timezone": 1 }),
   ]);
 
-  let totalLimit = 0;
-  for (const addon of addons) totalLimit += addon.planSnapshot.limit;
+  // Always active one add-on if purchased
+  if (!addon[0]) return apiResponse(res, 400, false, "No one is allowed to send notification without an add-on!");
 
-  if (totalLimit === 0) {
-    return apiResponse(res, 400, false, "No one is allowed to create a notification without a plan!");
-  }
-  if (totalNotification >= totalLimit) {
-    return apiResponse(res, 400, false, "Your notification limit is over. Take Another Add-on!");
+  const enrollment = await Enrollment.findOne({ _id: addon[0].enrollmentId });
+
+  const totalNotification = await Notification.countDocuments({
+    retailerId: req.user._id,
+    type: "location",
+    createdAt: { $gte: enrollment.validityFrom, $lte: enrollment.validityTo },
+  });
+
+  if (totalNotification >= addon[0]?.planSnapshot?.limit) {
+    return apiResponse(res, 400, false, "Limit is over for the current month!");
   }
 
   // File Validation
   if (req.file) {
     const { status, message } = fileValidation(req.file, undefined, ["image/jpeg", "image/png", "image/jpg"]);
-    if (!status) {
-      return apiResponse(res, 400, false, "Invalid Request!", { image: message });
-    }
+    if (!status) return apiResponse(res, 400, false, "Invalid Request!", { image: message });
   }
 
   // Upload File to S3 Bucket
   if (req.file) {
     const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "notification");
-    if (status) {
-      notificationObj.image = `${process.env.S3_BASE_URL}/${key}`;
-    }
+    if (status) notificationObj.image = `${process.env.S3_BASE_URL}/${key}`;
   }
 
-  if (imageType == "url" && image) {
-    notificationObj.image = image;
-  }
+  if (imageType == "url" && image) notificationObj.image = image;
 
   // Function to send notifications
   const sendNotification = async (tokens: string[] = []) => {
@@ -314,11 +302,12 @@ export const getAllNotificationsForRetailer = asyncHandler(async (req: IApiReque
   if (type) {
     query.type = type;
   }
+
   if (search) {
     query.$or = [{ title: { $regex: search, $options: "i" } }, { description: { $regex: search, $options: "i" } }];
   }
 
-  const [docs, total, addons, totalNotification] = await Promise.all([
+  const [docs, total, addon] = await Promise.all([
     Notification.aggregate([
       {
         $match: query,
@@ -379,15 +368,23 @@ export const getAllNotificationsForRetailer = asyncHandler(async (req: IApiReque
         $replaceRoot: { newRoot: "$enrollSubscription" }, // Replace root with enrollSubscription
       },
     ]),
-    Notification.countDocuments({ retailerId: req.user._id, type }),
   ]);
 
   const data: any = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  let totalLimit = 0;
-  for (const addon of addons) totalLimit += addon.planSnapshot.limit;
+  if (addon[0]) {
+    const enrollment = await Enrollment.findOne({ _id: addon[0]?.enrollmentId });
 
-  data.notificationLimit = totalLimit - totalNotification < 0 ? 0 : totalLimit - totalNotification;
+    const totalNotification = await Notification.countDocuments({
+      retailerId: req.user._id,
+      type,
+      createdAt: { $gte: enrollment.validityFrom, $lte: enrollment.validityTo },
+    });
+
+    data.notificationLimit = addon[0]?.planSnapshot?.limit - totalNotification;
+  } else {
+    data.notificationLimit = 0;
+  }
 
   return apiResponse(res, 200, true, "Notification fetched successfully!", data);
 });
