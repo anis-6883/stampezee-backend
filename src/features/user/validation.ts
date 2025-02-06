@@ -1,6 +1,7 @@
 import Joi from "joi";
 import {
   emailField,
+  numberField,
   requiredEmailField,
   requiredStringField,
   requiredWeakPasswordField,
@@ -84,6 +85,10 @@ export const retailerRegisterSchema = Joi.object({
   address: requiredStringField("address"),
   longitude: requiredStringField("longitude"),
   latitude: requiredStringField("latitude"),
+  timezone: Joi.object({
+    label: stringField("label"),
+    value: numberField("value"),
+  }),
 });
 
 export const superAdminRegisterSchema = Joi.object({

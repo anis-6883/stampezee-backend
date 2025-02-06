@@ -27,6 +27,10 @@ interface IRetailer extends Document {
   website?: string;
   takeFreeTrial: boolean;
   businessCurrency: string;
+  timezone: {
+    label: string;
+    value: string;
+  };
   softDeleted: boolean;
 }
 
@@ -58,6 +62,10 @@ const retailerSchema = new Schema<IRetailer>(
     website: { type: String, trim: true, default: null },
     takeFreeTrial: { type: Boolean, default: false },
     businessCurrency: { type: String, default: "CAD" },
+    timezone: {
+      label: { type: String, default: "America/Toronto (-5)", trim: true },
+      value: { type: String, default: "-5", trim: true },
+    },
     softDeleted: { type: Boolean, default: false },
   },
   {

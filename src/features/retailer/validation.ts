@@ -1,5 +1,6 @@
 import Joi from "joi";
 import {
+  numberField,
   requiredBooleanField,
   requiredEmailField,
   requiredStringField,
@@ -25,6 +26,10 @@ export const retailerSchema = Joi.object({
   about: stringField("about"),
   website: stringField("website"),
   businessCurrency: stringField("businessCurrency"),
+  timezone: Joi.object({
+    label: stringField("label"),
+    value: numberField("value"),
+  }),
 });
 
 // Without Password
@@ -44,6 +49,10 @@ export const retailerSchemaUpdate = Joi.object({
   about: stringField("about"),
   website: stringField("website"),
   businessCurrency: stringField("businessCurrency"),
+  timezone: Joi.object({
+    label: stringField("label"),
+    value: numberField("value"),
+  }),
 });
 
 export const retailerStatusSchema = Joi.object({
