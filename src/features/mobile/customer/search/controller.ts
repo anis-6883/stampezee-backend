@@ -43,9 +43,9 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
   if (!long || !lat) return apiResponse(res, 400, false, "Latitude & Longitude must be set!");
 
   // Find already collected stampIds
-  const stampIds = (await CollectStamp.find({ customerId: req.user._id }, { stampId: 1, _id: 0 })).map(
-    ({ stampId }) => stampId
-  );
+  const stampIds = (
+    await CollectStamp.find({ customerId: req.user._id, softDeleted: false }, { stampId: 1, _id: 0 })
+  ).map(({ stampId }) => stampId);
 
   let branchIds = [];
 
@@ -237,19 +237,18 @@ export const collectStamp = asyncHandler(async (req: IApiRequest, res: Response)
     Stamp.findById(stampId),
   ]);
 
-  if (alreadyCollected) {
+  if (alreadyCollected && alreadyCollected.softDeleted === false) {
     return apiResponse(res, 400, false, "This stamp already collected!");
   }
 
-  if (!branch || !stamp) {
-    return apiResponse(res, 400, false, "Branch or Stamp not found!");
+  if (alreadyCollected && alreadyCollected.softDeleted === true) {
+    await CollectStamp.findByIdAndUpdate(alreadyCollected._id, { softDeleted: false });
+    return apiResponse(res, 200, true, "Stamp added successfully!");
   }
 
-  await CollectStamp.create({
-    branchId,
-    stampId,
-    customerId: req.user._id,
-  });
+  if (!branch || !stamp) return apiResponse(res, 400, false, "Branch or Stamp not found!");
+
+  await CollectStamp.create({ branchId, stampId, customerId: req.user._id });
 
   return apiResponse(res, 200, true, "Stamp added successfully!");
 });
