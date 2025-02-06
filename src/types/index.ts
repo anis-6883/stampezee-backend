@@ -71,6 +71,10 @@ export interface IUser {
   };
   _doc?: any;
   businessCurrency?: any;
+  timezone?: {
+    label: string;
+    value: string;
+  };
 }
 
 export interface IApiRequest extends Request {

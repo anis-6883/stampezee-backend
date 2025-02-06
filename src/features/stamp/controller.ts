@@ -5,7 +5,6 @@ import Branch from "../../models/branch";
 import Category from "../../models/category";
 import { IEnrollSubscription } from "../../models/enroll-subscription";
 import Enrollment from "../../models/enrollment";
-import Settings from "../../models/settings";
 import Sorting from "../../models/sorting";
 import Stamp, { IStamp } from "../../models/stamp";
 import StampImage from "../../models/stamp-image";
@@ -116,11 +115,8 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
   createBody.stampImageId = stampImageId;
   createBody.categoryId = categoryId;
 
-  const settings = await Settings.findOne(null, { "general.timezone": 1 });
-  if (!settings?.general?.timezone) return apiResponse(res, 400, false, "Setup TimeZone First!");
-
-  const systemTime = getUTC(createBody.startedAt, Number(settings.general.timezone.value), true);
-  const expireTime = getUTC(createBody.expiredAt, Number(settings.general.timezone.value), false, true);
+  const systemTime = getUTC(createBody.startedAt, Number(req.user.timezone.value), true);
+  const expireTime = getUTC(createBody.expiredAt, Number(req.user.timezone.value), false, true);
 
   createBody.startedAt = systemTime;
   createBody.expiredAt = expireTime;
@@ -395,11 +391,8 @@ export const updateStamp = asyncHandler(async (req: IApiRequest, res: Response) 
   updatedBody.stampImageId = stampImageId;
   updatedBody.categoryId = categoryId;
 
-  const settings = await Settings.findOne(null, { "general.timezone": 1 });
-  if (!settings?.general?.timezone) return apiResponse(res, 400, false, "Setup TimeZone First!");
-
-  const systemTime = getUTC(updatedBody.startedAt, Number(settings.general.timezone.value), true);
-  const expireTime = getUTC(updatedBody.expiredAt, Number(settings.general.timezone.value), false, true);
+  const systemTime = getUTC(updatedBody.startedAt, Number(req.user.timezone.value), true);
+  const expireTime = getUTC(updatedBody.expiredAt, Number(req.user.timezone.value), false, true);
 
   updatedBody.startedAt = systemTime;
   updatedBody.expiredAt = expireTime;
