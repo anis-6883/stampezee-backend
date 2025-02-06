@@ -342,7 +342,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
       for (const enrollment of notificationEnrollments) {
         if (slugs.includes(enrollment.enrollSubscription.slug)) {
-          return apiResponse(res, 400, false, `You already take ${enrollment.enrollSubscription.title} plan!`);
+          return apiResponse(res, 400, false, `You already take ${enrollment.enrollSubscription.title} Add-on!`);
         }
       }
     }

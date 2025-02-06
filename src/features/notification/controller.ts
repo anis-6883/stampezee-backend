@@ -24,7 +24,7 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
   let notificationObj = { title, description, image, scheduleAt };
 
   // Check Subscription & Addon Enrollment
-  const [addons, totalNotification, settings] = await Promise.all([
+  const [addon, settings] = await Promise.all([
     Enrollment.aggregate([
       {
         $match: {
@@ -61,19 +61,29 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
         $replaceRoot: { newRoot: "$enrollSubscription" }, // Replace root with enrollSubscription
       },
     ]),
-    Notification.countDocuments({ retailerId: req.user._id, type: "all" }),
     Settings.findOne({}, { notification: 1, "general.timezone": 1 }),
   ]);
 
-  let totalLimit = 0;
-  for (const addon of addons) totalLimit += addon.planSnapshot.limit;
+  // let totalLimit = 0;
+  // for (const addon of addons) totalLimit += addon.planSnapshot.limit;
 
-  if (totalLimit === 0) {
-    return apiResponse(res, 400, false, "No one is allowed to create a notification without a plan!");
-  }
-  if (totalNotification >= totalLimit) {
-    return apiResponse(res, 400, false, "Your notification limit is over. Take Another Add-on!");
-  }
+  if (!addon[0]) return apiResponse(res, 400, false, "No one is allowed to send notification without an add-on!");
+
+  const enrollment = await Enrollment.findOne({ _id: addon[0].enrollmentId });
+
+  console.log({ enrollment });
+
+  const totalNotification = await Notification.countDocuments({
+    retailerId: req.user._id,
+    type: "all",
+    createdAt: { $gte: enrollment.validityFrom, $lte: enrollment.validityTo },
+  });
+
+  // if (totalNotification >= totalLimit) {
+  //   return apiResponse(res, 400, false, "Your notification limit is over. Take Another Add-on!");
+  // }
+
+  // if (1 === 1) return apiResponse(res, 400, false, "Testing..!", totalNotification);
 
   // File Validation
   if (req.file) {

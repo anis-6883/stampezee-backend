@@ -26,6 +26,8 @@ export const retailerSchema = Joi.object({
   about: stringField("about"),
   website: stringField("website"),
   businessCurrency: stringField("businessCurrency"),
+  longitude: requiredStringField("longitude"),
+  latitude: requiredStringField("latitude"),
   timezone: Joi.object({
     label: stringField("label"),
     value: numberField("value"),
@@ -49,6 +51,8 @@ export const retailerSchemaUpdate = Joi.object({
   about: stringField("about"),
   website: stringField("website"),
   businessCurrency: stringField("businessCurrency"),
+  longitude: stringField("longitude"),
+  latitude: stringField("latitude"),
   timezone: Joi.object({
     label: stringField("label"),
     value: numberField("value"),
