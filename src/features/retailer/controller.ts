@@ -1,9 +1,15 @@
 import bcrypt from "bcrypt";
 import { Response } from "express";
+import moment from "moment";
 import mongoose from "mongoose";
+import { PACKAGES } from "../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, makePaginate } from "../../helpers";
+import Branch from "../../models/branch";
+import EnrollSubscription from "../../models/enroll-subscription";
+import Enrollment from "../../models/enrollment";
 import Retailer from "../../models/retailer";
+import Subscription from "../../models/subscription";
 import { IApiRequest } from "../../types";
 import { sendRegistrationMail } from "./service";
 import { retailerSchema, retailerSchemaUpdate, retailerStatusSchema } from "./validation";
@@ -37,7 +43,7 @@ export const createRetailer = asyncHandler(async (req: IApiRequest, res: Respons
   createBody.password = await bcrypt.hash(password, 10);
   const fullName = createBody?.lastName ? `${createBody.firstName} ${createBody.lastName}` : createBody.firstName;
 
-  const retailer: any = await Retailer.create({
+  const newRetailer: any = await Retailer.create({
     ...createBody,
     fullName,
     image: imageKey,
@@ -46,11 +52,48 @@ export const createRetailer = asyncHandler(async (req: IApiRequest, res: Respons
     ref: req.role,
   });
 
+  const retailer = await Retailer.findOneAndUpdate(
+    { email: createBody.email },
+    { isVerified: true, verifiedAt: new Date(), otp: null, otpExpiry: null },
+    { new: true }
+  );
+
+  console.log("retailer", retailer);
+
+  const freeTrial = await Subscription.findOne({ slug: "trial" });
+  if (!freeTrial) return apiResponse(res, 400, false, "Free trial package not found!");
+
+  const enrollment = await Enrollment.create({
+    retailerId: retailer._id,
+    planExists: PACKAGES.TRIAL,
+    paymentStatus: "trial",
+    validityFrom: moment(),
+    validityTo: moment().add(freeTrial.duration, "days"),
+    enrollStatus: "trial",
+  });
+
+  const enrollSubscription = await EnrollSubscription.create({
+    enrollmentId: enrollment?._id,
+    planSnapshot: freeTrial,
+    status: true,
+  });
+
+  await Branch.create({
+    name: "Default Branch",
+    address: {
+      loc: { type: "Point", coordinates: [retailer.longitude, retailer.latitude] },
+      name: retailer.address,
+    },
+    retailerId: retailer._id,
+    enrollSubscriptionId: enrollSubscription._id,
+    source: "subscription",
+  });
+
   // Sending Mail
   await sendRegistrationMail(createBody.email, fullName, password, createBody.storeName);
 
   // Remove Sensitive Data
-  const data = exclude(retailer._doc, ["password", "createdAt", "updatedAt"]);
+  const data = exclude(newRetailer._doc, ["password", "createdAt", "updatedAt"]);
 
   return apiResponse(res, 201, true, "Retailer created successfully!", data);
 });

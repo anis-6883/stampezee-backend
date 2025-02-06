@@ -90,8 +90,6 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     { new: true }
   );
 
-  console.log({ retailer });
-
   const freeTrial = await Subscription.findOne({ slug: "trial" });
   if (!freeTrial) return apiResponse(res, 400, false, "Free trial package not found!");
 
