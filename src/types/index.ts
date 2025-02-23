@@ -20,6 +20,7 @@ export interface IEnrollSubscriptionBody {
   slugs: string[];
   branchIds?: string[];
   stampIds?: string[];
+  prevAddonEnrollmentIds?: string[];
   code: string;
   currency: string;
 }

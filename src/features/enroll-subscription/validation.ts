@@ -39,6 +39,9 @@ export const enrollmentSchema = Joi.object({
   stampIds: Joi.array().messages({
     "array.base": "stampIds must be array!",
   }),
+  prevAddonEnrollmentIds: Joi.array().messages({
+    "array.base": "prevAddonEnrollmentIds must be array!",
+  }),
 });
 
 export const couponSchema = Joi.object({

@@ -196,7 +196,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     abortEarly: false,
   });
 
-  const { slugs, code, branchIds, stampIds, currency }: IEnrollSubscriptionBody = result;
+  const { slugs, code, branchIds, stampIds, currency, prevAddonEnrollmentIds }: IEnrollSubscriptionBody = result;
 
   if ((slugs.includes(PACKAGES.TRIAL) && slugs.length > 1) || (slugs.includes(PACKAGES.TRIAL) && code)) {
     return apiResponse(res, 400, false, "You can't take additional packages or coupon in free trial!");
@@ -1119,6 +1119,20 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       ///////////////////////////////////
       //////// New Subscription /////////
       ///////////////////////////////////
+
+      // Previous Addon Enroll Re-start
+      if (prevAddonEnrollmentIds && prevAddonEnrollmentIds.length > 0) {
+        const prevAddons = await Enrollment.find({
+          retailerId: req.user._id,
+          _id: { $in: prevAddonEnrollmentIds },
+        });
+
+        if (prevAddonEnrollmentIds.length !== prevAddons.length) {
+          return apiResponse(res, 400, false, `Provide valid prevAddonEnrollmentIds!`);
+        }
+
+        metadata["prevAddonEnrollmentIds"] = prevAddonEnrollmentIds.join(",");
+      }
 
       const enrollment = await Enrollment.create({
         retailerId: req.user._id,
