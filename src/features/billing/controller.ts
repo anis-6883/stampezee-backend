@@ -204,6 +204,43 @@ export const getSingleBilling = asyncHandler(async (req: IApiRequest, res: Respo
 });
 
 /**
+ * Get All Existing Add-ons
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const getAllExistingAddons = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const addons = await Enrollment.aggregate([
+    {
+      $match: {
+        retailerId: req.user._id,
+        paymentStatus: "completed",
+        validityTo: { $gt: new Date() },
+        status: false,
+      },
+    },
+    {
+      $lookup: {
+        from: "enroll_subscriptions",
+        localField: "_id",
+        foreignField: "enrollmentId",
+        as: "enrollSubscriptions",
+        pipeline: [
+          {
+            $match: {
+              status: true,
+              deletedByRetailerAt: null,
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  return apiResponse(res, 200, true, "Retailer all existing addons fetched successfully!", addons);
+});
+
+/**
  * Cancel Base Plan or Addon
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
@@ -282,7 +319,7 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
       await Promise.all([
         stripe.subscriptionItems.del(enrollSubscription?.subscriptionItemId, { proration_behavior: "none" }),
         stripe.subscriptions.update(enrollment.stripe.subscriptionId, { cancel_at_period_end: true }),
-        Enrollment.findByIdAndUpdate(enrollment._id, { status: false }),
+        Enrollment.findByIdAndUpdate(enrollment._id, { status: false, planExists: null }),
         EnrollSubscription.findOneAndUpdate(
           { _id: enrollSubscriptionId },
           {
@@ -294,7 +331,7 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
     } else {
       await Promise.all([
         stripe.subscriptions.cancel(enrollment?.stripe?.subscriptionId),
-        Enrollment.findByIdAndUpdate(enrollment._id, { status: false }),
+        Enrollment.findByIdAndUpdate(enrollment._id, { status: false, planExists: null }),
         EnrollSubscription.findOneAndUpdate(
           { _id: enrollSubscriptionId },
           {

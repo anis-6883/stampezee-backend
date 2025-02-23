@@ -4,6 +4,7 @@ import {
   cancelBasePlanOrAddOn,
   detachPaymentMethod,
   getAllBillings,
+  getAllExistingAddons,
   getAllPaymentMethod,
   getRetailerBillingPdf,
   getRetailerBillingPortal,
@@ -15,6 +16,7 @@ import {
 const router = express.Router();
 
 router.get("/all", getAllBillings);
+router.get("/all-existing-addons", getAllExistingAddons);
 router.get("/find/:id", getSingleBilling);
 router.post("/portal", getRetailerBillingPortal);
 router.delete("/cancel-subscription", cancelBasePlanOrAddOn);
