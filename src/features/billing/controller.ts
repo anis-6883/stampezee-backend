@@ -231,17 +231,27 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
     ),
   ]);
 
-  if (!enrollSubscription) throw "Enroll Subscription Not Found!";
+  if (!enrollSubscription) return apiResponse(res, 400, true, "Enroll Subscription Not Found!");
   if (enrollSubscription?.deletedByRetailerAt) throw "Enroll Subscription already deleted by client!";
   if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
 
   const { stripeSecretKey } = paymentMetadata.stripe ?? {};
-
   const stripe = new Stripe(stripeSecretKey);
 
   if (enrollSubscription?.planSnapshot?.type === "subscription") {
-    const enrollment: IEnrollment = await Enrollment.findById(enrollSubscription.enrollmentId);
-    const allowCurrencies: ICurrencyExchange[] = await CurrencyExchange.find({ status: true });
+    const [enrollment, addOnsWithBasePlan, addOnsWithoutBasePlan, allowCurrencies] = await Promise.all([
+      Enrollment.findById(enrollSubscription.enrollmentId),
+      EnrollSubscription.find({ enrollmentId: enrollSubscription.enrollmentId, _id: { $ne: enrollSubscriptionId } }),
+      Enrollment.find({
+        retailerId: req.user._id,
+        planExists: null,
+        paymentStatus: "completed",
+        validityTo: { $gt: new Date() },
+        status: true,
+      }),
+      CurrencyExchange.find({ status: true }),
+    ]);
+
     const selectCurrency: ICurrencyExchange = allowCurrencies.find(
       (curr: ICurrencyExchange) => curr.name === enrollment.currency
     );
@@ -250,13 +260,13 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
       ((selectCurrency.exchangeRate / enrollment.currencyRate) * enrollSubscription.planCurrentPrice).toFixed(2)
     );
 
+    // Step 1: Calculate Balance Amount & Check Refund
     const balanceAmount: number = calculateBalanceAmount(
       enrollment.validityFrom,
       enrollment.validityTo,
       convertToSelectedCurrency
     );
 
-    // Check Refund
     const isRefunded = Math.abs(balanceAmount) >= paymentMetadata.stripe.refundableThreshold;
     if (isRefunded) {
       await Refund.create({
@@ -267,14 +277,43 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
       });
     }
 
-    await Promise.all([
-      stripe.subscriptions.cancel(enrollment?.stripe?.subscriptionId),
-      Enrollment.findByIdAndUpdate(enrollSubscription.enrollmentId, { status: false }),
-      EnrollSubscription.updateMany(
-        { enrollmentId: enrollSubscription.enrollmentId },
-        { status: false, deletedByRetailerAt: new Date() }
-      ),
-    ]);
+    // Step 2: If add-ons exist with the base plan, remove the base plan from the Stripe subscription and cancel its recurring payment. If add-ons not exist then cancel the subscription
+    if (addOnsWithBasePlan.length > 0) {
+      await Promise.all([
+        stripe.subscriptionItems.del(enrollSubscription?.subscriptionItemId, { proration_behavior: "none" }),
+        stripe.subscriptions.update(enrollment.stripe.subscriptionId, { cancel_at_period_end: true }),
+        Enrollment.findByIdAndUpdate(enrollment._id, { status: false }),
+        EnrollSubscription.findOneAndUpdate(
+          { _id: enrollSubscriptionId },
+          {
+            status: false,
+            deletedByRetailerAt: new Date(),
+          }
+        ),
+      ]);
+    } else {
+      await Promise.all([
+        stripe.subscriptions.cancel(enrollment?.stripe?.subscriptionId),
+        Enrollment.findByIdAndUpdate(enrollment._id, { status: false }),
+        EnrollSubscription.findOneAndUpdate(
+          { _id: enrollSubscriptionId },
+          {
+            status: false,
+            deletedByRetailerAt: new Date(),
+          }
+        ),
+      ]);
+    }
+
+    // Step 3: If add-ons exist individually then also cancel its recurring payment
+    if (addOnsWithoutBasePlan.length > 0) {
+      for (const addonEnrollment of addOnsWithoutBasePlan) {
+        await Promise.all([
+          stripe.subscriptions.update(addonEnrollment.stripe.subscriptionId, { cancel_at_period_end: true }),
+          Enrollment.findByIdAndUpdate(addonEnrollment._id, { status: false }),
+        ]);
+      }
+    }
 
     return apiResponse(res, 200, true, "Subscription Cancelled Successfully!");
   } else {
