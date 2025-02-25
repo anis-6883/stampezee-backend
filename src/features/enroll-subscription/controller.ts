@@ -1478,6 +1478,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       couponDiscountType = null,
       couponDiscount = 0,
       couponDiscountAmount = 0,
+      prevAddonEnrollmentIds = null,
     } = checkoutSession?.metadata;
 
     const enrollment = await Enrollment.findById(enrollmentId);
@@ -1659,6 +1660,27 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     };
 
     await Promise.all(updateSubscriptions);
+
+    // Previous Addon Enroll Re-start / Renew
+    if (prevAddonEnrollmentIds) {
+      const enrollmentIds = prevAddonEnrollmentIds.split(",");
+      const updateQuery = [];
+
+      if (enrollmentIds.length > 0) {
+        for (const id of enrollmentIds) {
+          const enrollment = await Enrollment.findById(id);
+
+          if (enrollment) {
+            updateQuery.push(
+              stripe.subscriptions.update(enrollment.stripe.subscriptionId, { cancel_at_period_end: false }),
+              Enrollment.findByIdAndUpdate(enrollment._id, { status: true })
+            );
+          }
+        }
+      }
+
+      Promise.all(updateQuery);
+    }
 
     await sendInvoiceToEmail({ email: retailer?.email, customerInfo, purchasedItems, invoiceMetadata, paymentInfo });
   } catch (err) {

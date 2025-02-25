@@ -235,6 +235,11 @@ export const getAllExistingAddons = asyncHandler(async (req: IApiRequest, res: R
         ],
       },
     },
+    {
+      $match: {
+        enrollSubscriptions: { $ne: [] },
+      },
+    },
   ]);
 
   return apiResponse(res, 200, true, "Retailer all existing addons fetched successfully!", addons);
