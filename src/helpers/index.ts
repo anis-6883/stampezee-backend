@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import Joi from "joi";
 import jwt from "jsonwebtoken";
+import moment from "moment";
 import mongoose from "mongoose";
 import path from "path";
 import puppeteer from "puppeteer";
@@ -2397,4 +2398,22 @@ export function roundToNearestTen(amount: number) {
   // Round to the nearest ten
   const roundedAmount = Math.round(amountInFils / 10) * 10;
   return roundedAmount;
+}
+
+export function getNextBillingDateInDays(currentDate: Date) {
+  const current = moment(currentDate);
+  let nextBillingDate = moment(current).add(1, "month");
+
+  if (nextBillingDate.date() !== current.date()) {
+    nextBillingDate = nextBillingDate.endOf("month");
+  }
+
+  const daysUntilNextBilling = nextBillingDate.diff(current, "days");
+
+  // return {
+  //   nextBillingDate: nextBillingDate.format("YYYY-MM-DD"),
+  //   daysUntilNextBilling,
+  // };
+
+  return daysUntilNextBilling;
 }
