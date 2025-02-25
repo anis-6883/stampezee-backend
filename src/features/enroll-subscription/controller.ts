@@ -11,6 +11,7 @@ import {
   checkDuplicates,
   checkPlanChange,
   exclude,
+  getNextBillingDateInDays,
   htmlToPdf,
   roundToNearestTen,
 } from "../../helpers";
@@ -829,7 +830,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                 status: true,
                 paymentStatus: "completed",
                 validityFrom: moment(),
-                validityTo: moment().add(30, "days"),
+                validityTo: moment().add(getNextBillingDateInDays(new Date()), "days"),
                 "stripe.subscriptionId": stripeSubscription.id,
                 "stripe.customerId": enrolled.stripe.customerId,
                 "stripe.paymentMethodId": enrolled.stripe.paymentMethodId,
@@ -1307,7 +1308,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
           { "stripe.subscriptionId": invoicePaymentEvent.subscription },
           {
             validityFrom: moment(),
-            validityTo: moment().add(30, "days"),
+            validityTo: moment().add(getNextBillingDateInDays(new Date()), "days"),
           },
           { new: true }
         );
@@ -1567,7 +1568,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
           renewCanceledAtByCustomer: null,
         },
         validityFrom: moment(),
-        validityTo: moment().add(30, "days"),
+        validityTo: moment().add(getNextBillingDateInDays(new Date()), "days"),
         status: true,
       })
     );
