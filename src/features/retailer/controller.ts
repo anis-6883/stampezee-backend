@@ -150,11 +150,14 @@ export const getAllRetailers = asyncHandler(async (req: IApiRequest, res: Respon
         },
       },
       {
-        $unwind: "$enrollment",
+        $unwind: {
+          path: "$enrollment",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $addFields: {
-          currentPlan: "$enrollment.planExists",
+          currentPlan: { $ifNull: ["$enrollment.planExists", null] },
         },
       },
       {
