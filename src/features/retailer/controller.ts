@@ -58,8 +58,6 @@ export const createRetailer = asyncHandler(async (req: IApiRequest, res: Respons
     { new: true }
   );
 
-  console.log("retailer", retailer);
-
   const freeTrial = await Subscription.findOne({ slug: "trial" });
   if (!freeTrial) return apiResponse(res, 400, false, "Free trial package not found!");
 

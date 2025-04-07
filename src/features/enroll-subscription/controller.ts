@@ -350,6 +350,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
     const metadata: { [key: string]: number | string } = {};
     metadata["currency"] = currency;
+    metadata["currencyRate"] = selectCurrency.exchangeRate;
+    if (taxStatus === "on") metadata["taxCost"] = taxCost;
 
     // Check & Get Coupon
     let coupon: ICoupon = null;
@@ -1330,8 +1332,12 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
           amountTotal:
             updatedEnrollment?.currency === "JPY"
               ? invoicePaymentEvent?.total
-              : (invoicePaymentEvent?.total / 100).toFixed(2),
+              : updatedEnrollment?.currency === "KWD"
+                ? (invoicePaymentEvent?.total / 1000).toFixed(2)
+                : (invoicePaymentEvent?.total / 100).toFixed(2),
           currency: updatedEnrollment?.currency,
+          currencyRate: updatedEnrollment?.currencyRate,
+          taxCost: updatedEnrollment?.taxSnapshot?.taxCost || 0,
           paymentMethodDetails: invoice?.payment_intent?.payment_method, // Kind of Log Store
         });
       }
@@ -1480,6 +1486,9 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       couponDiscount = 0,
       couponDiscountAmount = 0,
       prevAddonEnrollmentIds = null,
+      currency = "CAD",
+      currencyRate = 1,
+      taxCost = 0,
     } = checkoutSession?.metadata;
 
     const enrollment = await Enrollment.findById(enrollmentId);
@@ -1547,10 +1556,14 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       paymentIntentId: invoice?.payment_intent?.id,
       paymentStatus: invoice?.payment_intent?.status,
       amountTotal:
-        checkoutSession.metadata["currency"] === "JPY"
+        currency === "JPY"
           ? checkoutSession?.amount_total
-          : (checkoutSession?.amount_total / 100).toFixed(2),
-      currency: checkoutSession.metadata["currency"],
+          : currency === "KWD"
+            ? (checkoutSession?.amount_total / 1000).toFixed(2)
+            : (checkoutSession?.amount_total / 100).toFixed(2),
+      currency,
+      currencyRate,
+      taxCost,
       extraPayableAmount: Number(extraPayableAmount)?.toFixed(2),
       balanceAmount,
       paymentMethodDetails: invoice?.payment_intent?.payment_method, // Kind of Log Store

@@ -4,8 +4,9 @@ import { apiResponse, asyncHandler, countryData, generateRandomColor } from "../
 import Branch from "../../models/branch";
 import CollectStamp from "../../models/collect-stamp";
 import Customer from "../../models/customer";
-import EnrollSubscription from "../../models/enroll-subscription";
+import Enrollment from "../../models/enrollment";
 import OrderStamp from "../../models/order-stamp";
+import Payment from "../../models/payment";
 import Retailer from "../../models/retailer";
 import Stamp from "../../models/stamp";
 import { IApiRequest, Object } from "../../types";
@@ -74,10 +75,10 @@ export const superAdminDashboardRevenue = asyncHandler(async (req: IApiRequest, 
   // Rules: amount * (baseCurrencyRatio / convertCurrencyRatio)
   const { start = undefined, end = undefined } = req.query;
 
-  const revenueStats = await EnrollSubscription.aggregate([
+  const totalRevenue = await Payment.aggregate([
     {
       $match: {
-        paymentStatus: "completed", // Filter by completed payments
+        paymentStatus: "succeeded", // Filter by completed payments
         ...(start &&
           end && {
             createdAt: {
@@ -88,127 +89,35 @@ export const superAdminDashboardRevenue = asyncHandler(async (req: IApiRequest, 
       },
     },
     {
-      $lookup: {
-        from: "payments",
-        localField: "_id",
-        foreignField: "enrollSubscriptionId",
-        as: "payments",
-      },
-    },
-    {
-      $unwind: "$payments", // Unwind the payments array to process each payment
-    },
-    {
       $addFields: {
         convertedAmount: {
           // Convert payment to base currency (CAD)
-          $multiply: ["$payments.amountTotal", { $divide: [1, "$balanceInfo.currencyRate"] }],
+          $round: [
+            {
+              $divide: ["$amountTotal", "$currencyRate"],
+            },
+            2,
+          ],
         },
       },
     },
     {
-      $facet: {
-        totalRevenue: [
-          {
-            $group: {
-              _id: null, // Group by null to aggregate all documents
-              totalInCents: { $sum: "$convertedAmount" }, // Sum the converted payment amounts for all types
-            },
-          },
-          {
-            $addFields: {
-              totalRevenueInCAD: {
-                $round: [{ $divide: ["$totalInCents", 100] }, 2], // Round to 2 decimal places
-              },
-            },
-          },
-        ],
-        totalSubscriptionRevenue: [
-          {
-            $match: {
-              "planSnapshot.type": "subscription", // Filter for subscription plans
-            },
-          },
-          {
-            $group: {
-              _id: null, // Group by null to aggregate all subscription-type payments
-              totalSubscriptionInCents: { $sum: "$convertedAmount" }, // Sum the subscription payments
-            },
-          },
-          {
-            $addFields: {
-              totalSubscriptionRevenueInCAD: {
-                $round: [{ $divide: ["$totalSubscriptionInCents", 100] }, 2], // Round to 2 decimal places
-              },
-            },
-          },
-        ],
-        totalAddonRevenue: [
-          {
-            $match: {
-              "planSnapshot.type": "addon", // Filter for addon plans
-            },
-          },
-          {
-            $group: {
-              _id: null, // Group by null to aggregate all addon-type payments
-              totalAddonInCents: { $sum: "$convertedAmount" }, // Sum the addon payments
-            },
-          },
-          {
-            $addFields: {
-              totalAddonRevenueInCAD: {
-                $round: [{ $divide: ["$totalAddonInCents", 100] }, 2], // Round to 2 decimal places
-              },
-            },
-          },
-        ],
-        activeSubscription: [
-          {
-            $match: {
-              "planSnapshot.type": "subscription",
-              status: true,
-            },
-          },
-          {
-            $count: "activeSubscription", // Count the active subscription plans
-          },
-        ],
-      },
-    },
-    {
-      $project: {
-        totalRevenueInCAD: { $arrayElemAt: ["$totalRevenue.totalRevenueInCAD", 0] },
-        totalSubscriptionRevenueInCAD: { $arrayElemAt: ["$totalSubscriptionRevenue.totalSubscriptionRevenueInCAD", 0] },
-        totalAddonRevenueInCAD: { $arrayElemAt: ["$totalAddonRevenue.totalAddonRevenueInCAD", 0] },
-        activeSubscription: { $arrayElemAt: ["$activeSubscription.activeSubscription", 0] },
+      $group: {
+        _id: null, // Group by null to aggregate all documents
+        totalRevenueInCAD: { $sum: "$convertedAmount" }, // Sum the converted payment amounts for all types
       },
     },
   ]);
 
-  if (!revenueStats || revenueStats.length === 0) {
-    return apiResponse(res, 200, true, "No revenue stats available.", {});
-  }
-
-  const {
-    totalRevenueInCAD = 0,
-    totalSubscriptionRevenueInCAD = 0,
-    totalAddonRevenueInCAD = 0,
-    activeSubscription = 0,
-  } = revenueStats[0];
-
-  // Calculate percentages only if totalRevenueInCAD > 0
-  const subscriptionPercentage =
-    totalRevenueInCAD > 0 ? ((totalSubscriptionRevenueInCAD / totalRevenueInCAD) * 100).toFixed(2) : 0;
-  const addonPercentage = totalRevenueInCAD > 0 ? ((totalAddonRevenueInCAD / totalRevenueInCAD) * 100).toFixed(2) : 0;
+  const activeSubscription = await Enrollment.countDocuments({
+    planExists: { $ne: null },
+    validityTo: { $gt: new Date() },
+    status: true,
+  });
 
   const data = {
+    totalRevenueInCAD: totalRevenue[0]?.totalRevenueInCAD || 0,
     activeSubscription,
-    totalRevenueInCAD,
-    totalSubscriptionRevenueInCAD,
-    totalAddonRevenueInCAD,
-    subscriptionPercentage,
-    addonPercentage,
   };
 
   return apiResponse(res, 200, true, "Super admin revenue stats fetched successfully!", data);
