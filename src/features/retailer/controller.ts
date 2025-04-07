@@ -288,7 +288,10 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
       },
     },
     {
-      $unwind: "$enrollment",
+      $unwind: {
+        path: "$enrollment",
+        preserveNullAndEmptyArrays: true,
+      },
     },
     {
       // Lookup for the subscription type "addon"
@@ -429,7 +432,7 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
     },
     {
       $addFields: {
-        currentPlan: "$enrollment.planExists",
+        currentPlan: { $ifNull: ["$enrollment.planExists", null] },
         totalActiveBranch: { $size: "$branches" },
         totalSubAdmin: { $size: "$sub_admins" },
         totalActiveStamp: { $size: "$stamps" },
