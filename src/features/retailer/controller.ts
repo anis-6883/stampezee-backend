@@ -376,33 +376,10 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
             },
           },
           {
-            $lookup: {
-              from: "sub_admins",
-              localField: "_id",
-              foreignField: "branchId",
-              as: "subadmin",
-              pipeline: [
-                {
-                  $match: {
-                    softDeleted: false,
-                  },
-                },
-              ],
-            },
-          },
-          {
-            $unwind: {
-              path: "$subadmin",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
             $project: {
               _id: 1,
               name: 1,
               address: "$address.name",
-              subAdminName: { $ifNull: ["$subadmin.fullName", null] },
-              subAdminEmail: { $ifNull: ["$subadmin.email", null] },
               totalCustomer: { $ifNull: ["$collect_stamps.totalCustomer", 0] },
               totalOrder: { $size: "$order_stamps" },
               totalRevenue: { $sum: "$order_stamps.amount" },
