@@ -294,38 +294,6 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
       },
     },
     {
-      // Lookup for the subscription type "addon"
-      $lookup: {
-        from: "enroll_subscriptions",
-        localField: "_id",
-        foreignField: "retailerId",
-        as: "addonSubscriptions",
-        pipeline: [
-          {
-            $match: {
-              "planSnapshot.type": "addon", // Add-on specific condition
-              status: true,
-            },
-          },
-          {
-            $group: {
-              _id: "$planSnapshot.slug",
-              count: { $sum: 1 },
-              title: { $first: "$planSnapshot.title" },
-            },
-          },
-          {
-            $project: {
-              slug: "$_id", // Rename _id to slug
-              title: 1,
-              count: 1,
-              _id: 0,
-            },
-          },
-        ],
-      },
-    },
-    {
       $lookup: {
         from: "branches",
         localField: "_id",
@@ -429,7 +397,60 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
     },
   ]);
 
+  const addonSubscriptions = await Enrollment.aggregate([
+    {
+      $match: {
+        retailerId: mongoose.Types.ObjectId.createFromHexString(id),
+        validityTo: { $gt: new Date() },
+        status: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "enroll_subscriptions",
+        localField: "_id",
+        foreignField: "enrollmentId",
+        as: "addonEnrollSubscriptions",
+        pipeline: [
+          {
+            $match: {
+              "planSnapshot.type": "addon", // Add-on specific condition
+              status: true,
+            },
+          },
+          {
+            $group: {
+              _id: "$planSnapshot.slug",
+              count: { $sum: 1 },
+              title: { $first: "$planSnapshot.title" },
+            },
+          },
+          {
+            $project: {
+              slug: "$_id", // Rename _id to slug
+              title: 1,
+              count: 1,
+              _id: 0,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: "$addonEnrollSubscriptions",
+    },
+    {
+      $group: {
+        _id: "$addonEnrollSubscriptions.slug",
+        count: { $sum: 1 },
+        title: { $first: "$addonEnrollSubscriptions.title" },
+      },
+    },
+  ]);
+
   if (retailer.length <= 0) return apiResponse(res, 404, false, "Retailer not found!");
+
+  retailer[0].addonSubscriptions = addonSubscriptions;
 
   return apiResponse(res, 201, true, "Retailer fetched successfully!", retailer[0]);
 });
