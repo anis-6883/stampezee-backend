@@ -110,7 +110,7 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
     if (scheduleAt) {
       const isoDateString = `${scheduleAt.replace(" ", "T")}:00.000Z`;
       const localTime = new Date(isoDateString);
-      const scheduleAtUTC = getUTC(localTime, Number(settings.general.timezone.value));
+      const scheduleAtUTC = getUTC(localTime, Number(req.user.timezone.value));
       notificationObj.scheduleAt = scheduleAtUTC;
 
       schedule.scheduleJob(scheduleAtUTC, async () => await sendNotification(tokens));
@@ -229,7 +229,7 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
     if (scheduleAt) {
       const isoDateString = `${scheduleAt.replace(" ", "T")}:00.000Z`;
       const localTime = new Date(isoDateString);
-      const scheduleAtUTC = getUTC(localTime, Number(settings.general.timezone.value));
+      const scheduleAtUTC = getUTC(localTime, Number(req.user.timezone.value));
       notificationObj.scheduleAt = scheduleAtUTC;
 
       schedule.scheduleJob(scheduleAtUTC, async () => await sendNotification(tokens));
