@@ -232,220 +232,221 @@ export const getAllRetailers = asyncHandler(async (req: IApiRequest, res: Respon
 export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
-  const retailer = await Retailer.aggregate([
-    {
-      $match: { _id: mongoose.Types.ObjectId.createFromHexString(id) },
-    },
-    {
-      $lookup: {
-        from: "sub_admins",
-        localField: "_id",
-        foreignField: "retailerId",
-        as: "sub_admins",
-        pipeline: [
-          {
-            $lookup: {
-              from: "branches",
-              localField: "branchId",
-              foreignField: "_id",
-              as: "branch",
-            },
-          },
-          {
-            $unwind: {
-              path: "$branch",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
-            $project: {
-              firstName: 1,
-              lastName: 1,
-              fullName: 1,
-              email: 1,
-              branchName: "$branch.name",
-              branchAddress: "$branch.address.name",
-            },
-          },
-        ],
+  const [retailer, addonSubscriptions] = await Promise.all([
+    Retailer.aggregate([
+      {
+        $match: { _id: mongoose.Types.ObjectId.createFromHexString(id) },
       },
-    },
-    {
-      $lookup: {
-        from: "enrollments",
-        localField: "_id",
-        foreignField: "retailerId",
-        as: "enrollment",
-        pipeline: [
-          {
-            $match: {
-              planExists: { $ne: null },
-              validityTo: { $gt: new Date() },
-              status: true,
+      {
+        $lookup: {
+          from: "sub_admins",
+          localField: "_id",
+          foreignField: "retailerId",
+          as: "sub_admins",
+          pipeline: [
+            {
+              $lookup: {
+                from: "branches",
+                localField: "branchId",
+                foreignField: "_id",
+                as: "branch",
+              },
             },
-          },
-        ],
-      },
-    },
-    {
-      $unwind: {
-        path: "$enrollment",
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-    {
-      $lookup: {
-        from: "branches",
-        localField: "_id",
-        foreignField: "retailerId",
-        as: "branches",
-        pipeline: [
-          {
-            $match: {
-              status: true,
-              softDeleted: false,
-              disabledBySystem: false,
+            {
+              $unwind: {
+                path: "$branch",
+                preserveNullAndEmptyArrays: true,
+              },
             },
-          },
-          {
-            $lookup: {
-              from: "collect_stamps",
-              localField: "_id",
-              foreignField: "branchId",
-              as: "collect_stamps",
-              pipeline: [
-                {
-                  $group: {
-                    _id: "$branchId", // Group by branchId
-                    uniqueCustomers: { $addToSet: "$customerId" }, // Collect unique customerId values in a set
+            {
+              $project: {
+                firstName: 1,
+                lastName: 1,
+                fullName: 1,
+                email: 1,
+                branchName: "$branch.name",
+                branchAddress: "$branch.address.name",
+              },
+            },
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: "enrollments",
+          localField: "_id",
+          foreignField: "retailerId",
+          as: "enrollment",
+          pipeline: [
+            {
+              $match: {
+                planExists: { $ne: null },
+                validityTo: { $gt: new Date() },
+                status: true,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: "$enrollment",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "branches",
+          localField: "_id",
+          foreignField: "retailerId",
+          as: "branches",
+          pipeline: [
+            {
+              $match: {
+                status: true,
+                softDeleted: false,
+                disabledBySystem: false,
+              },
+            },
+            {
+              $lookup: {
+                from: "collect_stamps",
+                localField: "_id",
+                foreignField: "branchId",
+                as: "collect_stamps",
+                pipeline: [
+                  {
+                    $group: {
+                      _id: "$branchId", // Group by branchId
+                      uniqueCustomers: { $addToSet: "$customerId" }, // Collect unique customerId values in a set
+                    },
                   },
-                },
-                {
-                  $project: {
-                    _id: 1, // Include branchId (this is the default _id generated by $group)
-                    totalCustomer: { $size: "$uniqueCustomers" }, // Count the distinct customerId's
+                  {
+                    $project: {
+                      _id: 1, // Include branchId (this is the default _id generated by $group)
+                      totalCustomer: { $size: "$uniqueCustomers" }, // Count the distinct customerId's
+                    },
                   },
-                },
-              ],
+                ],
+              },
             },
-          },
-          {
-            $unwind: {
-              path: "$collect_stamps",
-              preserveNullAndEmptyArrays: true,
+            {
+              $unwind: {
+                path: "$collect_stamps",
+                preserveNullAndEmptyArrays: true,
+              },
             },
-          },
-          {
-            $lookup: {
-              from: "order_stamps",
-              localField: "_id",
-              foreignField: "branchId",
-              as: "order_stamps",
+            {
+              $lookup: {
+                from: "order_stamps",
+                localField: "_id",
+                foreignField: "branchId",
+                as: "order_stamps",
+              },
             },
-          },
-          {
-            $project: {
-              _id: 1,
-              name: 1,
-              address: "$address.name",
-              totalCustomer: { $ifNull: ["$collect_stamps.totalCustomer", 0] },
-              totalOrder: { $size: "$order_stamps" },
-              totalRevenue: { $sum: "$order_stamps.amount" },
+            {
+              $project: {
+                _id: 1,
+                name: 1,
+                address: "$address.name",
+                totalCustomer: { $ifNull: ["$collect_stamps.totalCustomer", 0] },
+                totalOrder: { $size: "$order_stamps" },
+                totalRevenue: { $sum: "$order_stamps.amount" },
+              },
             },
-          },
-        ],
+          ],
+        },
       },
-    },
-    {
-      $lookup: {
-        from: "stamps",
-        localField: "_id",
-        foreignField: "retailerId",
-        as: "stamps",
-        pipeline: [
-          {
-            $match: {
-              startedAt: { $lte: new Date() },
-              expiredAt: { $gte: new Date() },
-              isPublished: true,
-              status: true,
-              softDeleted: false,
+      {
+        $lookup: {
+          from: "stamps",
+          localField: "_id",
+          foreignField: "retailerId",
+          as: "stamps",
+          pipeline: [
+            {
+              $match: {
+                startedAt: { $lte: new Date() },
+                expiredAt: { $gte: new Date() },
+                isPublished: true,
+                status: true,
+                softDeleted: false,
+              },
             },
-          },
-        ],
+          ],
+        },
       },
-    },
-    {
-      $addFields: {
-        currentPlan: { $ifNull: ["$enrollment.planExists", null] },
-        totalActiveBranch: { $size: "$branches" },
-        totalSubAdmin: { $size: "$sub_admins" },
-        totalActiveStamp: { $size: "$stamps" },
-        totalCustomer: { $sum: "$branches.totalCustomer" },
-        totalOrder: { $sum: "$branches.totalOrder" },
-        totalRevenue: { $sum: "$branches.totalRevenue" },
+      {
+        $addFields: {
+          currentPlan: { $ifNull: ["$enrollment.planExists", null] },
+          totalActiveBranch: { $size: "$branches" },
+          totalSubAdmin: { $size: "$sub_admins" },
+          totalActiveStamp: { $size: "$stamps" },
+          totalCustomer: { $sum: "$branches.totalCustomer" },
+          totalOrder: { $sum: "$branches.totalOrder" },
+          totalRevenue: { $sum: "$branches.totalRevenue" },
+        },
       },
-    },
-    {
-      $project: {
-        enrollment: 0,
-        stamps: 0,
-        password: 0,
-        otp: 0,
-        otpExpiry: 0,
+      {
+        $project: {
+          enrollment: 0,
+          stamps: 0,
+          password: 0,
+          otp: 0,
+          otpExpiry: 0,
+        },
       },
-    },
-  ]);
-
-  const addonSubscriptions = await Enrollment.aggregate([
-    {
-      $match: {
-        retailerId: mongoose.Types.ObjectId.createFromHexString(id),
-        validityTo: { $gt: new Date() },
-        status: true,
+    ]),
+    Enrollment.aggregate([
+      {
+        $match: {
+          retailerId: mongoose.Types.ObjectId.createFromHexString(id),
+          validityTo: { $gt: new Date() },
+          status: true,
+        },
       },
-    },
-    {
-      $lookup: {
-        from: "enroll_subscriptions",
-        localField: "_id",
-        foreignField: "enrollmentId",
-        as: "addonEnrollSubscriptions",
-        pipeline: [
-          {
-            $match: {
-              "planSnapshot.type": "addon", // Add-on specific condition
-              status: true,
+      {
+        $lookup: {
+          from: "enroll_subscriptions",
+          localField: "_id",
+          foreignField: "enrollmentId",
+          as: "addonEnrollSubscriptions",
+          pipeline: [
+            {
+              $match: {
+                "planSnapshot.type": "addon", // Add-on specific condition
+                status: true,
+              },
             },
-          },
-          {
-            $group: {
-              _id: "$planSnapshot.slug",
-              count: { $sum: 1 },
-              title: { $first: "$planSnapshot.title" },
+            {
+              $group: {
+                _id: "$planSnapshot.slug",
+                count: { $sum: 1 },
+                title: { $first: "$planSnapshot.title" },
+              },
             },
-          },
-          {
-            $project: {
-              slug: "$_id", // Rename _id to slug
-              title: 1,
-              count: 1,
-              _id: 0,
+            {
+              $project: {
+                slug: "$_id", // Rename _id to slug
+                title: 1,
+                count: 1,
+                _id: 0,
+              },
             },
-          },
-        ],
+          ],
+        },
       },
-    },
-    {
-      $unwind: "$addonEnrollSubscriptions",
-    },
-    {
-      $group: {
-        _id: "$addonEnrollSubscriptions.slug",
-        count: { $sum: 1 },
-        title: { $first: "$addonEnrollSubscriptions.title" },
+      {
+        $unwind: "$addonEnrollSubscriptions",
       },
-    },
+      {
+        $group: {
+          _id: "$addonEnrollSubscriptions.slug",
+          count: { $sum: 1 },
+          title: { $first: "$addonEnrollSubscriptions.title" },
+        },
+      },
+    ]),
   ]);
 
   if (retailer.length <= 0) return apiResponse(res, 404, false, "Retailer not found!");
