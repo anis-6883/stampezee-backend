@@ -868,6 +868,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                 enrollmentId: enrollment._id,
                 refundAmount: parseFloat(Math.abs(totalAmount).toFixed(2)),
                 refundStatus: "pending",
+                plan: pickPlan?.slug,
               })
             );
           }
