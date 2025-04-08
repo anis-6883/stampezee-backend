@@ -325,7 +325,7 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
       await Promise.all([
         stripe.subscriptionItems.del(enrollSubscription?.subscriptionItemId, { proration_behavior: "none" }),
         stripe.subscriptions.update(enrollment.stripe.subscriptionId, { cancel_at_period_end: true }),
-        Enrollment.findByIdAndUpdate(enrollment._id, { status: false, planExists: null }),
+        Enrollment.findByIdAndUpdate(enrollment._id, { status: false, planExists: null, enrollStatus: "cancelled" }),
         EnrollSubscription.findOneAndUpdate(
           { _id: enrollSubscriptionId },
           {
@@ -337,7 +337,7 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
     } else {
       await Promise.all([
         stripe.subscriptions.cancel(enrollment?.stripe?.subscriptionId),
-        Enrollment.findByIdAndUpdate(enrollment._id, { status: false, planExists: null }),
+        Enrollment.findByIdAndUpdate(enrollment._id, { status: false, planExists: null, enrollStatus: "cancelled" }),
         EnrollSubscription.findOneAndUpdate(
           { _id: enrollSubscriptionId },
           {

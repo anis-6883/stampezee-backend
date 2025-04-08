@@ -44,7 +44,7 @@ const enrollmentSchema = new Schema<IEnrollment>(
     currencyRate: { type: Number, default: 0 },
     planChangeCost: { type: Number, default: 0 },
     paymentStatus: { type: String, enum: ["trial", "pending", "completed"], required: true },
-    enrollStatus: { type: String, enum: ["trial", "purchase", "upgrade", "downgrade"], required: true },
+    enrollStatus: { type: String, enum: ["trial", "purchase", "upgrade", "downgrade", "cancelled"], required: true },
     validityFrom: { type: Date, default: null },
     validityTo: { type: Date, default: null },
     status: { type: Boolean, default: true },
