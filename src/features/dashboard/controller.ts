@@ -110,7 +110,7 @@ export const superAdminDashboardRevenue = asyncHandler(async (req: IApiRequest, 
   ]);
 
   const activeSubscription = await Enrollment.countDocuments({
-    planExists: { $ne: null },
+    planExists: { $or: [{ $ne: null }, { $ne: "trial" }] },
     validityTo: { $gt: new Date() },
     status: true,
   });
