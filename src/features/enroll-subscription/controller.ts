@@ -869,6 +869,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                 refundAmount: parseFloat(Math.abs(totalAmount).toFixed(2)),
                 refundStatus: "pending",
                 plan: pickPlan?.slug,
+                reason: "downgrade",
               })
             );
           }

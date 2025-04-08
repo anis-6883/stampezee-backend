@@ -317,6 +317,7 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
         refundAmount: parseFloat(Math.abs(balanceAmount).toFixed(2)),
         refundStatus: "pending",
         plan: enrollSubscription?.planSnapshot?.slug,
+        reason: "cancelled",
       });
     }
 
