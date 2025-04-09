@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import mongoose from "mongoose";
 import zlib from "zlib";
 import { uploadFileToS3Bucket } from "../../../../configs/s3Bucket";
@@ -6,6 +6,7 @@ import { apiResponse, asyncHandler, fileValidation, formatErrorMsg, makePaginate
 import Branch from "../../../../models/branch";
 import CollectStamp from "../../../../models/collect-stamp";
 import CurrencyExchange from "../../../../models/currency-exchange";
+import Enrollment from "../../../../models/enrollment";
 import OrderStamp from "../../../../models/order-stamp";
 import Retailer from "../../../../models/retailer";
 import { IApiRequest, INumberObject, Object } from "../../../../types";
@@ -31,6 +32,17 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
     } else {
       return apiResponse(res, 400, false, "This stamp has already been used!");
     }
+  }
+
+  const enrolledRetailer = await Enrollment.findOne({
+    retailerId: req?.user?.retailerId,
+    planExists: { $ne: null },
+    validityTo: { $gt: new Date() },
+    status: true,
+  });
+
+  if (!enrolledRetailer) {
+    return apiResponse(res, 400, false, "Your subscription is expired. Please inform your administrator!");
   }
 
   const [stampIsCollected, retailer] = await Promise.all([
