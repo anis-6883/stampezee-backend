@@ -367,7 +367,7 @@ export const updateCustomerProfile = asyncHandler(async (req: IApiRequest, res: 
   const data: any = await Customer.findOneAndUpdate({ _id: req.user._id }, updatedBody, {
     new: true,
     projection: { password: 0, createdAt: 0, updatedAt: 0, otp: 0, otpExpiry: 0 },
-  });
+  }).lean();
 
   if (!data) return apiResponse(res, 404, false, "Customer not found!");
   data.role = ROLE.CUSTOMER;
