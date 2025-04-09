@@ -4,6 +4,7 @@ import { apiResponse, asyncHandler, formatErrorMsg, makePaginateForMobile } from
 import Branch from "../../../../models/branch";
 import Category from "../../../../models/category";
 import CollectStamp from "../../../../models/collect-stamp";
+import Enrollment from "../../../../models/enrollment";
 import Retailer from "../../../../models/retailer";
 import Sorting from "../../../../models/sorting";
 import Stamp from "../../../../models/stamp";
@@ -110,6 +111,17 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
     },
   });
 
+  const activeSubscriptionRetailerIds = (
+    await Enrollment.find(
+      {
+        planExists: { $ne: null },
+        validityTo: { $gt: new Date() },
+        status: true,
+      },
+      { retailerId: 1 }
+    )
+  ).map(({ retailerId }) => retailerId);
+
   const [branchSortByGio, docs, total] = await Promise.all([
     Branch.aggregate(gioPipeline),
     Stamp.aggregate([
@@ -121,6 +133,7 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
           status: true,
           softDeleted: false,
           _id: { $nin: stampIds },
+          retailerId: { $in: activeSubscriptionRetailerIds },
           ...(categoryId && { categoryId: mongoose.Types.ObjectId.createFromHexString(categoryId) }),
           ...(search && { $or: [{ title: { $regex: search, $options: "i" } }, { branchId: { $in: branchIds } }] }),
         },
