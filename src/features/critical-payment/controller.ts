@@ -5,7 +5,7 @@ import CriticalPayment from "../../models/critical-payment";
 import Enrollment from "../../models/enrollment";
 import Settings from "../../models/settings";
 import { IApiRequest } from "../../types";
-import { criticalPaymentSchema } from "./validation";
+import { criticalPaymentSchema, criticalPaymentTestDataSchema } from "./validation";
 
 /**
  * Get All Critical Payments
@@ -128,4 +128,20 @@ export const resolveCriticalPayment = asyncHandler(async (req: IApiRequest, res:
   }
 
   return apiResponse(res, 200, true, "Critical payment resolved successfully!");
+});
+
+/**
+ * Create Test Data
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const createTestData = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await criticalPaymentTestDataSchema.validateAsync(req.body, {
+    abortEarly: false,
+  });
+
+  await CriticalPayment.create(result);
+
+  return apiResponse(res, 200, true, "Critical payment test data created successfully!");
 });
