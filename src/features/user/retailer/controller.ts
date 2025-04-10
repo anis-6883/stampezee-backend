@@ -86,7 +86,13 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
 
   const retailer = await Retailer.findOneAndUpdate(
     { email: req.user.email },
-    { isVerified: true, verifiedAt: new Date(), otp: null, otpExpiry: null },
+    {
+      takeFreeTrial: result.selectFreeTrial,
+      isVerified: true,
+      verifiedAt: new Date(),
+      otp: null,
+      otpExpiry: null,
+    },
     { new: true }
   );
 
