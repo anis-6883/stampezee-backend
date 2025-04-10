@@ -31,8 +31,7 @@ export const sendVerificationEmail = async (email: string, verificationCode: num
   const template = otpTemplate(
     String(verificationCode),
     settings?.general?.companyName,
-    `${settings?.general?.address ?? ""}, ${settings?.general?.province ?? ""}, ${settings?.general?.postalCode ?? ""}, ${settings?.general?.country ?? ""}`,
-    context
+    `${settings?.general?.address ?? ""}, ${settings?.general?.province ?? ""}, ${settings?.general?.postalCode ?? ""}, ${settings?.general?.country ?? ""}`
   );
 
   const mailOptions = {

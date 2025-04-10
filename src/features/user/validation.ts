@@ -2,6 +2,7 @@ import Joi from "joi";
 import {
   emailField,
   numberField,
+  requiredBooleanField,
   requiredEmailField,
   requiredStringField,
   requiredWeakPasswordField,
@@ -130,6 +131,16 @@ export const verifyOtpSchema = Joi.object({
     "string.min": "otp must be 6 digits long!",
     "string.max": "otp must be 6 digits long!",
   }),
+});
+
+export const verifyOtpOnRegSchema = Joi.object({
+  otp: Joi.string().required().min(6).max(6).messages({
+    "string.base": "otp must be number!",
+    "any.required": "otp is required!",
+    "string.min": "otp must be 6 digits long!",
+    "string.max": "otp must be 6 digits long!",
+  }),
+  selectFreeTrial: requiredBooleanField("selectFreeTrial"),
 });
 
 export const locationTokenSchema = Joi.object({

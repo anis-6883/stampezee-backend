@@ -25,6 +25,7 @@ import {
   retailerChangeForgetPasswordSchema,
   retailerChangePasswordSchema,
   retailerRegisterSchema,
+  verifyOtpOnRegSchema,
   verifyOtpSchema,
 } from "../validation";
 
@@ -44,7 +45,6 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
   retailerBody.password = await bcrypt.hash(retailerBody.password, 10);
   retailerBody.otp = getRandomInteger(100000, 999999);
   retailerBody.otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
-  retailerBody.takeFreeTrial = true; // 2 min
 
   const existingRetailer = await Retailer.findOne({ email: retailerBody.email });
   if (existingRetailer && existingRetailer.isVerified) {
@@ -79,7 +79,7 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = await verifyOtpSchema.validateAsync(req.body);
+  const result = await verifyOtpOnRegSchema.validateAsync(req.body);
 
   const isVerified = req.user.otp === Number(result.otp) && req.user.otpExpiry > new Date();
   if (!isVerified) return apiResponse(res, 400, false, "Invalid OTP!");
@@ -90,34 +90,36 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     { new: true }
   );
 
-  const freeTrial = await Subscription.findOne({ slug: "trial" });
-  if (!freeTrial) return apiResponse(res, 400, false, "Free trial package not found!");
+  if (result.selectFreeTrial) {
+    const freeTrial = await Subscription.findOne({ slug: "trial" });
+    if (!freeTrial) return apiResponse(res, 400, false, "Free trial package not found!");
 
-  const enrollment = await Enrollment.create({
-    retailerId: retailer._id,
-    planExists: PACKAGES.TRIAL,
-    paymentStatus: "trial",
-    validityFrom: moment(),
-    validityTo: moment().add(freeTrial.duration, "days"),
-    enrollStatus: "trial",
-  });
+    const enrollment = await Enrollment.create({
+      retailerId: retailer._id,
+      planExists: PACKAGES.TRIAL,
+      paymentStatus: "trial",
+      validityFrom: moment(),
+      validityTo: moment().add(freeTrial.duration, "days"),
+      enrollStatus: "trial",
+    });
 
-  const enrollSubscription = await EnrollSubscription.create({
-    enrollmentId: enrollment?._id,
-    planSnapshot: freeTrial,
-    status: true,
-  });
+    const enrollSubscription = await EnrollSubscription.create({
+      enrollmentId: enrollment?._id,
+      planSnapshot: freeTrial,
+      status: true,
+    });
 
-  await Branch.create({
-    name: "Default Branch",
-    address: {
-      loc: { type: "Point", coordinates: [retailer.longitude, retailer.latitude] },
-      name: retailer.address,
-    },
-    retailerId: retailer._id,
-    enrollSubscriptionId: enrollSubscription._id,
-    source: "subscription",
-  });
+    await Branch.create({
+      name: "Default Branch",
+      address: {
+        loc: { type: "Point", coordinates: [retailer.longitude, retailer.latitude] },
+        name: retailer.address,
+      },
+      retailerId: retailer._id,
+      enrollSubscriptionId: enrollSubscription._id,
+      source: "subscription",
+    });
+  }
 
   const accessToken = generateSignature({ email: req.user.email, role: ROLE.RETAILER }, "30d");
   const refreshToken = generateSignature({ email: req.user.email, role: ROLE.RETAILER }, "60d");
