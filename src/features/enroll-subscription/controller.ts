@@ -1414,7 +1414,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
   return apiResponse(res, 200, true, "Send to Payment Page!");
 });
 
-function checkInvoicePaymentMethod(invoiceId: any, enrollmentId: string, paymentId: string, stripe: Stripe) {
+function checkInvoicePaymentMethod(invoiceId: any, enrollmentId: any, paymentId: any, stripe: Stripe) {
   let attempts = 0;
   const maxAttempts = 3;
   const intervalTime = 10000; // 10 seconds
