@@ -1414,6 +1414,64 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
   return apiResponse(res, 200, true, "Send to Payment Page!");
 });
 
+function checkInvoicePaymentMethod(invoiceId: string, enrollmentId: string, paymentId: string, stripe: Stripe) {
+  let attempts = 0;
+  const maxAttempts = 3;
+  const intervalTime = 10000; // 10 seconds
+
+  const intervalId = setInterval(async () => {
+    attempts++;
+
+    try {
+      const invoice: any = await stripe.invoices.retrieve(invoiceId, {
+        expand: ["payment_intent.payment_method"],
+      });
+
+      const paymentMethodId = invoice?.payment_intent?.payment_method?.id;
+      console.log(`Attempt ${attempts}: Payment Method ID = ${paymentMethodId}`);
+
+      if (paymentMethodId) {
+        await Enrollment.findOneAndUpdate(
+          {
+            _id: enrollmentId,
+          },
+          {
+            "stripe.paymentMethodId": invoice?.payment_intent?.payment_method?.id,
+          },
+          { new: true }
+        );
+
+        clearInterval(intervalId);
+
+        console.log("Payment method found. Stopping checks.");
+        return;
+      }
+
+      if (attempts >= maxAttempts) {
+        await CriticalPayment.create({
+          enrollmentId,
+          paymentId,
+          stripeInvoiceId: invoiceId,
+          status: "pending",
+        });
+
+        // TODO: Send email to Super Admin
+
+        clearInterval(intervalId);
+
+        if (paymentMethodId) {
+          console.log("Payment method found. Stopping checks.");
+        } else {
+          console.log("Max attempts reached. Stopping checks.");
+        }
+      }
+    } catch (error) {
+      console.error("Error retrieving invoice:", error);
+      clearInterval(intervalId);
+    }
+  }, intervalTime);
+}
+
 /**
  * Checkout Session Complete Event Handling
  * @param {Request} eventObject - The HTTP webhook event object.
@@ -1603,12 +1661,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
 
     // Handle Critical Payment (if payment method id is missing)
     if (!invoice?.payment_intent?.payment_method?.id) {
-      await CriticalPayment.create({
-        enrollmentId,
-        paymentId: payment._id,
-        stripeInvoiceId: eventObject.invoice,
-        status: "pending",
-      });
+      checkInvoicePaymentMethod(eventObject.invoice as string, enrollmentId, payment._id, stripe);
     }
 
     // Prepare to send invoice
