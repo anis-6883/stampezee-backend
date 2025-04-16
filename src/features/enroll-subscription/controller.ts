@@ -1414,7 +1414,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
   return apiResponse(res, 200, true, "Send to Payment Page!");
 });
 
-function checkInvoicePaymentMethod(invoiceId: string, enrollmentId: string, paymentId: string, stripe: Stripe) {
+function checkInvoicePaymentMethod(invoiceId: any, enrollmentId: string, paymentId: string, stripe: Stripe) {
   let attempts = 0;
   const maxAttempts = 3;
   const intervalTime = 10000; // 10 seconds
@@ -1661,7 +1661,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
 
     // Handle Critical Payment (if payment method id is missing)
     if (!invoice?.payment_intent?.payment_method?.id) {
-      checkInvoicePaymentMethod(eventObject.invoice as string, enrollmentId, payment._id, stripe);
+      checkInvoicePaymentMethod(eventObject.invoice, enrollmentId, payment._id, stripe);
     }
 
     // Prepare to send invoice
