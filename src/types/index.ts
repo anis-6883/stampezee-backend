@@ -23,6 +23,9 @@ export interface IEnrollSubscriptionBody {
   prevAddonEnrollmentIds?: string[];
   code: string;
   currency: string;
+  noOfCustomStampImage?: number;
+  noOfBranch?: number;
+  noOfStamp?: number;
 }
 
 export interface IConfig {

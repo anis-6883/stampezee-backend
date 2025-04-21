@@ -1,6 +1,6 @@
 import Joi from "joi";
 import { PACKAGES } from "../../configs/constants";
-import { requiredStringField, stringField } from "../../helpers";
+import { numberField, requiredNumberField, requiredStringField, stringField } from "../../helpers";
 
 export const enrollmentSchema = Joi.object({
   slugs: Joi.array()
@@ -33,6 +33,21 @@ export const enrollmentSchema = Joi.object({
     }),
   currency: requiredStringField("currency"),
   code: stringField("code"),
+  noOfBranch: Joi.number().when("slugs", {
+    is: Joi.array().has(Joi.valid(PACKAGES.BRANCH)),
+    then: requiredNumberField("noOfBranch"),
+    otherwise: numberField("noOfBranch"),
+  }),
+  noOfStamp: Joi.number().when("slugs", {
+    is: Joi.array().has(Joi.valid(PACKAGES.STAMP)),
+    then: requiredNumberField("noOfStamp"),
+    otherwise: numberField("noOfStamp"),
+  }),
+  noOfCustomStampImage: Joi.number().when("slugs", {
+    is: Joi.array().has(Joi.valid(PACKAGES.CUSTOM_STAMP_IMAGE)),
+    then: requiredNumberField("noOfCustomStampImage"),
+    otherwise: numberField("noOfCustomStampImage"),
+  }),
   branchIds: Joi.array().messages({
     "array.base": "branchIds must be array!",
   }),

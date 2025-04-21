@@ -197,7 +197,19 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     abortEarly: false,
   });
 
-  const { slugs, code, branchIds, stampIds, currency, prevAddonEnrollmentIds }: IEnrollSubscriptionBody = result;
+  const {
+    slugs,
+    code,
+    branchIds,
+    stampIds,
+    currency,
+    prevAddonEnrollmentIds,
+    noOfBranch = 1,
+    noOfStamp = 1,
+    noOfCustomStampImage = 1,
+  }: IEnrollSubscriptionBody = result;
+
+  // if (1 === 1) return apiResponse(res, 400, false, "This feature is not available yet!", result);
 
   if ((slugs.includes(PACKAGES.TRIAL) && slugs.length > 1) || (slugs.includes(PACKAGES.TRIAL) && code)) {
     return apiResponse(res, 400, false, "You can't take additional packages or coupon in free trial!");
@@ -428,6 +440,57 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     const line_items: ILineItem[] = [];
     const coupons: { coupon: string }[] = [];
     let extraPayableAmount = 0;
+
+    // Mapping addons to packages
+    const addonsMap = [
+      {
+        slug: PACKAGES.BRANCH,
+        quantity: noOfBranch,
+      },
+      {
+        slug: PACKAGES.STAMP,
+        quantity: noOfStamp,
+      },
+      {
+        slug: PACKAGES.CUSTOM_STAMP_IMAGE,
+        quantity: noOfCustomStampImage,
+      },
+      {
+        slug: PACKAGES.PUSH_NOTIFICATION_USER,
+        quantity: 1,
+      },
+      {
+        slug: PACKAGES.PUSH_NOTIFICATION_LOCATION,
+        quantity: 1,
+      },
+    ];
+
+    // Create Line Items
+    const createLineItem = (
+      subscription: ISubscription,
+      enrollSubscriptionId: string,
+      finalPrice: number,
+      index: number = 0
+    ): ILineItem => ({
+      price_data: {
+        currency: currency.toLowerCase(),
+        product_data: {
+          name: `${subscription.title} ${index ? index + 1 : ""}`.trim(),
+          ...(taxStatus === "on" && {
+            description: `${subscription.title} (including ${taxTitle} ${taxCost}%)`,
+          }),
+          metadata: {
+            enrollSubscriptionId: enrollSubscriptionId,
+            prev: "false",
+          },
+        },
+        unit_amount: finalPrice,
+        recurring: {
+          interval: "month",
+        },
+      },
+      quantity: 1,
+    });
 
     if (pickPlan && enrolled) {
       const changeMode: number = checkPlanChange(
@@ -1156,16 +1219,15 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       let totalCouponAmount = 0;
       metadata["enrollmentId"] = String(enrollment._id);
 
-      // Package push into line items
-      for (const subscription of subscriptions) {
+      if (pickPlan) {
         let finalPrice = 0;
         let taxValue = 0;
         let couponValue = 0;
 
-        finalPrice = Number((selectCurrency.exchangeRate * subscription.price).toFixed(2));
+        finalPrice = Number((selectCurrency.exchangeRate * pickPlan.price).toFixed(2));
 
         //Check coupon eligibility & apply
-        if (coupon && appliedSlugs.includes(subscription.slug)) {
+        if (coupon && appliedSlugs.includes(pickPlan.slug)) {
           couponValue =
             coupon.discountType === "percentage"
               ? (finalPrice * coupon?.discount) / 100
@@ -1182,37 +1244,122 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
         const enrollSubscription = await EnrollSubscription.create({
           enrollmentId: enrollment?._id,
-          planSnapshot: subscription,
+          planSnapshot: pickPlan,
           planCurrentPrice: (finalPrice - taxValue - couponValue).toFixed(2),
         });
-
-        const isPlan = [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug);
 
         let unitAmount = Math.round(Number(finalPrice) * 100); // convert into cent
         if (selectCurrency?.name === "JPY") unitAmount = Math.round(Number(finalPrice));
         else if (selectCurrency?.name === "KWD") unitAmount = roundToNearestTen(finalPrice);
 
-        line_items.push({
-          price_data: {
-            currency: currency.toLowerCase(),
-            product_data: {
-              name: `${subscription.title} ${isPlan ? "Plan" : "Add-On"}`,
-              ...(taxStatus === "on" && {
-                description: `${subscription.title} ${isPlan ? "Plan" : "Add-On"} (including ${taxTitle} ${taxCost}%)`,
-              }),
-              metadata: {
-                enrollSubscriptionId: String(enrollSubscription._id),
-                prev: "false",
-              },
-            },
-            unit_amount: unitAmount,
-            recurring: {
-              interval: "month",
-            },
-          },
-          quantity: 1,
-        });
+        line_items.push(createLineItem(pickPlan, String(enrollSubscription._id), unitAmount));
       }
+
+      // Add Subscription Items
+      const addSubscriptionItems = async (packageType: string, quantity: number) => {
+        const addon: ISubscription = subscriptions.find((subs) => subs.slug === packageType);
+
+        for (let i = 0; i < quantity; i++) {
+          let finalPrice = 0;
+          let taxValue = 0;
+          let couponValue = 0;
+
+          finalPrice = Number((selectCurrency.exchangeRate * addon.price).toFixed(2));
+
+          //Check coupon eligibility & apply
+          if (coupon && appliedSlugs.includes(addon.slug)) {
+            couponValue =
+              coupon.discountType === "percentage"
+                ? (finalPrice * coupon?.discount) / 100
+                : selectCurrency.exchangeRate * coupon?.discount;
+
+            totalCouponAmount += Number(couponValue.toFixed(2));
+          }
+
+          // Only tax apply
+          if (taxStatus === "on") {
+            taxValue = (finalPrice * taxCost) / 100;
+            finalPrice += taxValue;
+          }
+
+          const enrollSubscription = await EnrollSubscription.create({
+            enrollmentId: enrollment?._id,
+            planSnapshot: addon,
+            planCurrentPrice: (finalPrice - taxValue - couponValue).toFixed(2),
+          });
+
+          let unitAmount = Math.round(Number(finalPrice) * 100); // convert into cent
+          if (selectCurrency?.name === "JPY") unitAmount = Math.round(Number(finalPrice));
+          else if (selectCurrency?.name === "KWD") unitAmount = roundToNearestTen(finalPrice);
+
+          line_items.push(createLineItem(addon, String(enrollSubscription._id), unitAmount, i));
+        }
+      };
+
+      // Process addons
+      for (const addon of addonsMap) {
+        if (slugs.some((slug: string) => slug === addon.slug)) {
+          await addSubscriptionItems(addon.slug, addon.quantity);
+        }
+      }
+
+      // Package push into line items
+      // for (const subscription of subscriptions) {
+      //   let finalPrice = 0;
+      //   let taxValue = 0;
+      //   let couponValue = 0;
+
+      //   finalPrice = Number((selectCurrency.exchangeRate * subscription.price).toFixed(2));
+
+      //   //Check coupon eligibility & apply
+      //   if (coupon && appliedSlugs.includes(subscription.slug)) {
+      //     couponValue =
+      //       coupon.discountType === "percentage"
+      //         ? (finalPrice * coupon?.discount) / 100
+      //         : selectCurrency.exchangeRate * coupon?.discount;
+
+      //     totalCouponAmount += Number(couponValue.toFixed(2));
+      //   }
+
+      //   // Only tax apply
+      //   if (taxStatus === "on") {
+      //     taxValue = (finalPrice * taxCost) / 100;
+      //     finalPrice += taxValue;
+      //   }
+
+      //   const enrollSubscription = await EnrollSubscription.create({
+      //     enrollmentId: enrollment?._id,
+      //     planSnapshot: subscription,
+      //     planCurrentPrice: (finalPrice - taxValue - couponValue).toFixed(2),
+      //   });
+
+      //   const isPlan = [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug);
+
+      //   let unitAmount = Math.round(Number(finalPrice) * 100); // convert into cent
+      //   if (selectCurrency?.name === "JPY") unitAmount = Math.round(Number(finalPrice));
+      //   else if (selectCurrency?.name === "KWD") unitAmount = roundToNearestTen(finalPrice);
+
+      //   line_items.push({
+      //     price_data: {
+      //       currency: currency.toLowerCase(),
+      //       product_data: {
+      //         name: `${subscription.title} ${isPlan ? "Plan" : "Add-On"}`,
+      //         ...(taxStatus === "on" && {
+      //           description: `${subscription.title} ${isPlan ? "Plan" : "Add-On"} (including ${taxTitle} ${taxCost}%)`,
+      //         }),
+      //         metadata: {
+      //           enrollSubscriptionId: String(enrollSubscription._id),
+      //           prev: "false",
+      //         },
+      //       },
+      //       unit_amount: unitAmount,
+      //       recurring: {
+      //         interval: "month",
+      //       },
+      //     },
+      //     quantity: 1,
+      //   });
+      // }
 
       // Create the coupon and push into line items
       if (coupon) {
