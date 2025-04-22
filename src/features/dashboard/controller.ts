@@ -32,9 +32,13 @@ export const superAdminDashboardCardStats = asyncHandler(async (req: IApiRequest
     newStampsThisMonth,
   ] = await Promise.all([
     Retailer.countDocuments({ isVerified: true, softDeleted: false }),
-    Customer.countDocuments({ isVerified: true }),
+    Customer.countDocuments({ isVerified: true, softDeleted: false }),
     Stamp.countDocuments({ softDeleted: false }),
-    Customer.countDocuments({ isVerified: true, createdAt: { $gte: startOfMonth, $lt: endOfMonth } }),
+    Customer.countDocuments({
+      isVerified: true,
+      softDeleted: false,
+      createdAt: { $gte: startOfMonth, $lt: endOfMonth },
+    }),
     Retailer.countDocuments({
       isVerified: true,
       softDeleted: false,
