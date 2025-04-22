@@ -24,6 +24,7 @@ export interface IEnrollSubscription extends Document {
   planCurrentPrice: number;
   status: boolean;
   deletedByRetailerAt: Date;
+  validAtAfterCancel: Date;
 }
 
 const subscriptionSchema = new Schema<ISubscription>({
@@ -57,6 +58,7 @@ const enrollSubscriptionSchema = new Schema<IEnrollSubscription>(
     planCurrentPrice: { type: Number, default: 0 },
     status: { type: Boolean, default: false },
     deletedByRetailerAt: { type: Date, default: null },
+    validAtAfterCancel: { type: Date, default: null },
   },
   {
     timestamps: true,

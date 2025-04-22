@@ -334,6 +334,18 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
             deletedByRetailerAt: new Date(),
           }
         ),
+        EnrollSubscription.updateMany(
+          {
+            enrollmentId: enrollment._id,
+            _id: { $ne: enrollSubscriptionId },
+            validAtAfterCancel: null,
+          },
+          {
+            status: false,
+            deletedByRetailerAt: new Date(),
+            validAtAfterCancel: enrollment.validityTo,
+          }
+        ),
       ]);
     } else {
       await Promise.all([
@@ -355,6 +367,17 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
         await Promise.all([
           stripe.subscriptions.update(addonEnrollment.stripe.subscriptionId, { cancel_at_period_end: true }),
           Enrollment.findByIdAndUpdate(addonEnrollment._id, { status: false }),
+          EnrollSubscription.updateMany(
+            {
+              enrollmentId: addonEnrollment._id,
+              validAtAfterCancel: null,
+            },
+            {
+              status: false,
+              deletedByRetailerAt: new Date(),
+              validAtAfterCancel: enrollment.validityTo,
+            }
+          ),
         ]);
       }
     }
@@ -367,16 +390,17 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
       deletedByRetailerAt: null,
     });
 
+    const enrollment: IEnrollment = await Enrollment.findById(enrollSubscription.enrollmentId);
+
     // Cancel the subscription if it contains only one add-on
     if (totalPackage < 2) {
-      const enrollment: IEnrollment = await Enrollment.findById(enrollSubscription.enrollmentId);
-
       await Promise.all([
         stripe.subscriptions.cancel(enrollment?.stripe?.subscriptionId),
         Enrollment.findByIdAndUpdate(enrollSubscription.enrollmentId, { status: false }),
         EnrollSubscription.findByIdAndUpdate(enrollSubscription._id, {
           status: false,
           deletedByRetailerAt: new Date(),
+          validAtAfterCancel: enrollment.validityTo,
         }),
       ]);
 
@@ -390,6 +414,7 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
         await EnrollSubscription.findByIdAndUpdate(enrollSubscriptionId, {
           status: false,
           deletedByRetailerAt: new Date(),
+          validAtAfterCancel: enrollment.validityTo,
         });
       }
 
