@@ -387,7 +387,7 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
                 from: "sub_admins",
                 localField: "_id",
                 foreignField: "branchId",
-                as: "subadmin",
+                as: "sub_admins",
                 pipeline: [
                   {
                     $match: {
@@ -398,19 +398,12 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
               },
             },
             {
-              $unwind: {
-                path: "$subadmin",
-                preserveNullAndEmptyArrays: true,
-              },
-            },
-            {
               $project: {
                 _id: 1,
                 name: 1,
                 address: "$address.name",
-                subAdminName: { $ifNull: ["$subadmin.fullName", null] },
-                subAdminEmail: { $ifNull: ["$subadmin.email", null] },
                 totalCustomer: { $ifNull: ["$collect_stamps.totalCustomer", 0] },
+                totalSubAdmin: { $size: "$sub_admins" },
                 totalOrder: { $size: "$order_stamps" },
                 totalRevenue: { $sum: "$order_stamps.amount" },
               },
