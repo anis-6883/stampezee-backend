@@ -245,6 +245,12 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
           as: "sub_admins",
           pipeline: [
             {
+              $match: {
+                status: true,
+                softDeleted: false,
+              },
+            },
+            {
               $lookup: {
                 from: "branches",
                 localField: "branchId",
