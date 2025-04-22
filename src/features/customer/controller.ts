@@ -21,7 +21,7 @@ export const getAllCustomers = asyncHandler(async (req: IApiRequest, res: Respon
   const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
-  const query: any = { softDeleted: false };
+  const query: any = { softDeleted: false, isVerified: true };
 
   if (search) {
     const regex = new RegExp(`.*${search}.*`, "i"); // case insensitive search. For sensitive remove i
@@ -373,7 +373,7 @@ export const getAllRetailerCustomers = asyncHandler(async (req: IApiRequest, res
   const { page = 1, limit = 10, search } = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
-  const query: any = { softDeleted: false };
+  const query: any = { softDeleted: false, isVerified: true };
 
   if (search) {
     const regex = new RegExp(`.*${search}.*`, "i"); // case insensitive search. For sensitive remove i
