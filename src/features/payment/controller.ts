@@ -122,6 +122,28 @@ export const getSingleSubscriptionPayment = asyncHandler(async (req: IApiRequest
     },
     {
       $lookup: {
+        from: "retailers",
+        localField: "retailerId",
+        foreignField: "_id",
+        as: "retailer",
+        pipeline: [
+          {
+            $project: {
+              storeName: 1,
+              image: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: {
+        path: "$retailer",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $lookup: {
         from: "enroll_subscriptions",
         localField: "_id",
         foreignField: "enrollmentId",
