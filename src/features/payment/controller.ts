@@ -3,6 +3,7 @@ import { Types } from "mongoose";
 import Stripe from "stripe";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import Enrollment from "../../models/enrollment";
+import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
 import { IApiRequest } from "../../types";
 import { portalSchema } from "./validation";
@@ -20,7 +21,18 @@ export const getSubscriptionPayments = asyncHandler(async (req: IApiRequest, res
   const query: any = { paymentStatus: "completed" };
 
   if (search) {
-    query["stripe.subscriptionId"] = { $regex: search, $options: "i" };
+    const regex = { $regex: search, $options: "i" };
+    const orQuery: {}[] = [{ "stripe.subscriptionId": regex }];
+
+    const retailers = await Retailer.find({ storeName: regex });
+
+    if (retailers.length > 0) {
+      const retailerIds = retailers.map((retailer) => retailer._id);
+      console.log({ retailerIds });
+      orQuery.push({ retailerId: { $in: retailerIds } });
+    }
+
+    query.$or = orQuery;
   }
 
   const [docs, total] = await Promise.all([
