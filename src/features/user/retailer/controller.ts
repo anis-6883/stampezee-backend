@@ -237,7 +237,6 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
           retailerId: retailer._id,
           paymentStatus: "completed",
           validityTo: { $gt: new Date() },
-          status: true,
         },
       },
       {
@@ -249,8 +248,10 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
           pipeline: [
             {
               $match: {
-                status: true,
-                deletedByRetailerAt: null,
+                $or: [
+                  { status: true, deletedByRetailerAt: null },
+                  { status: false, validAtAfterCancel: { $gt: new Date() } },
+                ],
               },
             },
             {
@@ -378,7 +379,6 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
           retailerId: req.user._id,
           paymentStatus: "completed",
           validityTo: { $gt: new Date() },
-          status: true,
         },
       },
       {
@@ -390,8 +390,10 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
           pipeline: [
             {
               $match: {
-                status: true,
-                deletedByRetailerAt: null,
+                $or: [
+                  { status: true, deletedByRetailerAt: null },
+                  { status: false, validAtAfterCancel: { $gt: new Date() } },
+                ],
               },
             },
             {
