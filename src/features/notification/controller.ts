@@ -31,7 +31,6 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
           retailerId: req.user._id,
           paymentStatus: { $in: ["completed", "trial"] },
           validityTo: { $gt: new Date() },
-          status: true,
         },
       },
       {
@@ -43,7 +42,10 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
           pipeline: [
             {
               $match: {
-                status: true,
+                $or: [
+                  { status: true, deletedByRetailerAt: null },
+                  { status: false, validAtAfterCancel: { $gt: new Date() } },
+                ],
               },
             },
           ],
@@ -150,7 +152,6 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
           retailerId: req.user._id,
           paymentStatus: { $in: ["completed", "trial"] },
           validityTo: { $gt: new Date() },
-          status: true,
         },
       },
       {
@@ -162,7 +163,10 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
           pipeline: [
             {
               $match: {
-                status: true,
+                $or: [
+                  { status: true, deletedByRetailerAt: null },
+                  { status: false, validAtAfterCancel: { $gt: new Date() } },
+                ],
               },
             },
           ],
@@ -337,7 +341,6 @@ export const getAllNotificationsForRetailer = asyncHandler(async (req: IApiReque
           retailerId: req.user._id,
           paymentStatus: { $in: ["completed", "trial"] },
           validityTo: { $gt: new Date() },
-          status: true,
         },
       },
       {
@@ -349,7 +352,10 @@ export const getAllNotificationsForRetailer = asyncHandler(async (req: IApiReque
           pipeline: [
             {
               $match: {
-                status: true,
+                $or: [
+                  { status: true, deletedByRetailerAt: null },
+                  { status: false, validAtAfterCancel: { $gt: new Date() } },
+                ],
               },
             },
           ],

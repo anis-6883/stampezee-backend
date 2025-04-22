@@ -32,7 +32,6 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
           retailerId: req.user._id,
           paymentStatus: { $in: ["completed", "trial"] },
           validityTo: { $gt: new Date() },
-          status: true,
         },
       },
       {
@@ -44,7 +43,10 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
           pipeline: [
             {
               $match: {
-                status: true,
+                $or: [
+                  { status: true, deletedByRetailerAt: null },
+                  { status: false, validAtAfterCancel: { $gt: new Date() } },
+                ],
               },
             },
           ],
