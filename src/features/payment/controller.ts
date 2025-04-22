@@ -156,6 +156,7 @@ export const getSingleSubscriptionPayment = asyncHandler(async (req: IApiRequest
               slug: "$planSnapshot.slug",
               type: "$planSnapshot.type",
               deletedByRetailerAt: 1,
+              validAtAfterCancel: 1,
             },
           },
           {
