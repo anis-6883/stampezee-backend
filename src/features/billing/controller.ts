@@ -61,6 +61,7 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
                 slug: "$planSnapshot.slug",
                 type: "$planSnapshot.type",
                 deletedByRetailerAt: 1,
+                validAtAfterCancel: 1,
               },
             },
             {
