@@ -7,6 +7,7 @@ import Customer from "../../models/customer";
 import Enrollment from "../../models/enrollment";
 import OrderStamp from "../../models/order-stamp";
 import Payment from "../../models/payment";
+import Refund from "../../models/refund";
 import Retailer from "../../models/retailer";
 import Stamp from "../../models/stamp";
 import { IApiRequest, Object } from "../../types";
@@ -79,49 +80,84 @@ export const superAdminDashboardRevenue = asyncHandler(async (req: IApiRequest, 
   // Rules: amount * (baseCurrencyRatio / convertCurrencyRatio)
   const { start = undefined, end = undefined } = req.query;
 
-  const totalRevenue = await Payment.aggregate([
-    {
-      $match: {
-        paymentStatus: "succeeded", // Filter by completed payments
-        ...(start &&
-          end && {
-            createdAt: {
-              $gte: new Date(`${start}T00:00:00` as string), // Greater than or equal to start date
-              $lte: new Date(`${end}T23:59:59` as string), // Less than or equal to end date
-            },
-          }),
-      },
-    },
-    {
-      $addFields: {
-        convertedAmount: {
-          // Convert payment to base currency (CAD)
-          $round: [
-            {
-              $divide: ["$amountTotal", "$currencyRate"],
-            },
-            2,
-          ],
+  const [totalRevenue, activeSubscription, totalRefund] = await Promise.all([
+    Payment.aggregate([
+      {
+        $match: {
+          paymentStatus: "succeeded", // Filter by completed payments
+          ...(start &&
+            end && {
+              createdAt: {
+                $gte: new Date(`${start}T00:00:00` as string), // Greater than or equal to start date
+                $lte: new Date(`${end}T23:59:59` as string), // Less than or equal to end date
+              },
+            }),
         },
       },
-    },
-    {
-      $group: {
-        _id: null, // Group by null to aggregate all documents
-        totalRevenueInCAD: { $sum: "$convertedAmount" }, // Sum the converted payment amounts for all types
+      {
+        $addFields: {
+          convertedAmount: {
+            // Convert payment to base currency (CAD)
+            $round: [
+              {
+                $divide: ["$amountTotal", "$currencyRate"],
+              },
+              2,
+            ],
+          },
+        },
       },
-    },
+      {
+        $group: {
+          _id: null, // Group by null to aggregate all documents
+          totalRevenueInCAD: { $sum: "$convertedAmount" }, // Sum the converted payment amounts for all types
+        },
+      },
+    ]),
+    Enrollment.countDocuments({
+      $and: [{ planExists: { $ne: "trial" } }, { planExists: { $ne: null } }],
+      validityTo: { $gt: new Date() },
+      status: true,
+    }),
+    Refund.aggregate([
+      {
+        $match: {
+          refundStatus: "completed", // Filter by completed payments
+          ...(start &&
+            end && {
+              createdAt: {
+                $gte: new Date(`${start}T00:00:00` as string), // Greater than or equal to start date
+                $lte: new Date(`${end}T23:59:59` as string), // Less than or equal to end date
+              },
+            }),
+        },
+      },
+      {
+        $addFields: {
+          convertedAmount: {
+            // Convert payment to base currency (CAD)
+            $round: [
+              {
+                $divide: ["$refundAmount", "$currencyRate"],
+              },
+              2,
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalRefundAmountInCAD: { $sum: "$convertedAmount" },
+        },
+      },
+    ]),
   ]);
 
-  const activeSubscription = await Enrollment.countDocuments({
-    $and: [{ planExists: { $ne: "trial" } }, { planExists: { $ne: null } }],
-    validityTo: { $gt: new Date() },
-    status: true,
-  });
-
   const data = {
-    totalRevenueInCAD: totalRevenue[0]?.totalRevenueInCAD || 0,
+    totalRevenueInCAD: totalRevenue[0]?.totalRevenueInCAD - totalRefund[0]?.totalRefundAmountInCAD || 0,
     activeSubscription,
+    totalRefundAmountInCAD: totalRefund[0]?.totalRefundAmountInCAD,
   };
 
   return apiResponse(res, 200, true, "Super admin revenue stats fetched successfully!", data);
