@@ -63,7 +63,7 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
           : retailerBody.firstName,
       });
 
-  const tempToken = generateSignature({ email: retailerBody.email, role: ROLE.RETAILER, ott: true }, "15m"); // 15 min
+  const tempToken = generateSignature({ email: retailerBody.email, role: ROLE.RETAILER, ott: true }, 600); //15 minute // 15 min
 
   sendVerificationEmail(retailerBody.email, retailerBody.otp);
 
@@ -127,8 +127,8 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     });
   }
 
-  const accessToken = generateSignature({ email: req.user.email, role: ROLE.RETAILER }, "30d");
-  const refreshToken = generateSignature({ email: req.user.email, role: ROLE.RETAILER }, "60d");
+  const accessToken = generateSignature({ email: req.user.email, role: ROLE.RETAILER }, 2592000); // 30 Day expiry 30*24*60*60;
+  const refreshToken = generateSignature({ email: req.user.email, role: ROLE.RETAILER }, 5184000); // 60 Day expiry 60*24*60*60;
 
   // Remove Sensitive Data
   const data = exclude(req.user, [
@@ -289,8 +289,8 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
     if (Object.keys(slugMap).includes(slug)) activeAddonSlugs.push(slug);
   }
 
-  const accessToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "30d");
-  const refreshToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, "60d");
+  const accessToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, 2592000); // 30 Day expiry 30*24*60*60;
+  const refreshToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER }, 5184000); // 60 Day expiry 60*24*60*60;
 
   // Remove Sensitive Data
   const data = exclude(retailer._doc, ["password", "otp", "otpExpiry", "createdAt", "updatedAt", "softDeleted"]);
@@ -506,7 +506,7 @@ export const retailerForgetPassword = asyncHandler(async (req: IApiRequest, res:
 
   await Retailer.findByIdAndUpdate(retailer._id, { otp, otpExpiry });
 
-  const tempToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER, ott: true }, "15m"); // 15 min
+  const tempToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER, ott: true }, 600); //15 minute // 15 min
 
   // Send OTP to Email
   sendVerificationEmail(retailer.email, otp);

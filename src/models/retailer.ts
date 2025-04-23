@@ -74,8 +74,6 @@ const retailerSchema = new Schema<IRetailer>(
   }
 );
 
-retailerSchema.index({ email: 1 });
-
 const Retailer = model<IRetailer>("retailers", retailerSchema);
 
 export default Retailer;

@@ -10,8 +10,8 @@ const ALARM_EXPIRE_TIME = 60 * 60 * 24 * 29 * 1000; // 29 Days
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const refreshAccessToken = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const accessToken = generateSignature({ email: req.user.email, role: req.role }, "30d");
-  const refreshToken = generateSignature({ email: req.user.email, role: req.role }, "60d");
+  const accessToken = generateSignature({ email: req.user.email, role: req.role }, 2592000); // 30 Day expiry 30*24*60*60;
+  const refreshToken = generateSignature({ email: req.user.email, role: req.role }, 5184000); // 60 Day expiry 60*24*60*60;
 
   return apiResponse(res, 200, true, "Access Token Regenerated!", {
     accessToken,

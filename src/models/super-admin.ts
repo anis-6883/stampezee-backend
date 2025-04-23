@@ -24,8 +24,6 @@ const superAdminSchema = new Schema<ISuperAdmin>(
   }
 );
 
-superAdminSchema.index({ email: 1 });
-
 const SuperAdmin = model<ISuperAdmin>("super_admins", superAdminSchema);
 
 export default SuperAdmin;

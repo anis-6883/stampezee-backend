@@ -42,8 +42,6 @@ const subAdminSchema = new Schema<ISubAdmin>(
   }
 );
 
-subAdminSchema.index({ email: 1 });
-
 const SubAdmin = model<ISubAdmin>("sub_admins", subAdminSchema);
 
 export default SubAdmin;

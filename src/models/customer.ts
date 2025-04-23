@@ -63,8 +63,6 @@ const customerSchema = new Schema<ICustomer>(
   }
 );
 
-customerSchema.index({ email: 1 });
-
 const Customer = model<ICustomer>("customers", customerSchema);
 
 export default Customer;

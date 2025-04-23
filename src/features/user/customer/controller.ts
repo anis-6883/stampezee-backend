@@ -59,7 +59,7 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
   }
 
   if (provider !== "email") {
-    const token = generateSignature({ email: customerBody.email, role: ROLE.CUSTOMER }, "30 days");
+    const token = generateSignature({ email: customerBody.email, role: ROLE.CUSTOMER }, 2592000); // 30 Day expiry 30*24*60*60;
 
     customerBody.provider = provider;
     customerBody.isVerified = true;
@@ -92,7 +92,7 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
     customerBody.otp = getRandomInteger(100000, 999999);
     customerBody.otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
 
-    const token = generateSignature({ email: customerBody.email, role: ROLE.CUSTOMER, ott: true }, "15m"); // 15 min
+    const token = generateSignature({ email: customerBody.email, role: ROLE.CUSTOMER, ott: true }, 600); //15 minute // 15 min
 
     sendVerificationEmail(customerBody.email, customerBody.otp);
 
@@ -127,7 +127,7 @@ export const customerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
   const isVerified = req.user.otp === Number(result.value.otp) && req.user.otpExpiry > new Date();
   if (!isVerified) return apiResponse(res, 400, false, "Invalid OTP!");
 
-  const token = generateSignature({ email: req.user.email, role: ROLE.CUSTOMER }, "30 days");
+  const token = generateSignature({ email: req.user.email, role: ROLE.CUSTOMER }, 2592000); // 30 Day expiry 30*24*60*60;
 
   const customer: any = await Customer.findOneAndUpdate(
     { email: req.user.email },
@@ -253,7 +253,7 @@ export const customerAndSubAdminLogin = asyncHandler(async (req: Request, res: R
       if (!isPasswordValid) return apiResponse(res, 401, false, "Provided incorrect password!");
     }
 
-    const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER }, "30 days");
+    const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER }, 2592000); // 30 Day expiry 30*24*60*60;
     await Customer.updateOne({ email: customer.email }, { token, deletionRequest: false });
 
     // Remove Sensitive Data
@@ -267,7 +267,7 @@ export const customerAndSubAdminLogin = asyncHandler(async (req: Request, res: R
     const isPasswordValid = await bcrypt.compare(password, subAdmin[0].password);
     if (!isPasswordValid) return apiResponse(res, 401, false, "Provided incorrect password!");
 
-    const token = generateSignature({ email: subAdmin[0].email, role: ROLE.SUB_ADMIN }, "30 days");
+    const token = generateSignature({ email: subAdmin[0].email, role: ROLE.SUB_ADMIN }, 2592000); // 30 Day expiry 30*24*60*60;
     await SubAdmin.updateOne({ email: subAdmin[0].email }, { token });
 
     // Remove Sensitive Data
@@ -398,7 +398,7 @@ export const forgetPassword = asyncHandler(async (req: IApiRequest, res: Respons
 
     await Customer.findByIdAndUpdate(customer._id, { otp, otpExpiry });
 
-    const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER, ott: true }, "15m"); // 15 min
+    const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER, ott: true }, 600); //15 minute // 15 min
 
     // Send OTP to Email
     sendVerificationEmail(customer.email, otp);
@@ -412,7 +412,7 @@ export const forgetPassword = asyncHandler(async (req: IApiRequest, res: Respons
 
     await SubAdmin.findByIdAndUpdate(subAdmin._id, { otp, otpExpiry });
 
-    const token = generateSignature({ email: subAdmin.email, role: ROLE.SUB_ADMIN, ott: true }, "15m"); // 15 min
+    const token = generateSignature({ email: subAdmin.email, role: ROLE.SUB_ADMIN, ott: true }, 600); //15 minute // 15 min
 
     // Send OTP to Email
     sendVerificationEmail(subAdmin.email, otp);

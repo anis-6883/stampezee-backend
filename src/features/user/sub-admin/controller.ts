@@ -77,7 +77,7 @@ export const subAdminLogin = asyncHandler(async (req: Request, res: Response) =>
   const isPasswordValid = await bcrypt.compare(password, subAdmin[0].password);
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
-  const token = generateSignature({ email: subAdmin[0].email, role: ROLE.SUB_ADMIN }, "30 days");
+  const token = generateSignature({ email: subAdmin[0].email, role: ROLE.SUB_ADMIN }, 2592000); // 30 Day expiry 30*24*60*60;
 
   await SubAdmin.updateOne({ _id: subAdmin[0]._id }, { token });
 
@@ -168,7 +168,7 @@ export const subAdminForgetPassword = asyncHandler(async (req: IApiRequest, res:
 
   await SubAdmin.findByIdAndUpdate(subAdmin._id, { otp, otpExpiry });
 
-  const token = generateSignature({ email: subAdmin.email, role: ROLE.SUB_ADMIN, ott: true }, "15m"); // 15 min
+  const token = generateSignature({ email: subAdmin.email, role: ROLE.SUB_ADMIN, ott: true }, 600); //15 minute // 15 min
 
   // Send OTP to Email
   sendVerificationEmail(subAdmin.email, otp);

@@ -51,8 +51,8 @@ export const superAdminLogin = asyncHandler(async (req: Request, res: Response) 
   const isPasswordValid = await bcrypt.compare(result.password, superAdmin.password);
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
-  const accessToken = generateSignature({ email: superAdmin.email, role: ROLE.SUPER_ADMIN }, "30d");
-  const refreshToken = generateSignature({ email: superAdmin.email, role: ROLE.SUPER_ADMIN }, "60d");
+  const accessToken = generateSignature({ email: superAdmin.email, role: ROLE.SUPER_ADMIN }, 30 * 24 * 60 * 60); // 30 Days Expiry
+  const refreshToken = generateSignature({ email: superAdmin.email, role: ROLE.SUPER_ADMIN }, 60 * 24 * 60 * 60); // 60 Days Expiry
 
   // Remove Sensitive Data
   const data = exclude(superAdmin._doc, ["password", "createdAt", "updatedAt"]);

@@ -183,7 +183,7 @@ export const generatePassword = async (password: string, salt: string) => {
   return await bcrypt.hash(password, salt);
 };
 
-export const generateSignature = (payload: any, expiresIn: number | string) => {
+export const generateSignature = (payload: any, expiresIn: number) => {
   if (!payload.ott) {
     payload.ott = false;
   }
