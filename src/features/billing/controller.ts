@@ -315,6 +315,7 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
     if (isRefunded) {
       await Refund.create({
         currency: enrollment.currency,
+        currencyRate: enrollment.currencyRate,
         enrollmentId: enrollment._id,
         refundAmount: parseFloat(Math.abs(balanceAmount).toFixed(2)),
         refundStatus: "pending",
