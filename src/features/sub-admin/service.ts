@@ -46,7 +46,7 @@ export const sendRegistrationMail = async (
 
   const mailOptions = {
     from: settings?.mail?.username,
-    to: email,
+    to: contactEmail,
     subject: "Membership Account Registration",
     html: template,
   };
