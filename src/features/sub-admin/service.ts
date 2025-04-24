@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import Settings from "../../models/settings";
 
 export const sendRegistrationMail = async (
+  contactEmail: string,
   email: string,
   name: string,
   password: string,
@@ -57,4 +58,8 @@ export const sendRegistrationMail = async (
     console.error("Error sending verification email:", error);
     throw new Error("Error sending verification email!");
   }
+};
+
+export const generateUniqueSubAdminEmail = (email: string, subAdminNumber: string) => {
+  return email.replace(/@(.+)/, (match, domain) => `@${subAdminNumber}.${domain}`);
 };

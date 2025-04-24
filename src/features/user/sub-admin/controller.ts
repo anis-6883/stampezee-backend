@@ -171,7 +171,7 @@ export const subAdminForgetPassword = asyncHandler(async (req: IApiRequest, res:
   const token = generateSignature({ email: subAdmin.email, role: ROLE.SUB_ADMIN, ott: true }, 600); //15 minute // 15 min
 
   // Send OTP to Email
-  sendVerificationEmail(subAdmin.email, otp);
+  sendVerificationEmail(subAdmin.contactEmail, otp);
 
   return apiResponse(res, 200, true, "OTP sent successfully!", { token });
 });
@@ -208,9 +208,9 @@ export const subAdminForgetPasswordResendOtp = asyncHandler(async (req: IApiRequ
     return apiResponse(res, 400, false, "Wait 2 minutes to resend OTP!");
   }
 
-  await SubAdmin.updateOne({ email: req.user.email }, { otp, otpExpiry });
+  await SubAdmin.updateOne({ email: req.user.contactEmail }, { otp, otpExpiry });
 
-  sendVerificationEmail(req.user.email, otp);
+  sendVerificationEmail(req.user.contactEmail, otp);
 
   return apiResponse(res, 200, true, "OTP resend successfully!");
 });

@@ -5,8 +5,24 @@ import { apiResponse, asyncHandler, exclude, makePaginate } from "../../helpers"
 import Branch from "../../models/branch";
 import SubAdmin from "../../models/sub-admin";
 import { IApiRequest } from "../../types";
-import { sendRegistrationMail } from "./service";
+import { generateUniqueSubAdminEmail, sendRegistrationMail } from "./service";
 import { subAdminSchema, subAdminSchema2, subAdminStatusSchema } from "./validation";
+
+export const nextSubAdminEmail = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const lastSubAdmin: any = await SubAdmin.findOne({ retailerId: req.user._id }).sort({ createdAt: -1 });
+
+  let number = 1;
+  if (lastSubAdmin) {
+    // Extract number after @s
+    const match = lastSubAdmin.email.match(/@s(\d+)/);
+    number = match ? parseInt(match[1]) : 0;
+    // console.log({ number });
+    number = number + 1;
+  }
+  const email = generateUniqueSubAdminEmail(req.user.email, `s${number}`);
+
+  return apiResponse(res, 200, true, "Next sub-admin email fetched successfully!", email);
+});
 
 /**
  * Create A Sub Admin
@@ -20,9 +36,20 @@ export const createSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
   const { softDeleted, retailerId, password, ...createBody } = result;
   createBody.retailerId = req.user._id;
 
+  const lastSubAdmin: any = await SubAdmin.findOne({ retailerId: req.user._id }).sort({ createdAt: -1 });
+
+  let number = 1;
+  if (lastSubAdmin) {
+    // Extract number after @s
+    const match = lastSubAdmin.email.match(/@s(\d+)/);
+    number = match ? parseInt(match[1]) : 0;
+    // console.log({ number });
+    number = number + 1;
+  }
+  const email = generateUniqueSubAdminEmail(req.user.email, `s${number}`);
   const [branch, existingSubAdmin]: any = await Promise.all([
     Branch.findOne({ _id: createBody.branchId, retailerId: createBody.retailerId }),
-    SubAdmin.findOne({ email: createBody.email }),
+    SubAdmin.findOne({ email }),
   ]);
 
   if (!branch) return apiResponse(res, 400, false, "Branch not found!");
@@ -39,6 +66,7 @@ export const createSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
   }
 
   createBody.password = await bcrypt.hash(password, 10);
+  createBody.email = email;
   const fullName = createBody?.lastName ? `${createBody.firstName} ${createBody.lastName}` : createBody.firstName;
 
   const subAdmin: any = await SubAdmin.create({
@@ -47,7 +75,14 @@ export const createSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
     fullName,
   });
 
-  await sendRegistrationMail(createBody.email, fullName, password, req.user.storeName, branch.name);
+  await sendRegistrationMail(
+    createBody.contactEmail,
+    createBody.email,
+    fullName,
+    password,
+    req.user.storeName,
+    branch.name
+  );
 
   // Remove Sensitive Data
   const data = exclude(subAdmin._doc, ["password", "createdAt", "updatedAt"]);

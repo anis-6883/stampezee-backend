@@ -5,6 +5,7 @@ interface ISubAdmin extends Document {
   lastName?: string | null;
   fullName: string;
   email: string;
+  contactEmail: string;
   password: string;
   image?: string | null;
   otp?: number | null;
@@ -23,7 +24,8 @@ const subAdminSchema = new Schema<ISubAdmin>(
     firstName: { type: String, required: true, trim: true },
     lastName: { type: String, trim: true, default: null },
     fullName: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, trim: true },
+    contactEmail: { type: String, required: true, lowercase: true, trim: true },
+    email: { type: String, required: true, lowercase: true, unique: true, trim: true },
     password: { type: String, required: true },
     image: { type: String, default: null },
     otp: { type: Number, trim: true, default: null },

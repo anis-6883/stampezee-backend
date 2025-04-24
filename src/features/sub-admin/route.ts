@@ -7,6 +7,7 @@ import {
   getAllSubAdmins,
   getBranches,
   getSingleSubAdmin,
+  nextSubAdminEmail,
   softDeleteSubAdmin,
   updateSubAdmin,
   updateSubAdminStatus,
@@ -17,6 +18,7 @@ const upload = multer({ storage: storage });
 const router = express.Router();
 
 router.post("/", upload.single("image"), createSubAdmin);
+router.get("/next-email", nextSubAdminEmail);
 router.get("/all", getAllSubAdmins);
 router.get("/branches", getBranches);
 router.get("/deleted", getAllDeletedSubAdmins);

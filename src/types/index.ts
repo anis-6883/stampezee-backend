@@ -52,6 +52,7 @@ export interface IUser {
   branchId?: string;
   retailerId?: string;
   email: string;
+  contactEmail?: string;
   password: string;
   image: string;
   status: boolean;

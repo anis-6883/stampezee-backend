@@ -184,7 +184,7 @@ export const customerAndSubAdminLogin = asyncHandler(async (req: Request, res: R
 
   const customer = await Customer.findOne({ email });
   const subAdmin = await SubAdmin.aggregate([
-    { $match: { email: email, status: true, softDeleted: false } },
+    { $match: { email, status: true, softDeleted: false } },
     {
       $lookup: {
         from: "retailers",
@@ -214,6 +214,7 @@ export const customerAndSubAdminLogin = asyncHandler(async (req: Request, res: R
         lastName: 1,
         fullName: 1,
         email: 1,
+        contactEmail: 1,
         image: 1,
         password: 1,
         "retailer._id": 1,
@@ -415,7 +416,7 @@ export const forgetPassword = asyncHandler(async (req: IApiRequest, res: Respons
     const token = generateSignature({ email: subAdmin.email, role: ROLE.SUB_ADMIN, ott: true }, 600); //15 minute // 15 min
 
     // Send OTP to Email
-    sendVerificationEmail(subAdmin.email, otp);
+    sendVerificationEmail(subAdmin.contactEmail, otp);
 
     return apiResponse(res, 200, true, "OTP sent successfully!", { token });
   }
