@@ -23,6 +23,11 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
         as: "stamp",
         pipeline: [
           {
+            $match: {
+              softDeleted: false,
+            },
+          },
+          {
             $project: {
               title: 1,
               description: 1,
