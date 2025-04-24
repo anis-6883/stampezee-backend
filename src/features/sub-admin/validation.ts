@@ -9,7 +9,7 @@ import {
 } from "../../helpers";
 
 export const subAdminSchema = Joi.object({
-  email: requiredEmailField,
+  contactEmail: requiredEmailField,
   password: requiredWeakPasswordField(6),
   branchId: requiredStringField("branchId"),
   firstName: requiredStringField("firstName"),
@@ -18,7 +18,7 @@ export const subAdminSchema = Joi.object({
 
 // Without Password
 export const subAdminSchema2 = Joi.object({
-  email: emailField,
+  contactEmail: emailField,
   branchId: stringField("branchId"),
   firstName: stringField("firstName"),
   lastName: stringField("lastName"),
