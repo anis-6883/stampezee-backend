@@ -430,15 +430,20 @@ export const softDeleteBranch = asyncHandler(async (req: IApiRequest, res: Respo
   if (!branch) return apiResponse(res, 404, false, "Branch not found!");
 
   // engaged sub-admin & stamp also deleted
-  const subAdmin = await SubAdmin.findOne({ branchId: id });
-  if (subAdmin) {
-    await SubAdmin.findOneAndUpdate(
-      { branchId: id },
-      { email: `deleted-${new Date().toISOString()}-${subAdmin.email}`, status: false, softDeleted: true }
+  const subAdmins = await SubAdmin.find({ branchId: id });
+  if (subAdmins?.length > 0) {
+    await Promise.all(
+      subAdmins.map((subAdmin) =>
+        SubAdmin.findByIdAndUpdate(subAdmin._id, {
+          email: `deleted-${new Date().toISOString()}-${subAdmin.email}`,
+          status: false,
+          softDeleted: true,
+        })
+      )
     );
   }
 
-  await Stamp.findOneAndUpdate({ branchId: id }, { status: false, softDeleted: true });
+  await Stamp.updateMany({ branchId: id }, { $set: { status: false, softDeleted: true } });
 
   return apiResponse(res, 200, true, "Branch deleted successfully!");
 });

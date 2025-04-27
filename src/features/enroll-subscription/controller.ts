@@ -509,6 +509,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
           extraPayableAmount += convertToSelectedCurrency - addonBalanceAmount; // Send to Frontend
 
+          console.log("extraPayableAmount", extraPayableAmount);
+
           // Only tax apply
           if (taxStatus === "on") {
             taxValue = (finalPrice * taxCost) / 100;
