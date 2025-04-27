@@ -459,7 +459,7 @@ export const customerForgetPasswordResendOtp = asyncHandler(async (req: IApiRequ
     sendVerificationEmail(req.user.email, otp);
   }
   if (req.role === ROLE.SUB_ADMIN) {
-    const subAdmin: any = await SubAdmin.updateOne({ email: req.user.email }, { otp, otpExpiry });
+    const subAdmin: any = await SubAdmin.findOneAndUpdate({ email: req.user.email }, { otp, otpExpiry });
     console.log({ subAdmin });
     sendVerificationEmail(subAdmin.contactEmail, otp);
   }
