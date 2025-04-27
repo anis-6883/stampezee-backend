@@ -13,6 +13,7 @@ import Subscription from "../../models/subscription";
 import { IApiRequest } from "../../types";
 import { sendRegistrationMail } from "./service";
 import { retailerSchema, retailerSchemaUpdate, retailerStatusSchema } from "./validation";
+import SubAdmin from "models/sub-admin";
 
 /**
  * Create A Retailer
@@ -557,6 +558,19 @@ export const softDeleteRetailer = asyncHandler(async (req: IApiRequest, res: Res
     softDeleted: true,
     status: false,
   });
+
+  const subAdmins = await SubAdmin.find({ retailerId: id });
+  const subAdminPromises: any[] = [];
+  subAdmins.forEach(async (subAdmin) => {
+    subAdminPromises.push(
+      SubAdmin.findByIdAndUpdate(subAdmin._id, {
+        email: `deleted-${new Date().toISOString()}-${subAdmin.email}`,
+        softDeleted: true,
+        status: false,
+      })
+    );
+  });
+  Promise.all(subAdminPromises);
 
   return apiResponse(res, 200, true, "Retailer deleted successfully!");
 });
