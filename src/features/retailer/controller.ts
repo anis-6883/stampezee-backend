@@ -13,7 +13,7 @@ import Subscription from "../../models/subscription";
 import { IApiRequest } from "../../types";
 import { sendRegistrationMail } from "./service";
 import { retailerSchema, retailerSchemaUpdate, retailerStatusSchema } from "./validation";
-import SubAdmin from "models/sub-admin";
+import SubAdmin from "../../models/sub-admin";
 
 /**
  * Create A Retailer
