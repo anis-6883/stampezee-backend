@@ -74,7 +74,7 @@ export const createSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
     image: imageKey,
     fullName,
   });
-
+  console.log(createBody.contactEmail, createBody.email, fullName, password, req.user.storeName, branch.name);
   await sendRegistrationMail(
     createBody.contactEmail,
     createBody.email,
