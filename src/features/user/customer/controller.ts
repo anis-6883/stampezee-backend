@@ -454,10 +454,14 @@ export const customerForgetPasswordResendOtp = asyncHandler(async (req: IApiRequ
   const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
 
   if (req.user.otpExpiry > new Date()) return apiResponse(res, 400, false, "Wait 2 minutes to resend OTP!");
-  if (req.role === ROLE.CUSTOMER) await Customer.updateOne({ email: req.user.email }, { otp, otpExpiry });
-  if (req.role === ROLE.SUB_ADMIN) await SubAdmin.updateOne({ email: req.user.email }, { otp, otpExpiry });
-
-  sendVerificationEmail(req.user.email, otp);
+  if (req.role === ROLE.CUSTOMER) {
+    await Customer.updateOne({ email: req.user.email }, { otp, otpExpiry });
+    sendVerificationEmail(req.user.email, otp);
+  }
+  if (req.role === ROLE.SUB_ADMIN) {
+    const subAdmin: any = await SubAdmin.updateOne({ email: req.user.email }, { otp, otpExpiry });
+    sendVerificationEmail(subAdmin.contactEmail, otp);
+  }
 
   return apiResponse(res, 200, true, "OTP resend successfully!");
 });
