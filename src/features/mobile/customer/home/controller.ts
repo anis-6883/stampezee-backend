@@ -236,6 +236,7 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
         "retailer.storeName": "$branch.retailer.storeName",
         "retailer.image": "$branch.retailer.image",
         "retailer.website": "$branch.retailer.website",
+        "retailer.about": "$branch.retailer.about",
         noOfStampsToCollect: "$stamp.noOfStampsToCollect",
       },
     },
