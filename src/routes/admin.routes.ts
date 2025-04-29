@@ -25,7 +25,7 @@ const router = express.Router();
 
 router.use("/super-admin/auth", superAdminAuthRoutes);
 
-// router.use(authAndPermissionCheck(ROLE.SUPER_ADMIN));
+router.use(authAndPermissionCheck(ROLE.SUPER_ADMIN));
 router.use("/super-admin/faq", faqRoutes);
 router.use("/super-admin/scans", scansRoutes);
 router.use("/super-admin/sort", sortingRoutes);
