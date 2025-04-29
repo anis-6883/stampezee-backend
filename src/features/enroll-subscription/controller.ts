@@ -197,7 +197,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     abortEarly: false,
   });
 
-  const { slugs, code, branchIds, stampIds, currency, prevAddonEnrollmentIds }: IEnrollSubscriptionBody = result;
+  const { slugs, code, branchIds, stampIds, currency }: IEnrollSubscriptionBody = result;
 
   if ((slugs.includes(PACKAGES.TRIAL) && slugs.length > 1) || (slugs.includes(PACKAGES.TRIAL) && code)) {
     return apiResponse(res, 400, false, "You can't take additional packages or coupon in free trial!");
@@ -482,73 +482,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       //////// Plan Upgrade /////////
       ///////////////////////////////
       if (changeMode > 0) {
-        // Add Previous Add-on into new enrollment
-        for (const prevAddon of prevAddons) {
-          let finalPrice = 0;
-          let taxValue = 0;
-
-          finalPrice = Number((selectCurrency.exchangeRate * prevAddon.planSnapshot.price).toFixed(2));
-
-          const convertToSelectedCurrency = Number(
-            ((selectCurrency.exchangeRate / enrolled.currencyRate) * prevAddon.planSnapshot.price).toFixed(2)
-          );
-
-          const addonBalanceAmount: number = calculateBalanceAmount(
-            enrolled.validityFrom,
-            enrolled.validityTo,
-            convertToSelectedCurrency
-          );
-
-          if (enrolled.taxSnapshot.taxTitle) {
-            const prevTax = (prevAddon.planSnapshot.price * enrolled.taxSnapshot.taxCost) / 100;
-
-            totalCouponAmount += addonBalanceAmount + prevTax; // Minus Used Amount with Tax
-          } else {
-            totalCouponAmount += addonBalanceAmount; // Minus Used Amount
-          }
-
-          extraPayableAmount += convertToSelectedCurrency - addonBalanceAmount; // Send to Frontend
-
-          console.log("extraPayableAmount", extraPayableAmount);
-
-          // Only tax apply
-          if (taxStatus === "on") {
-            taxValue = (finalPrice * taxCost) / 100;
-            finalPrice += taxValue;
-          }
-
-          const enrollSubscription = await EnrollSubscription.create({
-            enrollmentId: enrollment?._id,
-            planSnapshot: prevAddon.planSnapshot,
-            planCurrentPrice: (finalPrice - taxValue).toFixed(2),
-          });
-
-          let unitAmount = Math.round(Number(finalPrice) * 100); // convert into cent
-          if (selectCurrency?.name === "JPY") unitAmount = Math.round(Number(finalPrice));
-          else if (selectCurrency?.name === "KWD") unitAmount = roundToNearestTen(finalPrice);
-
-          line_items.push({
-            price_data: {
-              currency: currency.toLowerCase(),
-              product_data: {
-                name: `${prevAddon.planSnapshot.title} Add-On (Previous)`,
-                ...(taxStatus === "on" && {
-                  description: `${prevAddon.planSnapshot.title} Add-On (including ${taxTitle} ${taxCost}%)`,
-                }),
-                metadata: {
-                  enrollSubscriptionId: String(enrollSubscription._id),
-                  prev: "true",
-                },
-              },
-              unit_amount: unitAmount,
-              recurring: {
-                interval: "month",
-              },
-            },
-            quantity: 1,
-          });
-        }
-
         // Add New Plan & Add-on into new enrollment
         for (const subscription of subscriptions) {
           let finalPrice = 0;
@@ -1128,20 +1061,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       //////// New Subscription /////////
       ///////////////////////////////////
 
-      // Previous Addon Enroll Re-start
-      if (prevAddonEnrollmentIds && prevAddonEnrollmentIds.length > 0) {
-        const prevAddons = await Enrollment.find({
-          retailerId: req.user._id,
-          _id: { $in: prevAddonEnrollmentIds },
-        });
-
-        if (prevAddonEnrollmentIds.length !== prevAddons.length) {
-          return apiResponse(res, 400, false, `Provide valid prevAddonEnrollmentIds!`);
-        }
-
-        metadata["prevAddonEnrollmentIds"] = prevAddonEnrollmentIds.join(",");
-      }
-
       const enrollment = await Enrollment.create({
         retailerId: req.user._id,
         planExists: pickPlan ? pickPlan?.slug : null,
@@ -1548,7 +1467,6 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       couponDiscountType = null,
       couponDiscount = 0,
       couponDiscountAmount = 0,
-      prevAddonEnrollmentIds = null,
       currency = "CAD",
       currencyRate = 1,
       taxCost = 0,
@@ -1557,50 +1475,66 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     const enrollment = await Enrollment.findById(enrollmentId);
 
     // Deactivate last previous active plan
-    let prevEnrollment;
-
     if (enrollment?.planExists) {
-      prevEnrollment = await Enrollment.findOneAndUpdate(
-        {
-          retailerId: retailer._id,
-          planExists: { $ne: null },
-          paymentStatus: { $in: ["completed", "trial"] },
-          status: true,
-        },
-        { status: false },
-        { new: true }
-      );
-
-      await EnrollSubscription.updateMany(
-        {
-          enrollmentId: prevEnrollment?._id,
-        },
-        {
-          status: false,
-          deletedByRetailerAt: new Date(),
-        }
-      );
-
-      if (prevEnrollment && prevEnrollment.paymentStatus !== "trial") {
-        await stripe.subscriptions.cancel(prevEnrollment?.stripe?.subscriptionId);
-      }
-
-      const enrollSubscription = await EnrollSubscription.findOne({
-        enrollmentId,
-        "planSnapshot.type": "subscription",
+      const prevEnrollment = await Enrollment.findOne({
+        retailerId: retailer._id,
+        planExists: { $ne: null },
+        paymentStatus: { $in: ["completed", "trial"] },
+        status: true,
       });
 
-      // Update expiration for already created branch
-      if (enrollment?.planExists) {
-        updateSubscriptions.push(
-          Branch.updateMany(
+      if (prevEnrollment) {
+        if (prevEnrollment.paymentStatus === "trial") {
+          await Promise.all([
+            Enrollment.findOneAndUpdate({ _id: prevEnrollment._id }, { status: false }),
+            EnrollSubscription.findOneAndUpdate(
+              {
+                enrollmentId: prevEnrollment?._id,
+              },
+              {
+                status: false,
+                deletedByRetailerAt: new Date(),
+              }
+            ),
+          ]);
+        } else {
+          const totalEnrollSubscription = await EnrollSubscription.countDocuments({
+            enrollmentId: prevEnrollment?._id,
+            status: true,
+          });
+
+          const enrollSubscription = await EnrollSubscription.findOneAndUpdate(
             {
-              retailerId: retailer._id,
-              source: "subscription",
+              enrollmentId: prevEnrollment?._id,
+              "planSnapshot.type": "subscription",
             },
-            { enrollSubscriptionId: enrollSubscription._id }
-          )
-        );
+            {
+              status: false,
+              deletedByRetailerAt: new Date(),
+            },
+            { new: true }
+          );
+
+          if (totalEnrollSubscription > 1) {
+            await stripe.subscriptionItems.del(enrollSubscription?.subscriptionItemId, { proration_behavior: "none" });
+          } else {
+            await stripe.subscriptions.cancel(prevEnrollment?.stripe?.subscriptionId);
+            await Enrollment.findOneAndUpdate({ _id: prevEnrollment._id }, { status: false });
+          }
+
+          // Update expiration for already created branch
+          if (enrollment?.planExists) {
+            updateSubscriptions.push(
+              Branch.updateMany(
+                {
+                  retailerId: retailer._id,
+                  source: "subscription",
+                },
+                { enrollSubscriptionId: enrollSubscription._id }
+              )
+            );
+          }
+        }
       }
     }
 
@@ -1732,27 +1666,6 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     };
 
     await Promise.all(updateSubscriptions);
-
-    // Previous Addon Enroll Re-start / Renew
-    if (prevAddonEnrollmentIds) {
-      const enrollmentIds = prevAddonEnrollmentIds.split(",");
-      const updateQuery = [];
-
-      if (enrollmentIds.length > 0) {
-        for (const id of enrollmentIds) {
-          const enrollment = await Enrollment.findById(id);
-
-          if (enrollment) {
-            updateQuery.push(
-              stripe.subscriptions.update(enrollment.stripe.subscriptionId, { cancel_at_period_end: false }),
-              Enrollment.findByIdAndUpdate(enrollment._id, { status: true })
-            );
-          }
-        }
-      }
-
-      Promise.all(updateQuery);
-    }
 
     await sendInvoiceToEmail({ email: retailer?.email, customerInfo, purchasedItems, invoiceMetadata, paymentInfo });
   } catch (err) {
