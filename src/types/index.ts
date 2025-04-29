@@ -64,6 +64,8 @@ export interface IUser {
   verifiedAt: Date;
   takeFreeTrial: boolean;
   provider?: string;
+  longitude?: string;
+  latitude?: string;
   address?: {
     loc: {
       type: string;
