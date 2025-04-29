@@ -1516,10 +1516,15 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
           );
 
           if (totalEnrollSubscription > 1) {
-            await stripe.subscriptionItems.del(enrollSubscription?.subscriptionItemId, { proration_behavior: "none" });
+            await Promise.all([
+              stripe.subscriptionItems.del(enrollSubscription?.subscriptionItemId, { proration_behavior: "none" }),
+              Enrollment.findOneAndUpdate({ _id: prevEnrollment._id }, { planExists: null }),
+            ]);
           } else {
-            await stripe.subscriptions.cancel(prevEnrollment?.stripe?.subscriptionId);
-            await Enrollment.findOneAndUpdate({ _id: prevEnrollment._id }, { status: false });
+            await Promise.all([
+              stripe.subscriptions.cancel(prevEnrollment?.stripe?.subscriptionId),
+              Enrollment.findOneAndUpdate({ _id: prevEnrollment._id }, { status: false, planExists: null }),
+            ]);
           }
 
           // Update expiration for already created branch
