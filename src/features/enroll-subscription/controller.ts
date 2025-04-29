@@ -224,10 +224,21 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           Retailer.findByIdAndUpdate(req.user._id, { takeFreeTrial: true }),
         ]);
 
-        await EnrollSubscription.create({
+        const enrollSubscription = await EnrollSubscription.create({
           enrollmentId: enrollment?._id,
           planSnapshot: subscription,
           status: true,
+        });
+
+        await Branch.create({
+          name: "Default Branch",
+          address: {
+            loc: { type: "Point", coordinates: [req.user.longitude, req.user.latitude] },
+            name: req.user.address,
+          },
+          retailerId: req.user._id,
+          enrollSubscriptionId: enrollSubscription._id,
+          source: "subscription",
         });
 
         return apiResponse(res, 200, true, "Free trial enrolled successfully!", {
