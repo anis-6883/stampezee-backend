@@ -63,3 +63,8 @@ export const sendRegistrationMail = async (
 export const generateUniqueSubAdminEmail = (email: string, subAdminNumber: string) => {
   return email.replace(/@(.+)/, (match, domain) => `@${subAdminNumber}.${domain}`);
 };
+
+export const isValidEmail = (email: string) => {
+  const regex = /^[a-zA-Z0-9._%+-]+\.s1@stampezee\.com$/;
+  return regex.test(email);
+};

@@ -5,7 +5,7 @@ import { apiResponse, asyncHandler, exclude, makePaginate } from "../../helpers"
 import Branch from "../../models/branch";
 import SubAdmin from "../../models/sub-admin";
 import { IApiRequest } from "../../types";
-import { generateUniqueSubAdminEmail, sendRegistrationMail } from "./service";
+import { generateUniqueSubAdminEmail, isValidEmail, sendRegistrationMail } from "./service";
 import { subAdminSchema, subAdminSchema2, subAdminStatusSchema } from "./validation";
 
 export const nextSubAdminEmail = asyncHandler(async (req: IApiRequest, res: Response) => {
@@ -33,20 +33,19 @@ export const nextSubAdminEmail = asyncHandler(async (req: IApiRequest, res: Resp
 export const createSubAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
   const result = await subAdminSchema.validateAsync(req.body);
 
-  const { softDeleted, retailerId, password, ...createBody } = result;
+  const { softDeleted, retailerId, password, email, ...createBody } = result;
   createBody.retailerId = req.user._id;
 
-  const lastSubAdmin: any = await SubAdmin.findOne({ retailerId: req.user._id }).sort({ createdAt: -1 });
-
-  let number = 1;
-  if (lastSubAdmin) {
-    // Extract number after @s
-    const match = lastSubAdmin.email.match(/@s(\d+)/);
-    number = match ? parseInt(match[1]) : 0;
-    // console.log({ number });
-    number = number + 1;
+  if (!isValidEmail(email)) {
+    return apiResponse(res, 400, false, "Invalid email format!");
   }
-  const email = generateUniqueSubAdminEmail(req.user.email, `s${number}`);
+
+  const isEmailExist: any = await SubAdmin.findOne({ email });
+
+  if (isEmailExist) {
+    return apiResponse(res, 400, false, "Username is not available!");
+  }
+
   const [branch, existingSubAdmin]: any = await Promise.all([
     Branch.findOne({ _id: createBody.branchId, retailerId: createBody.retailerId }),
     SubAdmin.findOne({ email }),

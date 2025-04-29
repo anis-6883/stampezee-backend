@@ -10,6 +10,7 @@ import {
 
 export const subAdminSchema = Joi.object({
   contactEmail: requiredEmailField,
+  email: requiredEmailField,
   password: requiredWeakPasswordField(6),
   branchId: requiredStringField("branchId"),
   firstName: requiredStringField("firstName"),
