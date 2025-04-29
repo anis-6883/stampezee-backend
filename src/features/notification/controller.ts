@@ -599,3 +599,21 @@ export const sendNotificationBySuperAdmin = asyncHandler(async (req: IApiRequest
 
   return apiResponse(res, 200, true, "Notification sent successfully!");
 });
+
+/**
+ * Delete A Notification (Super Admin)
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+
+export const notificationDeleteBySuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { id } = req.params;
+
+  const notificationData = await Notification.findById(id);
+  if (!notificationData) return apiResponse(res, 400, false, "Notification not found!");
+
+  await Notification.deleteOne({ _id: id });
+
+  return apiResponse(res, 200, true, "Notification deleted successfully!");
+});
