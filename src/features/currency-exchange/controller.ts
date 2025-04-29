@@ -2,7 +2,9 @@ import { Response } from "express";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import CurrencyExchange from "../../models/currency-exchange";
 import { IApiRequest } from "../../types";
+import axios from "axios";
 import { currencyExchangeSchema, currencyExchangeStatusSchema, updateCurrencyExchangeSchema } from "./validation";
+import { name } from "ejs";
 
 /**
  * Create A Currency Exchange
@@ -19,10 +21,12 @@ export const createCurrencyExchange = asyncHandler(async (req: IApiRequest, res:
 
   createBody.superAdminId = req.user._id;
 
-  const existingCurrencyExchange = await CurrencyExchange.findOne({ name: createBody.name });
+  const existingCurrencyExchange = await CurrencyExchange.findOne({ currency: createBody.currency });
 
   if (existingCurrencyExchange) {
     await CurrencyExchange.findByIdAndUpdate(existingCurrencyExchange._id, {
+      currency: createBody.currency,
+      currencyIcon: createBody.currencyIcon,
       exchangeRate: createBody.exchangeRate,
     });
   } else {
@@ -32,6 +36,47 @@ export const createCurrencyExchange = asyncHandler(async (req: IApiRequest, res:
   return apiResponse(res, 201, true, "Currency exchange created successfully!");
 });
 
+export const currencyFromApi = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const currencies = [
+    { name: "Australian dollar", currency: "AUD", currencyIcon: "$" },
+    { name: "Kuwaiti Dinar", currency: "KWD", currencyIcon: "د.ك" },
+    { name: "Brazilian real", currency: "BRL", currencyIcon: "R$" },
+    { name: "Canadian dollar", currency: "CAD", currencyIcon: "$" },
+    { name: "Emirati dirham", currency: "AED", currencyIcon: "د.إ" },
+    { name: "Euro", currency: "EUR", currencyIcon: "€" },
+    { name: "Hong Kong dollar", currency: "HKD", currencyIcon: "$" },
+    { name: "Indian rupee", currency: "INR", currencyIcon: "₹" },
+    { name: "Indonesian rupiah", currency: "IDR", currencyIcon: "Rp" },
+    { name: "Japanese yen", currency: "JPY", currencyIcon: "¥" },
+    { name: "Kenyan shilling", currency: "KES", currencyIcon: "KSh" },
+    { name: "Malaysian ringgit", currency: "MYR", currencyIcon: "RM" },
+    { name: "Mexican peso", currency: "MXN", currencyIcon: "$" },
+    { name: "New Zealand dollar", currency: "NZD", currencyIcon: "$" },
+    { name: "Nigerian Naira", currency: "NGN", currencyIcon: "₦" },
+    { name: "Pound sterling", currency: "GBP", currencyIcon: "£" },
+    { name: "Singapore dollar", currency: "SGD", currencyIcon: "$" },
+    { name: "South African rand", currency: "ZAR", currencyIcon: "R" },
+    { name: "Thai baht", currency: "THB", currencyIcon: "฿" },
+    { name: "United States dollar", currency: "USD", currencyIcon: "$" },
+  ];
+
+  const response = await axios.get("https://api.exchangerate-api.com/v4/latest/CAD");
+
+  const filteredRates = currencies
+    .filter((c) => response.data.rates.hasOwnProperty(c.currency))
+    .map((c) => ({
+      name: c.name,
+      currency: c.currency,
+      exchangeRate: response.data.rates[c.currency],
+      currencyIcon: c.currencyIcon,
+    }))
+    .sort((a, b) => a.currency.localeCompare(b.currency));
+
+  response.data.rates = filteredRates;
+  console.log(filteredRates.length);
+
+  return res.send(response.data);
+});
 /**
  * Get All Currency Exchanges
  * @param {Request} req - The HTTP request object.
@@ -91,7 +136,7 @@ export const updateCurrencyExchange = asyncHandler(async (req: IApiRequest, res:
   const currencyExchange = await CurrencyExchange.findOne({ _id: id });
   if (!currencyExchange) return apiResponse(res, 404, false, "Currency exchange not found!");
 
-  const existingCurrencyExchange = await CurrencyExchange.findOne({ name: updatedBody.name, _id: { $ne: id } });
+  const existingCurrencyExchange = await CurrencyExchange.findOne({ currency: updatedBody.currency, _id: { $ne: id } });
   if (existingCurrencyExchange) return apiResponse(res, 400, false, "This currency exchange name already exists!");
 
   const updatedData: any = await CurrencyExchange.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
@@ -151,7 +196,7 @@ export const confirmDeleteCurrencyExchange = asyncHandler(async (req: IApiReques
  */
 export const getTwoCurrencyExchangeRate = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { currency } = req.query;
-  const currencyExchangeRates = await CurrencyExchange.find({ name: currency });
+  const currencyExchangeRates = await CurrencyExchange.find({ currency });
 
   if (!currencyExchangeRates?.length) return apiResponse(res, 404, false, "Currency exchange rate not found!");
 

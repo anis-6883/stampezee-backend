@@ -2,6 +2,7 @@ import express from "express";
 import {
   confirmDeleteCurrencyExchange,
   createCurrencyExchange,
+  currencyFromApi,
   getAllCurrencyExchanges,
   getSingleCurrencyExchange,
   updateCurrencyExchange,
@@ -10,6 +11,8 @@ import {
 
 const router = express.Router();
 
+// router.post("/", createCurrencyExchange);
+router.get("/currency-api", currencyFromApi);
 router.post("/", createCurrencyExchange);
 router.get("/all", getAllCurrencyExchanges);
 router.put("/status/:id", updateCurrencyExchangeStatus);

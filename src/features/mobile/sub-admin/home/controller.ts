@@ -127,7 +127,7 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
     Retailer.findById(req?.user?.retailerId, { businessCurrency: 1 }),
   ]);
 
-  const currencyExchange = await CurrencyExchange.findOne({ name: retailer?.businessCurrency });
+  const currencyExchange = await CurrencyExchange.findOne({ currency: retailer?.businessCurrency });
 
   if (stampIsCollected.length < 1) return apiResponse(res, 400, false, "Invalid QR Code!");
 
