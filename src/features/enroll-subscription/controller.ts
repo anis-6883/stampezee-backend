@@ -642,17 +642,19 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
         let totalAmount = 0;
         for (const subscription of subscriptions) {
+          const convertedPlanPrice = Number((selectCurrency.exchangeRate * subscription.price).toFixed(2));
+
           if (subscription.type === "subscription") {
-            totalAmount += Number(subscription.price - balanceAmount);
+            totalAmount += Number(convertedPlanPrice - balanceAmount);
           } else {
-            totalAmount += Number(subscription.price); // Add-on
+            totalAmount += Number(convertedPlanPrice); // Add-on
           }
         }
 
         // Add Previous Add-on Payable Amount in totalAmount
         for (const prevAddon of prevAddons) {
           const convertToSelectedCurrency = Number(
-            ((selectCurrency.exchangeRate / enrolled.currencyRate) * prevAddon.planSnapshot.price).toFixed(2)
+            (selectCurrency.exchangeRate * prevAddon.planSnapshot.price).toFixed(2)
           );
 
           const addonBalanceAmount: number = calculateBalanceAmount(
