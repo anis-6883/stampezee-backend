@@ -156,7 +156,7 @@ export const extraAddonCheck = asyncHandler(async (req: IApiRequest, res: Respon
     CurrencyExchange.find({ status: true }),
   ]);
 
-  const selectCurrency = allowCurrencies.find((curr) => curr.name === currency);
+  const selectCurrency = allowCurrencies.find((curr) => curr.currency === currency);
   if (!selectCurrency) return apiResponse(res, 400, false, "Provided currency is not allowed!");
 
   // Add Previous Add-on Payable Amount in totalAmount
@@ -279,7 +279,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     taxStatus = null,
   } = paymentMetadata.stripe ?? {};
 
-  const selectCurrency = allowCurrencies.find((curr) => curr.name === currency);
+  const selectCurrency = allowCurrencies.find((curr) => curr.currency === currency);
 
   if (!paymentMetadata) return apiResponse(res, 400, false, "Something went wrong in Stripe settings!");
   if (!selectCurrency) return apiResponse(res, 400, false, "Provided currency is not allowed!");

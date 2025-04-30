@@ -297,7 +297,7 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
     ]);
 
     const selectCurrency: ICurrencyExchange = allowCurrencies.find(
-      (curr: ICurrencyExchange) => curr.name === enrollment.currency
+      (curr: ICurrencyExchange) => curr.currency === enrollment.currency
     );
 
     const convertToSelectedCurrency = Number(
