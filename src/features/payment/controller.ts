@@ -18,7 +18,7 @@ export const getSubscriptionPayments = asyncHandler(async (req: IApiRequest, res
   const { page = 1, limit = 10, search }: any = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
-  const query: any = { paymentStatus: "completed" };
+  const query: any = { paymentStatus: { $in: ["completed", "trial"] } };
 
   if (search) {
     const regex = { $regex: search, $options: "i" };

@@ -25,7 +25,7 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
   const { page = 1, limit = 10, search }: any = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
-  const query: any = { retailerId: req.user._id, paymentStatus: "completed" };
+  const query: any = { retailerId: req.user._id, paymentStatus: { $in: ["completed", "trial"] } };
 
   if (search) {
     query["stripe.subscriptionId"] = { $regex: search, $options: "i" };
