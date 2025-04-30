@@ -37,10 +37,16 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
               rewardType: 1,
               promotionReward: 1,
               discountReward: 1,
+              isExpired: {
+                $lt: ["$expiredAt", "$$NOW"],
+              },
             },
           },
         ],
       },
+    },
+    {
+      $unwind: "$stamp",
     },
     {
       $lookup: {
@@ -62,9 +68,6 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
           },
         ],
       },
-    },
-    {
-      $unwind: "$stamp",
     },
     {
       $unwind: "$branch",
