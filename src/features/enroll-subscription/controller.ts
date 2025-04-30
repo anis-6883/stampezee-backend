@@ -580,7 +580,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           amount_off:
             selectCurrency?.currency === "JPY"
               ? Math.round(Number(totalCouponAmount))
-              : Math.round(Number(totalCouponAmount) * 100),
+              : selectCurrency?.currency === "KWD"
+                ? roundToNearestTen(totalCouponAmount)
+                : Math.round(Number(totalCouponAmount) * 100),
           currency,
           duration: "once",
         });
@@ -1192,7 +1194,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           amount_off:
             selectCurrency?.currency === "JPY"
               ? Math.round(Number(totalCouponAmount))
-              : Math.round(Number(totalCouponAmount) * 100),
+              : selectCurrency?.currency === "KWD"
+                ? roundToNearestTen(totalCouponAmount)
+                : Math.round(Number(totalCouponAmount) * 100),
           currency,
           duration: "once",
         });
