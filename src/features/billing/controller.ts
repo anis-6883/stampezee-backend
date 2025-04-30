@@ -495,7 +495,7 @@ export const getRetailerBillingPdf = asyncHandler(async (req: IApiRequest, res: 
   const customerInfo = {
     name: retailer?.fullName,
     phone: `${retailer?.dialCode}-${retailer?.phone}`,
-    address: `${retailer?.address}, ${retailer?.city}, ${retailer?.postalCode}`,
+    address: `${retailer?.address}`,
   };
   let taxValue = 0;
   let subTotal = 0;
@@ -548,6 +548,56 @@ export const getRetailerBillingPdf = asyncHandler(async (req: IApiRequest, res: 
       payment[0]?.enrollment?.enrollStatus === "purchase" || !payment[0]?.extraPayableAmount
         ? null
         : `${payment[0]?.extraPayableAmount} ${payment[0]?.enrollment?.currency}`,
+  };
+  const paymentInfo = {
+    bankName: "Fauget Bank",
+    accountName: "Juliana Silva",
+    accountNo: "123-456-7890",
+  };
+
+  await htmlToPdf({ customerInfo, purchasedItems, invoiceMetadata, paymentInfo });
+
+  const pdfFileBuffer = path.join(process.cwd(), "/src/templates/invoice.pdf");
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", 'attachment; filename="invoice.pdf"');
+  const stream = fs.createReadStream(pdfFileBuffer);
+  stream.pipe(res);
+
+  // return apiResponse(res, 200, true, "Get Retailer Billing PDF Successfully!", {});
+});
+
+/**
+ * Retailer Billing PDF Download For Free Trial
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const getRetailerBillingPdfForFreeTrial = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { id } = req.params;
+  if (!Types.ObjectId.isValid(id)) return apiResponse(res, 400, false, "Please, provide valid id!");
+
+  const retailer = await Retailer.findById(req?.user?._id);
+  const customerInfo = {
+    name: retailer?.fullName,
+    phone: `${retailer?.dialCode}-${retailer?.phone}`,
+    address: `${retailer?.address}`,
+  };
+
+  let subTotal = 0;
+  const purchasedItems = [
+    {
+      title: "Free Trial",
+      quantity: 1,
+      unitPrice: `0.00 CAD`,
+      total: `0.00 CAD`,
+    },
+  ];
+
+  const invoiceMetadata = {
+    invoiceNo: "INV-" + id.slice(-8).toUpperCase(),
+    subtotal: `${Number(subTotal).toFixed(2)} CAD`,
+    total: `0.00 CAD`,
   };
   const paymentInfo = {
     bankName: "Fauget Bank",

@@ -17,6 +17,7 @@ import Enrollment from "../../../models/enrollment";
 import Retailer from "../../../models/retailer";
 import Subscription from "../../../models/subscription";
 import { IApiRequest } from "../../../types";
+import { sendInvoiceToEmail } from "../../enroll-subscription/service";
 import { retailerSchemaUpdate } from "../../retailer/validation";
 import { sendVerificationEmail } from "../service";
 import {
@@ -124,6 +125,41 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
       retailerId: retailer._id,
       enrollSubscriptionId: enrollSubscription._id,
       source: "subscription",
+    });
+
+    const customerInfo = {
+      name: req?.user.firstName + req?.user?.lastName,
+      phone: `${req?.user?.dialCode}-${req?.user?.phone}`,
+      address: `${req?.user?.address}`,
+    };
+
+    let subTotal = 0;
+    const purchasedItems = [
+      {
+        title: "Free Trial",
+        quantity: 1,
+        unitPrice: `0.00 CAD`,
+        total: `0.00 CAD`,
+      },
+    ];
+
+    const invoiceMetadata = {
+      invoiceNo: "INV-" + req?.user?._id.toHexString()?.slice(-8).toUpperCase(),
+      subtotal: `${Number(subTotal).toFixed(2)} CAD`,
+      total: `0.00 CAD`,
+    };
+    const paymentInfo = {
+      bankName: "Fauget Bank",
+      accountName: "Juliana Silva",
+      accountNo: "123-456-7890",
+    };
+
+    await sendInvoiceToEmail({
+      email: req?.user?.email,
+      customerInfo,
+      purchasedItems,
+      invoiceMetadata,
+      paymentInfo,
     });
   }
 

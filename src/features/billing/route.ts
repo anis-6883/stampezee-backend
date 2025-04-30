@@ -7,6 +7,7 @@ import {
   getAllExistingAddons,
   getAllPaymentMethod,
   getRetailerBillingPdf,
+  getRetailerBillingPdfForFreeTrial,
   getRetailerBillingPortal,
   getSingleBilling,
   setDefaultPaymentMethod,
@@ -26,5 +27,6 @@ router.post("/default-payment-method", setDefaultPaymentMethod);
 router.get("/payment-method/all/:customerId", getAllPaymentMethod);
 router.post("/setup-payment-intent", setupPaymentIntent);
 router.post("/download-pdf/:id", getRetailerBillingPdf);
+router.post("/download-pdf-trial/:id", getRetailerBillingPdfForFreeTrial);
 
 export default router;
