@@ -842,7 +842,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           const customerInfo = {
             name: req?.user.firstName + req?.user?.lastName,
             phone: `${req?.user?.dialCode}-${req?.user?.phone}`,
-            address: `${req?.user?.address}, ${req?.user?.city}, ${req?.user?.postalCode}`,
+            address: `${req?.user?.address}`,
           };
 
           let taxValue = 0;
@@ -1621,7 +1621,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     const customerInfo = {
       name: retailer?.fullName,
       phone: `${retailer?.dialCode}-${retailer?.phone}`,
-      address: `${retailer?.address}, ${retailer?.city}, ${retailer?.postalCode}`,
+      address: `${retailer?.address}`,
     };
 
     const newEnrollSubscriptions = updatedEnrollSubscriptions?.filter(
