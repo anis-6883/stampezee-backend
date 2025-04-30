@@ -156,7 +156,7 @@ export const extraAddonCheck = asyncHandler(async (req: IApiRequest, res: Respon
     CurrencyExchange.find({ status: true }),
   ]);
 
-  const selectCurrency = allowCurrencies.find((curr) => curr.name === currency);
+  const selectCurrency = allowCurrencies.find((curr) => curr.currency === currency);
   if (!selectCurrency) return apiResponse(res, 400, false, "Provided currency is not allowed!");
 
   // Add Previous Add-on Payable Amount in totalAmount
@@ -279,7 +279,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     taxStatus = null,
   } = paymentMetadata.stripe ?? {};
 
-  const selectCurrency = allowCurrencies.find((curr) => curr.name === currency);
+  const selectCurrency = allowCurrencies.find((curr) => curr.currency === currency);
 
   if (!paymentMetadata) return apiResponse(res, 400, false, "Something went wrong in Stripe settings!");
   if (!selectCurrency) return apiResponse(res, 400, false, "Provided currency is not allowed!");
@@ -842,7 +842,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           const customerInfo = {
             name: req?.user.firstName + req?.user?.lastName,
             phone: `${req?.user?.dialCode}-${req?.user?.phone}`,
-            address: `${req?.user?.address}, ${req?.user?.city}, ${req?.user?.postalCode}`,
+            address: `${req?.user?.address}`,
           };
 
           let taxValue = 0;
@@ -1621,7 +1621,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     const customerInfo = {
       name: retailer?.fullName,
       phone: `${retailer?.dialCode}-${retailer?.phone}`,
-      address: `${retailer?.address}, ${retailer?.city}, ${retailer?.postalCode}`,
+      address: `${retailer?.address}`,
     };
 
     const newEnrollSubscriptions = updatedEnrollSubscriptions?.filter(

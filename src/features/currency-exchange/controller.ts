@@ -1,10 +1,9 @@
+import axios from "axios";
 import { Response } from "express";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import CurrencyExchange from "../../models/currency-exchange";
 import { IApiRequest } from "../../types";
-import axios from "axios";
 import { currencyExchangeSchema, currencyExchangeStatusSchema, updateCurrencyExchangeSchema } from "./validation";
-import { name } from "ejs";
 
 /**
  * Create A Currency Exchange
@@ -18,8 +17,6 @@ export const createCurrencyExchange = asyncHandler(async (req: IApiRequest, res:
   });
 
   const { softDeleted, ...createBody } = result;
-
-  createBody.superAdminId = req.user._id;
 
   const existingCurrencyExchange = await CurrencyExchange.findOne({ currency: createBody.currency });
 
