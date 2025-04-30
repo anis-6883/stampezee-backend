@@ -241,6 +241,41 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           source: "subscription",
         });
 
+        const customerInfo = {
+          name: req?.user.firstName + req?.user?.lastName,
+          phone: `${req?.user?.dialCode}-${req?.user?.phone}`,
+          address: `${req?.user?.address}`,
+        };
+
+        let subTotal = 0;
+        const purchasedItems = [
+          {
+            title: "Free Trial",
+            quantity: 1,
+            unitPrice: `0.00 CAD`,
+            total: `0.00 CAD`,
+          },
+        ];
+
+        const invoiceMetadata = {
+          invoiceNo: "INV-" + req?.user?._id.toHexString()?.slice(-8).toUpperCase(),
+          subtotal: `${Number(subTotal).toFixed(2)} CAD`,
+          total: `0.00 CAD`,
+        };
+        const paymentInfo = {
+          bankName: "Fauget Bank",
+          accountName: "Juliana Silva",
+          accountNo: "123-456-7890",
+        };
+
+        await sendInvoiceToEmail({
+          email: req?.user?.email,
+          customerInfo,
+          purchasedItems,
+          invoiceMetadata,
+          paymentInfo,
+        });
+
         return apiResponse(res, 200, true, "Free trial enrolled successfully!", {
           takeFreeTrial: true,
           plan: "trial",

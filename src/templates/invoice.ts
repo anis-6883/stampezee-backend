@@ -670,7 +670,7 @@ export const invoiceTemplate = `<!doctype html>
                   <td colspan="3">
                     <div style="padding-top: 40px">
                       <img
-                        src="https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/thank-you.jpg"
+                        src="https://styleezee-asia.s3.ap-south-1.amazonaws.com/default/thank-you.png"
                         width="250"
                         alt="thank-you"
                         style="margin-bottom: 15px"
@@ -1514,7 +1514,7 @@ export const getInvoiceTemplate = ({
     <td colspan="3">
       <div style="padding-top: 40px; text-align: left;">
         <img
-          src="https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/thank-you.jpg"
+          src="https://styleezee-asia.s3.ap-south-1.amazonaws.com/default/thank-you.png"
           width="150"
           height="150"
           alt="thank-you"
@@ -2142,7 +2142,7 @@ export const getInvoiceTemplatePdf = ({
                   <td colspan="3">
                     <div style="padding-top: 40px">
                       <img
-                        src="https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/thank-you.jpg"
+                        src="https://styleezee-asia.s3.ap-south-1.amazonaws.com/default/thank-you.png"
                         width="250"
                         alt="thank-you"
                         style="margin-bottom: 15px"
