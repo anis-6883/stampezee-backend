@@ -550,8 +550,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           const isPlan = [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug);
 
           let unitAmount = Math.round(Number(finalPrice) * 100); // convert into cent
-          if (selectCurrency?.name === "JPY") unitAmount = Math.round(Number(finalPrice));
-          else if (selectCurrency?.name === "KWD") unitAmount = roundToNearestTen(finalPrice);
+          if (selectCurrency?.currency === "JPY") unitAmount = Math.round(Number(finalPrice));
+          else if (selectCurrency?.currency === "KWD") unitAmount = roundToNearestTen(finalPrice);
 
           line_items.push({
             price_data: {
@@ -578,7 +578,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         const applyCoupon = await stripe.coupons.create({
           name: "Current Balance",
           amount_off:
-            selectCurrency?.name === "JPY"
+            selectCurrency?.currency === "JPY"
               ? Math.round(Number(totalCouponAmount))
               : Math.round(Number(totalCouponAmount) * 100),
           currency,
@@ -718,8 +718,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             });
 
             let unitAmount = Math.round(Number(finalPrice) * 100); // convert into cent
-            if (selectCurrency?.name === "JPY") unitAmount = Math.round(Number(finalPrice));
-            else if (selectCurrency?.name === "KWD") unitAmount = roundToNearestTen(finalPrice);
+            if (selectCurrency?.currency === "JPY") unitAmount = Math.round(Number(finalPrice));
+            else if (selectCurrency?.currency === "KWD") unitAmount = roundToNearestTen(finalPrice);
 
             const price = await stripe.prices.create({
               currency: currency.toLocaleLowerCase(),
@@ -769,8 +769,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             });
 
             let unitAmount = Math.round(Number(finalPrice) * 100); // convert into cent
-            if (selectCurrency?.name === "JPY") unitAmount = Math.round(Number(finalPrice));
-            else if (selectCurrency?.name === "KWD") unitAmount = roundToNearestTen(finalPrice);
+            if (selectCurrency?.currency === "JPY") unitAmount = Math.round(Number(finalPrice));
+            else if (selectCurrency?.currency === "KWD") unitAmount = roundToNearestTen(finalPrice);
 
             const price = await stripe.prices.create({
               currency: currency.toLocaleLowerCase(),
@@ -1000,8 +1000,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             });
 
             let unitAmount = Math.round(Number(finalPrice) * 100); // convert into cent
-            if (selectCurrency?.name === "JPY") unitAmount = Math.round(Number(finalPrice));
-            else if (selectCurrency?.name === "KWD") unitAmount = roundToNearestTen(finalPrice);
+            if (selectCurrency?.currency === "JPY") unitAmount = Math.round(Number(finalPrice));
+            else if (selectCurrency?.currency === "KWD") unitAmount = roundToNearestTen(finalPrice);
 
             line_items.push({
               price_data: {
@@ -1046,8 +1046,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             const isPlan = [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug);
 
             let unitAmount = Math.round(Number(finalPrice) * 100); // convert into cent
-            if (selectCurrency?.name === "JPY") unitAmount = Math.round(Number(finalPrice));
-            else if (selectCurrency?.name === "KWD") unitAmount = roundToNearestTen(finalPrice);
+            if (selectCurrency?.currency === "JPY") unitAmount = Math.round(Number(finalPrice));
+            else if (selectCurrency?.currency === "KWD") unitAmount = roundToNearestTen(finalPrice);
 
             line_items.push({
               price_data: {
@@ -1073,7 +1073,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           const applyCoupon = await stripe.coupons.create({
             name: "Current Balance",
             amount_off:
-              selectCurrency?.name === "JPY"
+              selectCurrency?.currency === "JPY"
                 ? Math.round(Number(totalCouponAmount))
                 : Math.round(Number(totalCouponAmount) * 100),
             currency,
@@ -1087,8 +1087,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       }
 
       let unitAmount = Math.round(Number(planChangeCost * selectCurrency.exchangeRate) * 100); // convert into cent
-      if (selectCurrency?.name === "JPY") unitAmount = Math.round(Number(planChangeCost * selectCurrency.exchangeRate));
-      else if (selectCurrency?.name === "KWD")
+      if (selectCurrency?.currency === "JPY")
+        unitAmount = Math.round(Number(planChangeCost * selectCurrency.exchangeRate));
+      else if (selectCurrency?.currency === "KWD")
         unitAmount = roundToNearestTen(planChangeCost * selectCurrency.exchangeRate);
 
       // Add Plan Change Cost
@@ -1157,8 +1158,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         const isPlan = [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug);
 
         let unitAmount = Math.round(Number(finalPrice) * 100); // convert into cent
-        if (selectCurrency?.name === "JPY") unitAmount = Math.round(Number(finalPrice));
-        else if (selectCurrency?.name === "KWD") unitAmount = roundToNearestTen(finalPrice);
+        if (selectCurrency?.currency === "JPY") unitAmount = Math.round(Number(finalPrice));
+        else if (selectCurrency?.currency === "KWD") unitAmount = roundToNearestTen(finalPrice);
 
         line_items.push({
           price_data: {
@@ -1189,7 +1190,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         const applyCoupon = await stripe.coupons.create({
           name: coupon.title,
           amount_off:
-            selectCurrency?.name === "JPY"
+            selectCurrency?.currency === "JPY"
               ? Math.round(Number(totalCouponAmount))
               : Math.round(Number(totalCouponAmount) * 100),
           currency,
