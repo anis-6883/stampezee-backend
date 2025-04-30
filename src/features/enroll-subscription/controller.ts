@@ -790,6 +790,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             });
           }
 
+          // No Optimize for this line
+          await stripe.subscriptions.cancel(enrolled?.stripe?.subscriptionId);
+
           //  Create New Subscription from Stripe
           const stripeSubscription = await stripe.subscriptions.create({
             customer: enrolled.stripe.customerId,
@@ -804,7 +807,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           // Disable Previous Enrollment Subscription
           // Update New Enrollment,
           const updateQueries: any[] = [
-            stripe.subscriptions.cancel(enrolled?.stripe?.subscriptionId),
             Branch.updateMany({ retailerId: req.user._id, source: "subscription" }, { enrollmentId: enrollment._id }),
             Enrollment.updateOne({ _id: enrolled._id }, { status: false }),
             EnrollSubscription.updateMany(
