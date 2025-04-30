@@ -28,7 +28,6 @@ export const getSubscriptionPayments = asyncHandler(async (req: IApiRequest, res
 
     if (retailers.length > 0) {
       const retailerIds = retailers.map((retailer) => retailer._id);
-      console.log({ retailerIds });
       orQuery.push({ retailerId: { $in: retailerIds } });
     }
 
