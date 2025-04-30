@@ -565,6 +565,7 @@ export const updateCustomerStatusBySuperAdmin = asyncHandler(async (req: IApiReq
     { _id: id },
     {
       status,
+      token: null,
     },
     {
       new: true,
