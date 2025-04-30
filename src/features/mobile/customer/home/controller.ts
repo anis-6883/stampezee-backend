@@ -40,6 +40,13 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
               isExpired: {
                 $lt: ["$expiredAt", "$$NOW"],
               },
+              isExpiredMessage: {
+                $cond: {
+                  if: { $lt: ["$expiredAt", "$$NOW"] },
+                  then: "This stamp is expired!",
+                  else: null,
+                },
+              },
             },
           },
         ],
@@ -61,6 +68,26 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
               localField: "retailerId",
               foreignField: "_id",
               as: "retailer",
+              pipeline: [
+                {
+                  $lookup: {
+                    from: "enrollments",
+                    localField: "_id",
+                    foreignField: "retailerId",
+                    as: "enrollments",
+                    pipeline: [
+                      {
+                        $match: {
+                          planExists: { $ne: null },
+                          paymentStatus: "completed",
+                          validityTo: { $gt: new Date() },
+                          status: true,
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
             },
           },
           {
@@ -119,6 +146,20 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
         "retailer._id": "$branch.retailer._id",
         "retailer.storeName": "$branch.retailer.storeName",
         "retailer.image": "$branch.retailer.image",
+        "retailer.isPlanExists": {
+          $cond: {
+            if: { $gt: [{ $size: "$branch.retailer.enrollments" }, 0] },
+            then: true,
+            else: false,
+          },
+        },
+        "retailer.isPlanExistsMessage": {
+          $cond: {
+            if: { $gt: [{ $size: "$branch.retailer.enrollments" }, 0] },
+            then: null,
+            else: "This retailer is currently unavailable in the app.Please contact the retailer for details!",
+          },
+        },
       },
     },
   ]);
