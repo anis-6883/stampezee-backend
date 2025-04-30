@@ -367,7 +367,7 @@ export const updateStamp = asyncHandler(async (req: IApiRequest, res: Response) 
 
   const stamp = await Stamp.findOne({ _id: id });
   if (!stamp) return apiResponse(res, 400, false, "Stamp not found!");
-  if (stamp.isPublished) return apiResponse(res, 400, false, "The published stamp cannot be edited!");
+  // if (stamp.isPublished) return apiResponse(res, 400, false, "The published stamp cannot be edited!");
 
   if (branchId) {
     const branch = await Branch.findOne({ _id: branchId, retailerId: req.user._id });
