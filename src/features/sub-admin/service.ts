@@ -71,7 +71,7 @@ export const sendRegistrationMail = async (
         <img src="cid:stampezee_footer_logo" alt="StampEzee Logo" width="60" style="margin-bottom:8px;" />
         <div><strong>StampEzee</strong> – Collect. Redeem. Repeat.</div>
         <div>© 2025 StampEzee | Toronto, Canada</div>
-        <div style="margin-top:5px;"><a href=${process.env.POLICY} style="color:#d32f2f; text-decoration:none;">Privacy Policy</a> | <a href=${process.env.CONTACT_URL} style="color:#d32f2f; text-decoration:none;">Support</a></div>
+        <div style="margin-top:5px;"><a href="${process.env.POLICY}" style="color:#d32f2f; text-decoration:none;">Privacy Policy</a> | <a href="${process.env.CONTACT_URL}" style="color:#d32f2f; text-decoration:none;">Support</a></div>
       </td>
     </tr>
   </table>

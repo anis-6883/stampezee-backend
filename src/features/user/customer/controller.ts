@@ -16,6 +16,7 @@ import OrderStamp from "../../../models/order-stamp";
 import SubAdmin from "../../../models/sub-admin";
 import { IApiRequest } from "../../../types";
 import { sendVerificationEmail } from "../service";
+import { sendCustomerWelcomeEmail } from "./service";
 import {
   customerChangeForgetPasswordSchema,
   customerLoginSchema,
@@ -137,6 +138,8 @@ export const customerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
       projection: { password: 0, createdAt: 0, updatedAt: 0, otp: 0, otpExpiry: 0 },
     }
   );
+
+  sendCustomerWelcomeEmail(customer.email, customer.firstName);
 
   return apiResponse(res, 200, true, "OTP verified & Login successfully!", {
     token,
