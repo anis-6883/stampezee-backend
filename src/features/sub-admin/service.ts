@@ -82,7 +82,7 @@ export const sendRegistrationMail = async (
   const mailOptions = {
     from: settings?.mail?.username,
     to: contactEmail,
-    subject: "StampEzee Loyalty Executive Account Regiostrtion",
+    subject: "StampEzee Loyalty Executive Account Registration",
     html: template,
     attachments: [
       {
@@ -90,12 +90,14 @@ export const sendRegistrationMail = async (
         path: headerPath,
         cid: "stampezee_header_logo", // same as in the HTML src
         contentDisposition: "inline" as const,
+        contentType: "image/png",
       },
       {
         filename: "stampezee_footer_logo.png",
         path: footerPath,
         cid: "stampezee_footer_logo", // same as in the HTML src
         contentDisposition: "inline" as const,
+        contentType: "image/png",
       },
     ],
   };
