@@ -691,7 +691,7 @@ export const invoiceTemplate = `<!doctype html>
                   <td colspan="2">
                     <div class="company-info">
                       <h2 class="company-title livvic-bold-italic">StampEzee</h2>
-                      <p>123 Anywhere St., Any City, ST 12345</p>
+                      <p>Toronto, Canada</p>
                     </div>
                   </td>
                 </tr>
@@ -1527,7 +1527,7 @@ export const getInvoiceTemplate = ({
     <td colspan="2">
       <div class="company-info" style="text-align: left;">
         <h2 class="company-title livvic-bold-italic" style="font-size: 24px;">StampEzee</h2>
-        <p style="font-size: 14px;">123 Anywhere St., Any City, ST 12345</p>
+        <p style="font-size: 14px;">Toronto, Canada</p>
       </div>
     </td>
   </tr>
@@ -2155,7 +2155,7 @@ export const getInvoiceTemplatePdf = ({
                   <td colspan="2">
                     <div class="company-info">
                       <h2 class="company-title">StampEzee</h2>
-                      <p>123 Anywhere St., Any City, ST 12345</p>
+                      <p>Toronto, Canada</p>
                     </div>
                   </td>
                 </tr>

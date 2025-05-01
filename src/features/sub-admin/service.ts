@@ -65,6 +65,6 @@ export const generateUniqueSubAdminEmail = (email: string, subAdminNumber: strin
 };
 
 export const isValidEmail = (email: string) => {
-  const regex = /^[a-zA-Z0-9._%+-]+\.s[0-9]@stampezee\.com$/;
+  const regex = /^[a-zA-Z0-9._%+-]+\.s[0-9]+@stampezee\.com$/;
   return regex.test(email);
 };

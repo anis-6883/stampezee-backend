@@ -2373,6 +2373,12 @@ export const htmlToPdf = async ({
       printBackground: true,
       waitForFonts: true,
       format: "A4",
+      //   displayHeaderFooter: true,
+      //   footerTemplate: `
+      //   <div style="font-size:8px; color: #808080; width: 100%; text-align: center; padding: 5px 0;">
+      //     © ${new Date().getFullYear()} Stampezee | Page <span class="pageNumber"></span> of <span class="totalPages"></span>
+      //   </div>
+      // `,
     });
     await browser.close();
   } catch (error) {
