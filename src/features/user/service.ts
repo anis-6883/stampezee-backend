@@ -28,13 +28,25 @@ export const sendVerificationEmail = async (email: string, verificationCode: num
     },
   });
 
-  const template = otpTemplate(String(verificationCode));
+  const template = otpTemplate(String(verificationCode), "stampezee_header_logo", "stampezee_footer_logo");
 
   const mailOptions = {
     from: settings?.mail?.username,
     to: email,
     subject: "Email Verification",
     html: template,
+    attachments: [
+      {
+        filename: "stampezee_header_logo.png",
+        path: "../../../public/images/stampezee_header_logo.png",
+        cid: "stampezee_header_logo", // same as in the HTML src
+      },
+      {
+        filename: "stampezee_footer_logo.png",
+        path: "../../../public/images/stampezee_footer_logo.png",
+        cid: "stampezee_footer_logo", // same as in the HTML src
+      },
+    ],
   };
 
   try {

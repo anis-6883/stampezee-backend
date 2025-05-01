@@ -1,4 +1,4 @@
-export const otpTemplate = (verificationCode: string) => {
+export const otpTemplate = (verificationCode: string, stampezee_header_logo: string, stampezee_footer_logo: string) => {
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -33,7 +33,7 @@ export const otpTemplate = (verificationCode: string) => {
             <tr>
               <td style="background: #d32f2f; padding: 20px 30px; text-align: center; color: white">
                 <img
-                  src="https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/logo3.png"
+                  src="cid:stampezee_header_logo"
                   alt="StampEzee Logo"
                   width="100"
                   style="margin-bottom: 10px"
@@ -76,7 +76,7 @@ export const otpTemplate = (verificationCode: string) => {
             <tr>
               <td style="background: #f5f5f5; text-align: center; padding: 20px; font-size: 12px; color: #888">
                 <img
-                  src="https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/logo.png"
+                  src="cid:stampezee_footer_logo"
                   alt="StampEzee Logo"
                   width="60"
                   style="margin-bottom: 8px"
