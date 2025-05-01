@@ -212,7 +212,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         const now = moment();
         const expireDate = moment().add(subscription.duration, "days");
 
-        const [enrollment] = await Promise.all([
+        const [enrollment, retailer] = await Promise.all([
           Enrollment.create({
             retailerId: req.user._id,
             planExists: PACKAGES.TRIAL,
@@ -221,7 +221,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             validityTo: expireDate,
             enrollStatus: "trial",
           }),
-          Retailer.findByIdAndUpdate(req.user._id, { takeFreeTrial: true }),
+          Retailer.findOneAndUpdate({ _id: req.user._id }, { takeFreeTrial: true }, { new: true }),
         ]);
 
         const enrollSubscription = await EnrollSubscription.create({
@@ -231,7 +231,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         });
 
         await Branch.create({
-          name: "Default Branch",
+          name: retailer.storeName,
           address: {
             loc: { type: "Point", coordinates: [req.user.longitude, req.user.latitude] },
             name: req.user.address,

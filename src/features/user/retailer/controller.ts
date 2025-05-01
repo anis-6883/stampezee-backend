@@ -117,7 +117,7 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     });
 
     await Branch.create({
-      name: "Default Branch",
+      name: retailer.storeName,
       address: {
         loc: { type: "Point", coordinates: [retailer.longitude, retailer.latitude] },
         name: retailer.address,
