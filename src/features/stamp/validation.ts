@@ -1,10 +1,11 @@
 import Joi from "joi";
 import { requiredBooleanField, requiredStringField, stringField } from "../../helpers";
 
-const noOfStampsToCollect = Joi.number().required().min(1).messages({
+const noOfStampsToCollect = Joi.number().required().min(1).max(20).messages({
   "any.required": "noOfStampsToCollect is required!",
   "number.base": "noOfStampsToCollect must be number!",
   "number.min": "noOfStampsToCollect must be greater than 0!",
+  "number.max": "noOfStampsToCollect must be less than or equal to 20!",
 });
 
 const updateNoOfStampsToCollect = Joi.number().min(1).messages({
