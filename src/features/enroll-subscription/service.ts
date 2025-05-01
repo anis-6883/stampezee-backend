@@ -5,6 +5,11 @@ import { htmlToPdf } from "../../helpers";
 import Settings from "../../models/settings";
 import { getInvoiceTemplate } from "../../templates/invoice";
 
+const date = new Date();
+const month = date.toLocaleString("default", { month: "short" }).toLowerCase();
+const year = date.getFullYear();
+const formattedDate = `${month}-${year}`;
+
 export const sendInvoiceToEmail = async ({
   email,
   customerInfo,
@@ -49,7 +54,7 @@ export const sendInvoiceToEmail = async ({
     attachments: [
       {
         path: path.join(process.cwd(), "/src/templates/invoice.pdf"),
-        filename: "invoice.pdf",
+        filename: `${formattedDate}.pdf`,
         contentType: "contentType",
       },
     ],
