@@ -89,7 +89,7 @@ export const createRetailer = asyncHandler(async (req: IApiRequest, res: Respons
   });
 
   // Sending Mail
-  await sendRegistrationMail(createBody.email, fullName, password, createBody.storeName);
+  await sendRegistrationMail(createBody.email, fullName, retailer.address, createBody.storeName);
 
   // Remove Sensitive Data
   const data = exclude(newRetailer._doc, ["password", "createdAt", "updatedAt"]);
