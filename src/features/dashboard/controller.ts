@@ -1,5 +1,4 @@
 import { Response } from "express";
-import moment from "moment";
 import { apiResponse, asyncHandler, countryData, generateRandomColor } from "../../helpers";
 import Branch from "../../models/branch";
 import CollectStamp from "../../models/collect-stamp";
@@ -11,6 +10,8 @@ import Refund from "../../models/refund";
 import Retailer from "../../models/retailer";
 import Stamp from "../../models/stamp";
 import { IApiRequest, Object } from "../../types";
+import Settings from "../../models/settings";
+import moment from "moment-timezone";
 
 /**
  * Get Super Admin Dashboard Card Stats (Super Admin)
@@ -19,10 +20,11 @@ import { IApiRequest, Object } from "../../types";
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const superAdminDashboardCardStats = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const currentDate = moment();
+  const settings = await Settings.findOne();
 
-  const startOfMonth = currentDate.clone().startOf("month");
-  const endOfMonth = currentDate.clone().endOf("month");
+  const now = moment().tz(settings.general.timezone.label);
+  const startOfMonth = now.clone().startOf("month").startOf("day");
+  const endOfMonth = now.clone().endOf("month").endOf("day");
 
   const [
     totalVerifiedRetailer,
