@@ -40,9 +40,7 @@ export const sendRegistrationMail = async (
   <title>StampEzee Loyalty Executive Account Created</title>
 </head>
 <body style="margin:0; font-family:'Segoe UI', sans-serif; background:#fefefe; color:#333;">
-  <!-- Background image replaced with CID -->
-  <div style="background-image: url('cid:stampezee_header_logo'); background-repeat: no-repeat; background-position: center center; background-size: 300px; opacity: 0.03; height: 100%; width: 100%; position: absolute; z-index: 0;"></div>
-
+  
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:20px auto; background:white; border-radius:12px; box-shadow:0 0 10px rgba(0,0,0,0.05); overflow:hidden; position: relative; z-index: 1;">
     <tr>
       <td style="background:#d32f2f; padding:20px 30px; text-align:center; color:white;">
