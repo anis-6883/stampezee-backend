@@ -481,7 +481,7 @@ export const orderDetails = asyncHandler(async (req: IApiRequest, res: Response)
         as: "customer",
         pipeline: [
           {
-            $project: { fullName: 1, email: 1 },
+            $project: { fullName: 1, email: 1, contactEmail: 1 },
           },
         ],
       },
