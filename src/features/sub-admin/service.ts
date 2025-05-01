@@ -30,18 +30,6 @@ export const sendRegistrationMail = async (
       user: settings?.mail?.username,
       pass: settings?.mail?.password,
     },
-    attachments: [
-      {
-        filename: "stampezee_header_logo.png",
-        path: headerPath,
-        cid: "stampezee_header_logo", // same as in the HTML src
-      },
-      {
-        filename: "stampezee_footer_logo.png",
-        path: footerPath,
-        cid: "stampezee_footer_logo", // same as in the HTML src
-      },
-    ],
   });
 
   const template = `<!DOCTYPE html>
@@ -98,6 +86,18 @@ export const sendRegistrationMail = async (
     to: contactEmail,
     subject: "Membership Account Registration",
     html: template,
+    attachments: [
+      {
+        filename: "stampezee_header_logo.png",
+        path: headerPath,
+        cid: "stampezee_header_logo", // same as in the HTML src
+      },
+      {
+        filename: "stampezee_footer_logo.png",
+        path: footerPath,
+        cid: "stampezee_footer_logo", // same as in the HTML src
+      },
+    ],
   };
 
   try {
