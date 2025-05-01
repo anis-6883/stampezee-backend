@@ -43,15 +43,10 @@ export const sendRegistrationMail = async (
   
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:20px auto; background:white; border-radius:12px; box-shadow:0 0 10px rgba(0,0,0,0.05); overflow:hidden; position: relative; z-index: 1;">
     <tr>
-      <td style="background: #d32f2f; padding: 20px 30px; text-align: center; color: white">
-        <img
-          src="cid:stampezee_header_logo"
-          alt="StampEzee Logo"
-          width="100"
-          style="margin-bottom: 10px"
-        />
-        <h1 style="margin: 0; font-size: 24px">Welcome to StampEzee!</h1>
-        <p style="margin: 5px 0 0; font-size: 14px">Collect. Redeem. Repeat.</p>
+      <td style="background:#d32f2f; padding:20px 30px; text-align:center; color:white;">
+        <img src="cid:stampezee_header_logo" alt="StampEzee Logo" width="100" style="margin-bottom:10px;" />
+        <h1 style="margin:0; font-size:24px;">Welcome to StampEzee!</h1>
+        <p style="margin:5px 0 0; font-size:14px;">Your sub-admin account is now live.</p>
       </td>
     </tr>
     <tr>
@@ -71,25 +66,14 @@ export const sendRegistrationMail = async (
         <p style="font-size:14px;">Welcome aboard, and happy rewarding!<br/><strong>– The StampEzee Team</strong></p>
       </td>
     </tr>
-      <tr>
-              <td style="background: #f5f5f5; text-align: center; padding: 20px; font-size: 12px; color: #888">
-                <img
-                  src="cid:stampezee_footer_logo"
-                  alt="StampEzee Logo"
-                  width="60"
-                  style="margin-bottom: 8px"
-                />
-                <div><strong>StampEzee</strong> – Collect. Redeem. Repeat.</div>
-                <div>© 2025 StampEzee | Toronto, Canada</div>
-                <div style="margin-top: 5px">
-                  <a href=${process.env.POLICY} style="color: #d32f2f; text-decoration: none">Privacy Policy</a> |
-                  <a href=${process.env.CONTACT_URL} style="color: #d32f2f; text-decoration: none">Support</a>
-                </div>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
+    <tr>
+      <td style="background:#f5f5f5; text-align:center; padding:20px; font-size:12px; color:#888;">
+        <img src="cid:stampezee_footer_logo" alt="StampEzee Logo" width="60" style="margin-bottom:8px;" />
+        <div><strong>StampEzee</strong> – Collect. Redeem. Repeat.</div>
+        <div>© 2025 StampEzee | Toronto, Canada</div>
+        <div style="margin-top:5px;"><a href=${process.env.POLICY} style="color:#d32f2f; text-decoration:none;">Privacy Policy</a> | <a href=${process.env.CONTACT_URL} style="color:#d32f2f; text-decoration:none;">Support</a></div>
+      </td>
+    </tr>
   </table>
 </body>
 </html>
@@ -98,18 +82,20 @@ export const sendRegistrationMail = async (
   const mailOptions = {
     from: settings?.mail?.username,
     to: contactEmail,
-    subject: "Membership Account Registration",
+    subject: "StampEzee Loyalty Executive Account Regiostrtion",
     html: template,
     attachments: [
       {
         filename: "stampezee_header_logo.png",
         path: headerPath,
         cid: "stampezee_header_logo", // same as in the HTML src
+        contentDisposition: "inline" as const,
       },
       {
         filename: "stampezee_footer_logo.png",
         path: footerPath,
         cid: "stampezee_footer_logo", // same as in the HTML src
+        contentDisposition: "inline" as const,
       },
     ],
   };
