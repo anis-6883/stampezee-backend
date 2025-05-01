@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import Settings from "../../models/settings";
+import path from "path";
 
 export const sendRegistrationMail = async (
   contactEmail: string,
@@ -19,7 +20,8 @@ export const sendRegistrationMail = async (
       "general.companyName": 1,
     }
   );
-
+  const headerPath = path.join(__dirname, "../../../public/images/stampezee_header_logo.png");
+  const footerPath = path.join(__dirname, "../../../public/images/stampezee_footer_logo.png");
   const transporter = nodemailer.createTransport({
     host: settings?.mail?.host,
     port: Number(settings?.mail?.port),
@@ -28,21 +30,68 @@ export const sendRegistrationMail = async (
       user: settings?.mail?.username,
       pass: settings?.mail?.password,
     },
+    attachments: [
+      {
+        filename: "stampezee_header_logo.png",
+        path: headerPath,
+        cid: "stampezee_header_logo", // same as in the HTML src
+      },
+      {
+        filename: "stampezee_footer_logo.png",
+        path: footerPath,
+        cid: "stampezee_footer_logo", // same as in the HTML src
+      },
+    ],
   });
 
-  const template = `<h1>Welcome to StampEzee</h1>
-      <p>Hello ${name},</p>
-      <p>Your are assigned as a sub-admin.</p>
-      <h4>Store Name: ${storeName}</h4>
-      <h4>Branch Name: ${branchName}</h4>
-      
-      <h3>Your Login Credentials are:</h3>
-      <h4>Email: ${email}</h4>
-      <h4>Password: ${password}</h4>
-      <p>Don't share your credentials with anyone!</p>
-      <p>Thank you for joining with us!</p>
-      <p>Best Regards,</p>
-      <p>${settings?.general?.companyName} Team</p>`;
+  const template = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StampEzee Loyalty Executive Account Created</title>
+</head>
+<body style="margin:0; font-family:'Segoe UI', sans-serif; background:#fefefe; color:#333;">
+  <!-- Background image replaced with CID -->
+  <div style="background-image: url('cid:stampezee_header_logo'); background-repeat: no-repeat; background-position: center center; background-size: 300px; opacity: 0.03; height: 100%; width: 100%; position: absolute; z-index: 0;"></div>
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:20px auto; background:white; border-radius:12px; box-shadow:0 0 10px rgba(0,0,0,0.05); overflow:hidden; position: relative; z-index: 1;">
+    <tr>
+      <td style="background:#d32f2f; padding:20px 30px; text-align:center; color:white;">
+        <img src="cid:stampezee_header_logo" alt="StampEzee Logo" width="100" style="margin-bottom:10px;" />
+        <h1 style="margin:0; font-size:24px;">Welcome to StampEzee!</h1>
+        <p style="margin:5px 0 0; font-size:14px;">Your sub-admin account is now live.</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:30px;">
+        <h2 style="margin-top:0; font-size:20px; color:#b71c1c;">Hello ${name},</h2>
+        <p style="font-size:15px; line-height:1.6;">
+          🎉 You’ve been added as a <strong>StampEzee Loyalty Executive</strong> for one of our partnered retailers on StampEzee! You now have access to manage loyalty operations for your branch.
+        </p>
+        <table style="width:100%; font-size:15px; background:#f9f9f9; padding:10px; border-radius:8px; margin:20px 0;">
+          <tr><td><strong>🛒 Store:</strong></td><td>${storeName}</td></tr>
+          <tr><td><strong>📍 Branch:</strong></td><td>${branchName} – Glen Erin</td></tr>
+          <tr><td><strong>📧 Email:</strong></td><td>${email}</td></tr>
+          <tr><td><strong>🔐 Password:</strong></td><td>${password}</td></tr>
+        </table>
+        <p style="font-size:14px; color:#d32f2f;"><strong>🔒 Please don’t share your credentials with anyone.</strong></p>
+        <p style="margin-top:30px;">You can now log in and start managing stamps, users, and redemptions for your store. If you need help, our support team is just a click away!</p>
+        <p style="font-size:14px;">Welcome aboard, and happy rewarding!<br/><strong>– The StampEzee Team</strong></p>
+      </td>
+    </tr>
+    <tr>
+      <td style="background:#f5f5f5; text-align:center; padding:20px; font-size:12px; color:#888;">
+        <img src="cid:stampezee_footer_logo" alt="StampEzee Logo" width="60" style="margin-bottom:8px;" />
+        <div><strong>StampEzee</strong> – Collect. Redeem. Repeat.</div>
+        <div>© 2025 StampEzee | Toronto, Canada</div>
+        <div style="margin-top:5px;"><a href=${process.env.POLICY} style="color:#d32f2f; text-decoration:none;">Privacy Policy</a> | <a href=${process.env.CONTACT_URL} style="color:#d32f2f; text-decoration:none;">Support</a></div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
 
   const mailOptions = {
     from: settings?.mail?.username,
