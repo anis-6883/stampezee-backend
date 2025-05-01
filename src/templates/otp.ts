@@ -84,8 +84,8 @@ export const otpTemplate = (verificationCode: string) => {
                 <div><strong>StampEzee</strong> – Collect. Redeem. Repeat.</div>
                 <div>© 2025 StampEzee | Toronto, Canada</div>
                 <div style="margin-top: 5px">
-                  <a href="#" style="color: #d32f2f; text-decoration: none">Privacy Policy</a> |
-                  <a href="#" style="color: #d32f2f; text-decoration: none">Support</a>
+                  <a href=${process.env.POLICY} style="color: #d32f2f; text-decoration: none">Privacy Policy</a> |
+                  <a href=${process.env.CONTACT_URL} style="color: #d32f2f; text-decoration: none">Support</a>
                 </div>
               </td>
             </tr>
