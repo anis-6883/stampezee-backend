@@ -285,7 +285,11 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
   if (enrollSubscription?.planSnapshot?.type === "subscription") {
     const [enrollment, addOnsWithBasePlan, addOnsWithoutBasePlan, allowCurrencies] = await Promise.all([
       Enrollment.findById(enrollSubscription.enrollmentId),
-      EnrollSubscription.find({ enrollmentId: enrollSubscription.enrollmentId, _id: { $ne: enrollSubscriptionId } }),
+      EnrollSubscription.find({
+        enrollmentId: enrollSubscription.enrollmentId,
+        _id: { $ne: enrollSubscriptionId },
+        status: true,
+      }),
       Enrollment.find({
         retailerId: req.user._id,
         planExists: null,

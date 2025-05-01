@@ -146,14 +146,14 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
         "retailer._id": "$branch.retailer._id",
         "retailer.storeName": "$branch.retailer.storeName",
         "retailer.image": "$branch.retailer.image",
-        "retailer.isPlanExists": {
+        "retailer.isPlanExpired": {
           $cond: {
             if: { $gt: [{ $size: "$branch.retailer.enrollments" }, 0] },
-            then: true,
-            else: false,
+            then: false,
+            else: true,
           },
         },
-        "retailer.isPlanExistsMessage": {
+        "retailer.isPlanExpiredMessage": {
           $cond: {
             if: { $gt: [{ $size: "$branch.retailer.enrollments" }, 0] },
             then: null,

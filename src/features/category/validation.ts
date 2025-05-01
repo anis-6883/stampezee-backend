@@ -1,13 +1,13 @@
 import Joi from "joi";
-import { lowercaseStringField, requiredBooleanField, requiredLowercaseStringField, stringField } from "../../helpers";
+import { requiredBooleanField, requiredStringField, stringField } from "../../helpers";
 
 export const categorySchema = Joi.object({
-  name: requiredLowercaseStringField("name"),
+  name: requiredStringField("name"),
   description: stringField("description"),
 });
 
 export const updateCategorySchema = Joi.object({
-  name: lowercaseStringField("name"),
+  name: stringField("name"),
   description: stringField("description"),
 });
 
