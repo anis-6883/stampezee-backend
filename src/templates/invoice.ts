@@ -2026,7 +2026,7 @@ export const getInvoiceTemplatePdf = ({
             </div>
             <div style="display: flex; flex-direction: column">
               ${invoiceMetadata?.invoiceNo ? `<span>Invoice No. ${invoiceMetadata?.invoiceNo}</span>` : ""}
-              <span>${moment(new Date()).format("DD MMMM YYYY")}</span>
+              <span>${moment(paymentInfo?.date).format("DD MMMM YYYY")}</span>
             </div>
           </div>
         </td>

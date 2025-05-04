@@ -553,10 +553,12 @@ export const getRetailerBillingPdf = asyncHandler(async (req: IApiRequest, res: 
         ? null
         : `${payment[0]?.extraPayableAmount} ${payment[0]?.enrollment?.currency}`,
   };
+
   const paymentInfo = {
     bankName: "Fauget Bank",
     accountName: "Juliana Silva",
     accountNo: "123-456-7890",
+    date: payment[0]?.createdAt,
   };
 
   await htmlToPdf({ customerInfo, purchasedItems, invoiceMetadata, paymentInfo });
