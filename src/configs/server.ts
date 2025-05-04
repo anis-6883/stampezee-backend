@@ -11,9 +11,6 @@ import adminRoutes from "../routes/admin.routes";
 import mobileRoutes from "../routes/mobile.routes";
 import webRoutes from "../routes/web.routes";
 import config from "./config";
-import { createSubAdmin } from "../features/sub-admin/controller";
-import { sendCustomerWelcomeEmail } from "../features/user/customer/service";
-import { forgetPassword } from "../features/user/customer/controller";
 import { sendForgotPassEmail } from "../features/user/service";
 
 const app = express();
@@ -29,9 +26,6 @@ app.post("/stripe/webhook", express.raw({ type: "application/json" }), stripeWeb
 app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: true, limit: "100kb" }));
 
-app.get("/test", () => {
-  sendForgotPassEmail("moshiul.rootdevs@gmail.com", 123456, "Moshiul");
-});
 // Home Route
 app.get("/", (req, res) => {
   return res.status(200).json({ status: true, message: "Assalamu Alaikum! Welcome to StampEzee." });

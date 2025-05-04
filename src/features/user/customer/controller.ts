@@ -139,7 +139,7 @@ export const customerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     }
   );
 
-  sendCustomerWelcomeEmail(customer.email, customer.firstName);
+  sendCustomerWelcomeEmail(customer.email, customer.fullName);
 
   return apiResponse(res, 200, true, "OTP verified & Login successfully!", {
     token,
