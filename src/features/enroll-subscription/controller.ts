@@ -1528,6 +1528,10 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     } = checkoutSession?.metadata;
 
     const enrollment = await Enrollment.findById(enrollmentId);
+    const newEnrollSubscription = await EnrollSubscription.findOne({
+      enrollmentId: enrollment?._id,
+      "planSnapshot.type": "subscription",
+    });
 
     // Deactivate last previous active plan
     if (enrollment?.planExists) {
@@ -1581,20 +1585,25 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
               Enrollment.findOneAndUpdate({ _id: prevEnrollment._id }, { status: false, planExists: null }),
             ]);
           }
-
-          // Update expiration for already created branch
-          if (enrollment?.planExists) {
-            updateSubscriptions.push(
-              Branch.updateMany(
-                {
-                  retailerId: retailer._id,
-                  source: "subscription",
-                },
-                { enrollSubscriptionId: enrollSubscription._id }
-              )
-            );
-          }
         }
+
+        // Update expiration for already created branch
+        await Promise.all([
+          Branch.updateMany(
+            {
+              retailerId: retailer._id,
+              source: "subscription",
+            },
+            { enrollSubscriptionId: newEnrollSubscription._id }
+          ),
+          Stamp.updateMany(
+            {
+              retailerId: retailer._id,
+              source: "subscription",
+            },
+            { enrollSubscriptionId: newEnrollSubscription._id }
+          ),
+        ]);
       }
     }
 
