@@ -5,7 +5,6 @@ import helmet from "helmet";
 import logger from "morgan";
 import { stripeWebhookHandler } from "../features/enroll-subscription/controller";
 import seederRoutes from "../features/seeder/route";
-import { sendForgotPassEmail } from "../features/user/service";
 import errorMiddleware from "../middlewares/errorMiddleware";
 import verifyApiKeyHeader from "../middlewares/verifyApiKeyHeader";
 import adminRoutes from "../routes/admin.routes";
@@ -26,9 +25,6 @@ app.post("/stripe/webhook", express.raw({ type: "application/json" }), stripeWeb
 app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: true, limit: "100kb" }));
 
-app.get("/test", () => {
-  sendForgotPassEmail("moshiul.rootdevs@gmail.com", 123456, "Moshiul");
-});
 // Home Route
 app.get("/", (req, res) => {
   return res.status(200).json({ status: true, message: "Assalamu Alaikum! Welcome to StampEzee." });

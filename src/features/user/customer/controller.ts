@@ -139,7 +139,7 @@ export const customerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     }
   );
 
-  sendCustomerWelcomeEmail(customer.email, customer.firstName);
+  sendCustomerWelcomeEmail(customer.email, customer.fullName);
 
   return apiResponse(res, 200, true, "OTP verified & Login successfully!", {
     token,
@@ -399,7 +399,7 @@ export const forgetPassword = asyncHandler(async (req: IApiRequest, res: Respons
   let name = "";
   let email = "";
   const otp = getRandomInteger(100000, 999999);
-  const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+  const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
   if (customer) {
     await Customer.findByIdAndUpdate(customer._id, { otp, otpExpiry });
     token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER, ott: true }, 600); //15 minute // 15 min

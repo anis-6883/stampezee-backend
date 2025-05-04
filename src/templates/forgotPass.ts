@@ -39,7 +39,7 @@ export const forgotPassOtpTemplate = (verificationCode: string, name: string) =>
             </tr>
             <tr>
               <td style="padding: 30px; background-color: #ffffff">
-                <h2 style="margin-top: 0; font-size: 20px; color: #b71c1c">Hi ${name}</h2>
+                <h2 style="margin-top: 0; font-size: 20px; color: #b71c1c">Hi ${name},</h2>
                 <p style="font-size: 15px; line-height: 1.6">
                   We received a request to reset the password for your <strong>StampEzee</strong> account. If you made
                   this request, use the one-time password (OTP) below to proceed.
