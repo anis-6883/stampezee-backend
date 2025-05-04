@@ -1,4 +1,5 @@
 import { Response } from "express";
+import moment from "moment-timezone";
 import { apiResponse, asyncHandler, countryData, generateRandomColor } from "../../helpers";
 import Branch from "../../models/branch";
 import CollectStamp from "../../models/collect-stamp";
@@ -8,10 +9,9 @@ import OrderStamp from "../../models/order-stamp";
 import Payment from "../../models/payment";
 import Refund from "../../models/refund";
 import Retailer from "../../models/retailer";
+import Settings from "../../models/settings";
 import Stamp from "../../models/stamp";
 import { IApiRequest, Object } from "../../types";
-import Settings from "../../models/settings";
-import moment from "moment-timezone";
 
 /**
  * Get Super Admin Dashboard Card Stats (Super Admin)
@@ -443,7 +443,21 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
                 totalCustomer: { $ifNull: ["$collect_stamps.totalCustomer", 0] },
                 totalSubAdmin: { $size: "$sub_admins" },
                 totalOrder: { $size: "$order_stamps" },
-                totalRevenue: { $sum: "$order_stamps.amount" },
+                totalRevenue: {
+                  $reduce: {
+                    input: {
+                      $map: {
+                        input: "$order_stamps",
+                        as: "order",
+                        in: {
+                          $multiply: [{ $ifNull: ["$$order.amount", 0] }, { $ifNull: ["$$order.exchangeRate", 1] }],
+                        },
+                      },
+                    },
+                    initialValue: 0,
+                    in: { $add: ["$$value", "$$this"] },
+                  },
+                },
               },
             },
           ],
