@@ -227,11 +227,14 @@ export const uploadInvoice = asyncHandler(async (req: IApiRequest, res: Response
     Retailer.findById(req?.user?.retailerId, { businessCurrency: 1 }),
   ]);
 
+  const currencyExchange = await CurrencyExchange.findOne({ currency: retailer?.businessCurrency });
+
   if (orderIsAvailable.length < 1) return apiResponse(res, 400, false, "Invalid Order!");
   if (orderIsAvailable[0].subAdmin.length < 1) return apiResponse(res, 401, false, "Unauthorized Request!");
 
   const updatedBody: any = { amount };
   updatedBody.amountCurrency = retailer?.businessCurrency;
+  updatedBody.exchangeRate = currencyExchange?.exchangeRate;
 
   if (req?.file) {
     const { status, message } = fileValidation(req.file, undefined, ["image/jpeg", "image/png", "image/jpg"]);

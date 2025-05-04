@@ -5,16 +5,13 @@ import helmet from "helmet";
 import logger from "morgan";
 import { stripeWebhookHandler } from "../features/enroll-subscription/controller";
 import seederRoutes from "../features/seeder/route";
+import { sendForgotPassEmail } from "../features/user/service";
 import errorMiddleware from "../middlewares/errorMiddleware";
 import verifyApiKeyHeader from "../middlewares/verifyApiKeyHeader";
 import adminRoutes from "../routes/admin.routes";
 import mobileRoutes from "../routes/mobile.routes";
 import webRoutes from "../routes/web.routes";
 import config from "./config";
-import { createSubAdmin } from "../features/sub-admin/controller";
-import { sendCustomerWelcomeEmail } from "../features/user/customer/service";
-import { forgetPassword } from "../features/user/customer/controller";
-import { sendForgotPassEmail } from "../features/user/service";
 
 const app = express();
 const env = process.env.NODE_ENV || "development";
