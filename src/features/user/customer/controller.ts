@@ -242,19 +242,19 @@ export const customerAndSubAdminLogin = asyncHandler(async (req: Request, res: R
 
     if (!customer.status) return apiResponse(res, 401, false, "Your account has been blocked by admin!");
 
-    // Switch Account Login Try
-    if (customer.provider !== provider) {
-      const providerMessages: any = {
-        apple: "Your account was registered using Apple. Please log in with Apple!",
-        google: "Your account was registered using Google. Please log in with Google!",
-        default: "Please log in using the email and password you registered with!",
-      };
-      return apiResponse(res, 401, false, providerMessages[customer.provider] || providerMessages.default);
-    }
-
     if (provider === "email") {
       const isPasswordValid = await bcrypt.compare(password, customer.password);
       if (!isPasswordValid) return apiResponse(res, 401, false, "Provided incorrect password!");
+    } else {
+      // Switch Account Login Try
+      if (customer.provider !== provider) {
+        const providerMessages: any = {
+          apple: "Your account was registered using Apple. Please log in with Apple!",
+          google: "Your account was registered using Google. Please log in with Google!",
+          default: "Please log in using the email and password you registered with!",
+        };
+        return apiResponse(res, 401, false, providerMessages[customer.provider] || providerMessages.default);
+      }
     }
 
     const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER }, 2592000); // 30 Day expiry 30*24*60*60;
