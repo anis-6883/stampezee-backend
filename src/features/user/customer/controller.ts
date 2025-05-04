@@ -15,7 +15,7 @@ import Customer from "../../../models/customer";
 import OrderStamp from "../../../models/order-stamp";
 import SubAdmin from "../../../models/sub-admin";
 import { IApiRequest } from "../../../types";
-import { sendVerificationEmail } from "../service";
+import { sendVerificationEmail, sendForgotPassEmail } from "../service";
 import { sendCustomerWelcomeEmail } from "./service";
 import {
   customerChangeForgetPasswordSchema,
@@ -395,36 +395,27 @@ export const forgetPassword = asyncHandler(async (req: IApiRequest, res: Respons
   ]);
 
   if (!customer && !subAdmin) return apiResponse(res, 404, false, "User not found!");
-
+  let token = "";
+  let name = "";
+  let email = "";
+  const otp = getRandomInteger(100000, 999999);
+  const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 min
   if (customer) {
-    const otp = getRandomInteger(100000, 999999);
-    const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
-
     await Customer.findByIdAndUpdate(customer._id, { otp, otpExpiry });
-
-    const token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER, ott: true }, 600); //15 minute // 15 min
-
-    // Send OTP to Email
-    sendVerificationEmail(customer.email, otp);
-
-    return apiResponse(res, 200, true, "OTP sent successfully!", { token });
+    token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER, ott: true }, 600); //15 minute // 15 min
+    name = customer.fullName;
+    email = customer.email;
   }
 
   if (subAdmin) {
-    const otp = getRandomInteger(100000, 999999);
-    const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
-
     await SubAdmin.findByIdAndUpdate(subAdmin._id, { otp, otpExpiry });
-
-    const token = generateSignature({ email: subAdmin.email, role: ROLE.SUB_ADMIN, ott: true }, 600); //15 minute // 15 min
-
-    // Send OTP to Email
-    sendVerificationEmail(subAdmin.contactEmail, otp);
-
-    return apiResponse(res, 200, true, "OTP sent successfully!", { token });
+    name = subAdmin.firstName;
+    email = subAdmin.contactEmail;
+    token = generateSignature({ email: subAdmin.email, role: ROLE.SUB_ADMIN, ott: true }, 600); //15 minute // 15 min
   }
 
-  return apiResponse(res, 500, true, "Something went wrong!");
+  sendForgotPassEmail(email, otp, name);
+  return apiResponse(res, 200, true, "OTP sent successfully!", { token });
 });
 
 /**
@@ -454,16 +445,16 @@ export const customerAndSubAdminForgetPasswordOtpVerify = asyncHandler(async (re
  */
 export const customerForgetPasswordResendOtp = asyncHandler(async (req: IApiRequest, res: Response) => {
   const otp = getRandomInteger(100000, 999999);
-  const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
+  const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 2 min
 
   if (req.user.otpExpiry > new Date()) return apiResponse(res, 400, false, "Wait 2 minutes to resend OTP!");
   if (req.role === ROLE.CUSTOMER) {
     await Customer.updateOne({ email: req.user.email }, { otp, otpExpiry });
-    sendVerificationEmail(req.user.email, otp);
+    sendForgotPassEmail(req.user.email, otp, req.user.fullName);
   }
   if (req.role === ROLE.SUB_ADMIN) {
     const subAdmin: any = await SubAdmin.findOneAndUpdate({ email: req.user.email }, { otp, otpExpiry });
-    sendVerificationEmail(subAdmin.contactEmail, otp);
+    sendForgotPassEmail(subAdmin.contactEmail, otp, subAdmin.firstName);
   }
 
   return apiResponse(res, 200, true, "OTP resend successfully!");

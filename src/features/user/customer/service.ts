@@ -98,14 +98,12 @@ export const sendCustomerWelcomeEmail = async (email: string, name: string) => {
         path: headerPath,
         cid: "stampezee_header_logo",
         contentDisposition: "inline" as const,
-        contentType: "image/png",
       },
       {
         filename: "stampezee_footer_logo.png",
         path: footerPath,
         cid: "stampezee_footer_logo",
         contentDisposition: "inline" as const,
-        contentType: "image/png",
       },
     ],
   };

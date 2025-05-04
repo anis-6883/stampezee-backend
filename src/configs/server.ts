@@ -13,6 +13,8 @@ import webRoutes from "../routes/web.routes";
 import config from "./config";
 import { createSubAdmin } from "../features/sub-admin/controller";
 import { sendCustomerWelcomeEmail } from "../features/user/customer/service";
+import { forgetPassword } from "../features/user/customer/controller";
+import { sendForgotPassEmail } from "../features/user/service";
 
 const app = express();
 const env = process.env.NODE_ENV || "development";
@@ -28,7 +30,7 @@ app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: true, limit: "100kb" }));
 
 app.get("/test", () => {
-  sendCustomerWelcomeEmail("moshiul.rootdevs@gmail.com", "Moshiul");
+  sendForgotPassEmail("moshiul.rootdevs@gmail.com", 123456, "Moshiul");
 });
 // Home Route
 app.get("/", (req, res) => {
