@@ -158,7 +158,7 @@ export const superAdminDashboardRevenue = asyncHandler(async (req: IApiRequest, 
   ]);
 
   const data = {
-    totalRevenueInCAD: totalRevenue[0]?.totalRevenueInCAD - totalRefund[0]?.totalRefundAmountInCAD || 0,
+    totalRevenueInCAD: totalRevenue[0]?.totalRevenueInCAD - (totalRefund[0]?.totalRefundAmountInCAD || 0),
     activeSubscription,
     totalRefundAmountInCAD: totalRefund[0]?.totalRefundAmountInCAD,
   };
