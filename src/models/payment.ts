@@ -14,7 +14,6 @@ interface IPayment extends Document {
   invoicePdf: string;
   amountTotal: number;
   balanceAmount: number;
-  extraPayableAmount: number;
   currency: string;
   currencyRate: number;
   taxCost: number;
@@ -37,7 +36,6 @@ const paymentSchema = new Schema<IPayment>(
     invoicePdf: { type: String, required: true },
     amountTotal: { type: Number, required: true },
     balanceAmount: { type: Number, default: 0 },
-    extraPayableAmount: { type: Number, default: 0 },
     currency: { type: String, default: "CAD" },
     currencyRate: { type: Number, default: 0 },
     taxCost: { type: Number, default: 0 },

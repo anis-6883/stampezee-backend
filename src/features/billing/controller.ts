@@ -548,10 +548,6 @@ export const getRetailerBillingPdf = asyncHandler(async (req: IApiRequest, res: 
         }
       : null,
     total: `${parseFloat(Math.abs(payment[0]?.amountTotal).toFixed(2))} ${payment[0]?.enrollment?.currency}`,
-    extraPayableAmount:
-      payment[0]?.enrollment?.enrollStatus === "purchase" || !payment[0]?.extraPayableAmount
-        ? null
-        : `${payment[0]?.extraPayableAmount} ${payment[0]?.enrollment?.currency}`,
   };
 
   const paymentInfo = {
