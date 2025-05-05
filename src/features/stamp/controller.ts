@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { PACKAGES, ROLE } from "../../configs/constants";
-import { apiResponse, asyncHandler, getUTC, makePaginate } from "../../helpers";
+import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import { getUTC } from "../../helpers/moment";
 import Branch from "../../models/branch";
 import Category from "../../models/category";
 import { IEnrollSubscription } from "../../models/enroll-subscription";
@@ -117,8 +118,8 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
   createBody.stampImageId = stampImageId;
   createBody.categoryId = categoryId;
 
-  const systemTime = getUTC(createBody.startedAt, Number(req.user.timezone.value), true);
-  const expireTime = getUTC(createBody.expiredAt, Number(req.user.timezone.value), false, true);
+  const systemTime = getUTC(createBody.startedAt, req.user.timezone.label, true);
+  const expireTime = getUTC(createBody.expiredAt, req.user.timezone.label, false, true);
 
   createBody.startedAt = systemTime;
   createBody.expiredAt = expireTime;
@@ -393,8 +394,8 @@ export const updateStamp = asyncHandler(async (req: IApiRequest, res: Response) 
   updatedBody.stampImageId = stampImageId;
   updatedBody.categoryId = categoryId;
 
-  const systemTime = getUTC(updatedBody.startedAt, Number(req.user.timezone.value), true);
-  const expireTime = getUTC(updatedBody.expiredAt, Number(req.user.timezone.value), false, true);
+  const systemTime = getUTC(updatedBody.startedAt, req.user.timezone.label, true);
+  const expireTime = getUTC(updatedBody.expiredAt, req.user.timezone.label, false, true);
 
   updatedBody.startedAt = systemTime;
   updatedBody.expiredAt = expireTime;

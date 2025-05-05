@@ -1,5 +1,6 @@
 import { Response } from "express";
-import { apiResponse, asyncHandler, getUTC, makePaginate } from "../../helpers";
+import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import { getUTC } from "../../helpers/moment";
 import Coupon from "../../models/coupon";
 import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
@@ -50,9 +51,10 @@ export const createCoupon = asyncHandler(async (req: IApiRequest, res: Response)
   const settings = await Settings.findOne(null, { "general.timezone": 1 });
   if (!settings?.general?.timezone) return apiResponse(res, 400, false, "Setup TimeZone First!");
 
-  const systemTime = getUTC(createBody.startedAt, Number(settings.general.timezone.value), true);
-  const expireTime = getUTC(createBody.expiredAt, Number(settings.general.timezone.value), false, true);
-
+  console.log({ startedAt: createBody.startedAt, expiredAt: createBody.expiredAt });
+  const systemTime = getUTC(createBody.startedAt, settings.general.timezone.label, true);
+  const expireTime = getUTC(createBody.expiredAt, settings.general.timezone.label, false, true);
+  console.log({ systemTime, expireTime });
   createBody.startedAt = systemTime;
   createBody.expiredAt = expireTime;
 
@@ -186,8 +188,8 @@ export const updateCoupon = asyncHandler(async (req: IApiRequest, res: Response)
   const settings = await Settings.findOne(null, { "general.timezone": 1 });
   if (!settings?.general?.timezone) return apiResponse(res, 400, false, "Setup TimeZone First!");
 
-  const systemTime = getUTC(updatedBody.startedAt, Number(settings.general.timezone.value), true);
-  const expireTime = getUTC(updatedBody.expiredAt, Number(settings.general.timezone.value), false, true);
+  const systemTime = getUTC(updatedBody.startedAt, settings.general.timezone.label, true);
+  const expireTime = getUTC(updatedBody.expiredAt, settings.general.timezone.label, false, true);
 
   updatedBody.startedAt = systemTime;
   updatedBody.expiredAt = expireTime;
@@ -196,7 +198,6 @@ export const updateCoupon = asyncHandler(async (req: IApiRequest, res: Response)
 
   return apiResponse(res, 200, true, "Coupon updated successfully!", updatedData);
 });
-
 /**
  * Update Status A Single Coupon
  * @param {Request} req - The HTTP request object.
@@ -225,7 +226,6 @@ export const updateCouponStatus = asyncHandler(async (req: IApiRequest, res: Res
 
   return apiResponse(res, 200, true, "Coupon status updated successfully!");
 });
-
 /**
  * Soft Delete A Coupon
  * @param {Request} req - The HTTP request object.

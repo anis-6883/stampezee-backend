@@ -11,6 +11,7 @@ import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
 import { IApiRequest } from "../../types";
 import { notificationBasedOnLocationSchema, notificationSchema, superAdminNotificationSchema } from "./validation";
+import { convertToUTC } from "../../helpers/moment";
 
 /**
  * Send A Notification to All Customers (Retailer)
@@ -110,11 +111,8 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
   // Scheduling logic for notifications
   const scheduleNotification = async (tokens: string[] = []) => {
     if (scheduleAt) {
-      const isoDateString = `${scheduleAt.replace(" ", "T")}:00.000Z`;
-      const localTime = new Date(isoDateString);
-      const scheduleAtUTC = getUTC(localTime, Number(req.user.timezone.value));
+      const scheduleAtUTC = convertToUTC(scheduleAt, req.user.timezone.label);
       notificationObj.scheduleAt = scheduleAtUTC;
-
       schedule.scheduleJob(scheduleAtUTC, async () => await sendNotification(tokens));
     } else {
       await sendNotification(tokens);
@@ -231,11 +229,8 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
   // Scheduling logic for notifications
   const scheduleNotification = async (tokens: string[] = []) => {
     if (scheduleAt) {
-      const isoDateString = `${scheduleAt.replace(" ", "T")}:00.000Z`;
-      const localTime = new Date(isoDateString);
-      const scheduleAtUTC = getUTC(localTime, Number(req.user.timezone.value));
+      const scheduleAtUTC = convertToUTC(scheduleAt, req.user.timezone.label);
       notificationObj.scheduleAt = scheduleAtUTC;
-
       schedule.scheduleJob(scheduleAtUTC, async () => await sendNotification(tokens));
     } else {
       await sendNotification(tokens);
@@ -527,11 +522,8 @@ export const sendNotificationBySuperAdmin = asyncHandler(async (req: IApiRequest
   // Scheduling logic for notifications
   const scheduleNotification = async (tokens: string[] = []) => {
     if (scheduleAt) {
-      const isoDateString = `${scheduleAt.replace(" ", "T")}:00.000Z`;
-      const localTime = new Date(isoDateString);
-      const scheduleAtUTC = getUTC(localTime, Number(settings.general.timezone.value));
+      const scheduleAtUTC = convertToUTC(scheduleAt, settings.general.timezone.label);
       notificationObj.scheduleAt = scheduleAtUTC;
-
       schedule.scheduleJob(scheduleAtUTC, async () => await sendNotification(tokens));
     } else {
       await sendNotification(tokens);
