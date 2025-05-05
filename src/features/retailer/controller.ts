@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import { Response } from "express";
 import moment from "moment";
-import mongoose from "mongoose";
+import mongoose, { Types } from "mongoose";
 import { PACKAGES } from "../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, makePaginate } from "../../helpers";
@@ -9,11 +9,11 @@ import Branch from "../../models/branch";
 import EnrollSubscription from "../../models/enroll-subscription";
 import Enrollment from "../../models/enrollment";
 import Retailer from "../../models/retailer";
+import SubAdmin from "../../models/sub-admin";
 import Subscription from "../../models/subscription";
 import { IApiRequest } from "../../types";
 import { sendRegistrationMail } from "./service";
 import { retailerSchema, retailerSchemaUpdate, retailerStatusSchema } from "./validation";
-import SubAdmin from "../../models/sub-admin";
 
 /**
  * Create A Retailer
@@ -511,6 +511,76 @@ export const updateRetailer = asyncHandler(async (req: IApiRequest, res: Respons
   }
 
   return apiResponse(res, 200, true, "Retailer updated successfully!", retailer);
+});
+
+/**
+ * Retailer Payments
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const retailerPayments = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { page = 1, limit = 10, search }: any = req.query;
+  const skip: number = (Number(page) - 1) * Number(limit);
+
+  const query: any = {
+    retailerId: Types.ObjectId.createFromHexString(String(req.params.id)),
+    paymentStatus: { $in: ["completed", "trial"] },
+  };
+
+  if (search) {
+    const regex = { $regex: search, $options: "i" };
+    query["stripe.subscriptionId"] = regex;
+  }
+
+  const [docs, total] = await Promise.all([
+    Enrollment.aggregate([
+      {
+        $match: query,
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
+        $lookup: {
+          from: "enroll_subscriptions",
+          localField: "_id",
+          foreignField: "enrollmentId",
+          as: "enrollSubscriptions",
+          pipeline: [
+            {
+              $project: {
+                subscriptionItemId: 1,
+                title: "$planSnapshot.title",
+                slug: "$planSnapshot.slug",
+                type: "$planSnapshot.type",
+                deletedByRetailerAt: 1,
+                validAtAfterCancel: 1,
+              },
+            },
+            {
+              $sort: {
+                type: -1,
+              },
+            },
+          ],
+        },
+      },
+    ]),
+    Enrollment.countDocuments(query),
+  ]);
+
+  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
+
+  return apiResponse(res, 200, true, "Retailer payments fetched successfully!", data);
 });
 
 /**

@@ -6,6 +6,7 @@ import {
   getAllDeletedRetailers,
   getAllRetailers,
   getSingleRetailer,
+  retailerPayments,
   softDeleteRetailer,
   updateRetailer,
   updateRetailerStatus,
@@ -18,6 +19,7 @@ const router = express.Router();
 router.post("/", upload.single("image"), createRetailer);
 router.get("/all", getAllRetailers);
 router.get("/deleted", getAllDeletedRetailers);
+router.get("/payments/:id", retailerPayments);
 router.put("/status/:id", updateRetailerStatus);
 router.delete("/confirm/:id", confirmDeleteRetailer);
 router.get("/:id", getSingleRetailer);
