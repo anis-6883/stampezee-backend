@@ -1,5 +1,6 @@
 import Joi from "joi";
 import {
+  booleanField,
   emailField,
   requiredBooleanField,
   requiredEmailField,
@@ -23,6 +24,7 @@ export const subAdminSchema2 = Joi.object({
   branchId: stringField("branchId"),
   firstName: stringField("firstName"),
   lastName: stringField("lastName"),
+  deleteImageOnUpdate: booleanField("deleteImageOnUpdate"),
 });
 
 export const subAdminStatusSchema = Joi.object({
