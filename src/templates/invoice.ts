@@ -1481,14 +1481,7 @@ export const getInvoiceTemplate = ({
     </tr>`
       : ""
   }
-  ${
-    invoiceMetadata?.extraPayableAmount
-      ? `<tr>
-      <td style="padding-left: 10px; text-align: left;" colspan="3" class="title">Extra Pay for Prev. Add-ons</td>
-      <td class="text-right pr-45">${invoiceMetadata?.extraPayableAmount}</td>
-    </tr>`
-      : ""
-  }
+  
   <tr>
     <td></td>
   </tr>
@@ -2100,14 +2093,7 @@ export const getInvoiceTemplatePdf = ({
                 </tr>`
                     : ""
                 }
-                ${
-                  invoiceMetadata?.extraPayableAmount
-                    ? `<tr>
-                    <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Extra Pay for Prev. Add-ons</td>
-                    <td style="border-bottom: none" class="text-right">${invoiceMetadata?.extraPayableAmount}</td>
-                  </tr>`
-                    : ""
-                }
+               
                 <tr>
                   <td style="border-bottom: none"></td>
                 </tr>

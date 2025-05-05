@@ -212,7 +212,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         const now = moment();
         const expireDate = moment().add(subscription.duration, "days");
 
-        const [enrollment, retailer] = await Promise.all([
+        const [enrollment, retailer]: any = await Promise.all([
           Enrollment.create({
             retailerId: req.user._id,
             planExists: PACKAGES.TRIAL,
@@ -266,6 +266,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           bankName: "Fauget Bank",
           accountName: "Juliana Silva",
           accountNo: "123-456-7890",
+          date: enrollment?.createdAt,
         };
 
         await sendInvoiceToEmail({
@@ -500,7 +501,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
       let totalCouponAmount = balanceAmount ?? 0;
 
-      const enrollment = await Enrollment.create({
+      const enrollment: any = await Enrollment.create({
         retailerId: req.user._id,
         planExists: pickPlan ? pickPlan?.slug : null,
         taxSnapshot: {
@@ -945,6 +946,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             bankName: "Fauget Bank",
             accountName: "Juliana Silva",
             accountNo: "123-456-7890",
+            date: enrollment?.createdAt,
           };
 
           await sendInvoiceToEmail({
@@ -1608,7 +1610,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     }
 
     // Store Payment Info
-    const payment = await Payment.create({
+    const payment: any = await Payment.create({
       enrollmentId: enrollment?._id,
       enrollSubscriptionIds: Object.keys(subscriptionItemsMap),
       coupon: {
@@ -1732,6 +1734,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       bankName: "Fauget Bank",
       accountName: "Juliana Silva",
       accountNo: "123-456-7890",
+      date: payment?.createdAt,
     };
 
     await Promise.all(updateSubscriptions);

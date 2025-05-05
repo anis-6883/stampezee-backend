@@ -101,7 +101,7 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     const freeTrial = await Subscription.findOne({ slug: "trial" });
     if (!freeTrial) return apiResponse(res, 400, false, "Free trial package not found!");
 
-    const enrollment = await Enrollment.create({
+    const enrollment: any = await Enrollment.create({
       retailerId: retailer._id,
       planExists: PACKAGES.TRIAL,
       paymentStatus: "trial",
@@ -152,6 +152,7 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
       bankName: "Fauget Bank",
       accountName: "Juliana Silva",
       accountNo: "123-456-7890",
+      date: enrollment.createdAt,
     };
 
     await sendInvoiceToEmail({

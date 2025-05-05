@@ -2423,3 +2423,13 @@ export function getNextBillingDateInDays(currentDate: Date) {
 
   return daysUntilNextBilling;
 }
+
+export function getFormattedDateForInvoice(date: Date = new Date()): string {
+  if (!(date instanceof Date) || isNaN(date.getTime())) {
+    throw new Error("Invalid date provided. Expected a valid Date object.");
+  }
+
+  const month = date.toLocaleString("default", { month: "short" }).toLowerCase();
+  const year = date.getFullYear();
+  return `${month}-${year}`;
+}
