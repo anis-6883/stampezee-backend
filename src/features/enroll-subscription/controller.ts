@@ -470,12 +470,27 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       //////// Plan Upgrade /////////
       ///////////////////////////////
       if (changeMode > 0) {
+        let couponAppliedOnUpgrade = false;
+
         // Add New Plan & Add-on into new enrollment
         for (const subscription of subscriptions) {
           let finalPrice = 0;
           let taxValue = 0;
+          let couponValue = 0;
 
           finalPrice = Number((selectCurrency.exchangeRate * subscription.price).toFixed(2));
+
+          //Check coupon eligibility & apply
+          if (coupon && appliedSlugs.includes(subscription.slug)) {
+            couponAppliedOnUpgrade = true;
+
+            couponValue =
+              coupon.discountType === "percentage"
+                ? (finalPrice * coupon?.discount) / 100
+                : selectCurrency.exchangeRate * coupon?.discount;
+
+            totalCouponAmount += Number(couponValue.toFixed(2));
+          }
 
           // Only tax apply
           if (taxStatus === "on") {
@@ -518,7 +533,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         }
 
         const applyCoupon = await stripe.coupons.create({
-          name: "Current Balance",
+          name: couponAppliedOnUpgrade ? "Coupon + Current Balance" : "Current Balance",
           amount_off:
             selectCurrency?.currency === "JPY"
               ? Math.round(Number(totalCouponAmount))
