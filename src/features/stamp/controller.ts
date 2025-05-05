@@ -120,7 +120,6 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
 
   const systemTime = getUTC(createBody.startedAt, req.user.timezone.label, true);
   const expireTime = getUTC(createBody.expiredAt, req.user.timezone.label, false, true);
-
   createBody.startedAt = systemTime;
   createBody.expiredAt = expireTime;
 

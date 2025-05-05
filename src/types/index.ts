@@ -77,7 +77,6 @@ export interface IUser {
   businessCurrency?: any;
   timezone?: {
     label: string;
-    value: string;
   };
 }
 

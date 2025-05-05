@@ -13,7 +13,6 @@ interface IGeneral extends Document {
   contactEmail: string;
   timezone: {
     label: string;
-    value: string;
   };
   androidDownloadLink?: string;
   iosDownloadLink?: string;
@@ -91,7 +90,6 @@ const settingsSchema = new Schema<ISettings>(
       contactEmail: { type: String, default: "", trim: true },
       timezone: {
         label: { type: String, default: "", trim: true },
-        value: { type: String, default: "", trim: true },
       },
       androidDownloadLink: { type: String, default: "", trim: true },
       iosDownloadLink: { type: String, default: "", trim: true },

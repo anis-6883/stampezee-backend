@@ -30,7 +30,6 @@ export const retailerSchema = Joi.object({
   latitude: requiredStringField("latitude"),
   timezone: Joi.object({
     label: stringField("label"),
-    value: numberField("value"),
   }),
 });
 
@@ -55,7 +54,6 @@ export const retailerSchemaUpdate = Joi.object({
   latitude: stringField("latitude"),
   timezone: Joi.object({
     label: stringField("label"),
-    value: numberField("value"),
   }),
 });
 

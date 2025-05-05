@@ -20,7 +20,6 @@ export const settingsSchema = Joi.object({
     linkedin: stringField("iosDownloadLink"),
     timezone: Joi.object({
       label: stringField("label"),
-      value: numberField("value"),
     }),
   }).messages({
     "object.base": "general must be object!",
