@@ -158,9 +158,10 @@ export const superAdminDashboardRevenue = asyncHandler(async (req: IApiRequest, 
   ]);
 
   const data = {
-    totalRevenueInCAD: totalRevenue[0]?.totalRevenueInCAD - (totalRefund[0]?.totalRefundAmountInCAD || 0),
     activeSubscription,
-    totalRefundAmountInCAD: totalRefund[0]?.totalRefundAmountInCAD,
+    totalEarningInCAD: totalRevenue[0]?.totalRevenueInCAD || 0,
+    totalRefundAmountInCAD: totalRefund[0]?.totalRefundAmountInCAD || 0,
+    totalRevenueInCAD: (totalRevenue[0]?.totalRevenueInCAD || 0) - (totalRefund[0]?.totalRefundAmountInCAD || 0),
   };
 
   return apiResponse(res, 200, true, "Super admin revenue stats fetched successfully!", data);
