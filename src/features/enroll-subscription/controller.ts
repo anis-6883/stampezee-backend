@@ -30,7 +30,7 @@ import Subscription, { ISubscription } from "../../models/subscription";
 import { getInvoiceTemplate } from "../../templates/invoice";
 import { IApiRequest, IEnrollSubscriptionBody, ILineItem, Object } from "../../types";
 import { sendInvoiceToEmail } from "./service";
-import { couponSchema, enrollmentSchema, extraAddonSchema } from "./validation";
+import { couponSchema, enrollmentSchema } from "./validation";
 
 /**
  * Get Active Subscription Plans
@@ -127,66 +127,6 @@ export const couponValidityCheck = asyncHandler(async (req: IApiRequest, res: Re
 });
 
 /**
- * Extra Addon Check
- * @param {Request} req - The HTTP request object.
- * @param {Response} res - The HTTP response object.
- * @returns {Promise<void>} - A promise that resolves when the response is sent.
- */
-export const extraAddonCheck = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = await extraAddonSchema.validateAsync(req.body, {
-    abortEarly: false,
-  });
-
-  const { currency } = result;
-
-  const enrolled = await Enrollment.findOne({
-    retailerId: req.user._id,
-    planExists: { $ne: null },
-    paymentStatus: "completed",
-    validityTo: { $gt: moment() },
-    status: true,
-  });
-
-  if (!enrolled) return apiResponse(res, 400, false, `No active enrollment yet!`);
-
-  let extraPayableAmount = 0;
-
-  const [prevAddons, allowCurrencies] = await Promise.all([
-    EnrollSubscription.find({ enrollmentId: enrolled?._id, "planSnapshot.type": "addon", status: true }),
-    CurrencyExchange.find({ status: true }),
-  ]);
-
-  const selectCurrency = allowCurrencies.find((curr) => curr.currency === currency);
-  if (!selectCurrency) return apiResponse(res, 400, false, "Provided currency is not allowed!");
-
-  // Add Previous Add-on Payable Amount in totalAmount
-  for (const prevAddon of prevAddons) {
-    const convertToSelectedCurrency = Number(
-      ((selectCurrency.exchangeRate / enrolled.currencyRate) * prevAddon.planSnapshot.price).toFixed(2)
-    );
-
-    const addonBalanceAmount: number = calculateBalanceAmount(
-      enrolled.validityFrom,
-      enrolled.validityTo,
-      convertToSelectedCurrency
-    );
-
-    extraPayableAmount += convertToSelectedCurrency - addonBalanceAmount;
-  }
-
-  const data: Object = {};
-
-  if (extraPayableAmount > 0) {
-    data["addonExists"] = true;
-    data["payableAmount"] = extraPayableAmount.toFixed(2);
-  } else {
-    data["addonExists"] = false;
-  }
-
-  return apiResponse(res, 200, true, "Extra Payable Amount for Addon!", data);
-});
-
-/**
  * Enroll Subscription
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
@@ -212,7 +152,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         const now = moment();
         const expireDate = moment().add(subscription.duration, "days");
 
-        const [enrollment, retailer] = await Promise.all([
+        const [enrollment, retailer]: any = await Promise.all([
           Enrollment.create({
             retailerId: req.user._id,
             planExists: PACKAGES.TRIAL,
@@ -266,6 +206,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           bankName: "Fauget Bank",
           accountName: "Juliana Silva",
           accountNo: "123-456-7890",
+          date: enrollment?.createdAt,
         };
 
         await sendInvoiceToEmail({
@@ -473,7 +414,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     ////////////////////////////////////////////////////////////////////////
     const line_items: ILineItem[] = [];
     const coupons: { coupon: string }[] = [];
-    let extraPayableAmount = 0;
+    let stripeCustomerID = "";
 
     if (pickPlan && enrolled) {
       const changeMode: number = checkPlanChange(
@@ -500,7 +441,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
       let totalCouponAmount = balanceAmount ?? 0;
 
-      const enrollment = await Enrollment.create({
+      const enrollment: any = await Enrollment.create({
         retailerId: req.user._id,
         planExists: pickPlan ? pickPlan?.slug : null,
         taxSnapshot: {
@@ -517,6 +458,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
       metadata["enrollmentId"] = String(enrollment._id);
       metadata["balanceAmount"] = balanceAmount;
+      stripeCustomerID = enrolled.stripe.customerId;
 
       const prevAddons = await EnrollSubscription.find({
         enrollmentId: enrolled?._id,
@@ -528,12 +470,27 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       //////// Plan Upgrade /////////
       ///////////////////////////////
       if (changeMode > 0) {
+        let couponAppliedOnUpgrade = false;
+
         // Add New Plan & Add-on into new enrollment
         for (const subscription of subscriptions) {
           let finalPrice = 0;
           let taxValue = 0;
+          let couponValue = 0;
 
           finalPrice = Number((selectCurrency.exchangeRate * subscription.price).toFixed(2));
+
+          //Check coupon eligibility & apply
+          if (coupon && appliedSlugs.includes(subscription.slug)) {
+            couponAppliedOnUpgrade = true;
+
+            couponValue =
+              coupon.discountType === "percentage"
+                ? (finalPrice * coupon?.discount) / 100
+                : selectCurrency.exchangeRate * coupon?.discount;
+
+            totalCouponAmount += Number(couponValue.toFixed(2));
+          }
 
           // Only tax apply
           if (taxStatus === "on") {
@@ -576,7 +533,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         }
 
         const applyCoupon = await stripe.coupons.create({
-          name: "Current Balance",
+          name: couponAppliedOnUpgrade ? "Coupon + Current Balance" : "Current Balance",
           amount_off:
             selectCurrency?.currency === "JPY"
               ? Math.round(Number(totalCouponAmount))
@@ -935,16 +892,13 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                 }
               : null,
             total: `${parseFloat(Math.abs(totalAmount).toFixed(2))} ${enrollment?.currency}`,
-            extraPayableAmount:
-              enrollment?.enrollStatus === "purchase" || !Number(extraPayableAmount)
-                ? null
-                : Number(extraPayableAmount)?.toFixed(2),
           };
 
           const paymentInfo = {
             bankName: "Fauget Bank",
             accountName: "Juliana Silva",
             accountNo: "123-456-7890",
+            date: enrollment?.createdAt,
           };
 
           await sendInvoiceToEmail({
@@ -990,8 +944,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             } else {
               totalCouponAmount += addonBalanceAmount; // Minus Used Amount
             }
-
-            extraPayableAmount += convertToSelectedCurrency - addonBalanceAmount; // Send to Frontend
 
             // Only tax apply
             if (taxStatus === "on") {
@@ -1209,9 +1161,14 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           coupon: applyCoupon.id,
         });
       }
-    }
 
-    metadata["extraPayableAmount"] = extraPayableAmount;
+      const customer = await stripe.customers.create({
+        name: req?.user?.fullName,
+        email: req?.user?.email,
+      });
+
+      stripeCustomerID = customer.id;
+    }
 
     const session = await stripe.checkout.sessions.create({
       line_items,
@@ -1221,17 +1178,14 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       discounts: coupons,
       success_url: `${process.env.FRONTEND_URL}/payment/complete`,
       cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
-      customer_email: req?.user?.email,
+      customer: stripeCustomerID,
+      saved_payment_method_options: {
+        allow_redisplay_filters: ["always"],
+        payment_method_save: "enabled",
+      },
     });
 
     const data: Object = { url: session?.url };
-
-    if (extraPayableAmount > 0) {
-      data["addonExists"] = true;
-      data["payableAmount"] = extraPayableAmount.toFixed(2);
-    } else {
-      data["addonExists"] = false;
-    }
 
     return apiResponse(res, 200, true, "Send to Payment Page!", data);
   }
@@ -1459,7 +1413,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
   try {
     const [checkoutSession, retailer, freeTrailSubscription] = await Promise.all<[any, any, any]>([
       stripe.checkout.sessions.retrieve(eventObject.id),
-      Retailer.findOne({ email: eventObject.customer_email }),
+      Retailer.findOne({ email: eventObject.customer_details.email }),
       Subscription.findOne({ slug: "trial" }),
     ]);
 
@@ -1517,7 +1471,6 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     const {
       enrollmentId = null,
       balanceAmount = 0,
-      extraPayableAmount = 0,
       couponId = null,
       couponDiscountType = null,
       couponDiscount = 0,
@@ -1528,6 +1481,10 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     } = checkoutSession?.metadata;
 
     const enrollment = await Enrollment.findById(enrollmentId);
+    const newEnrollSubscription = await EnrollSubscription.findOne({
+      enrollmentId: enrollment?._id,
+      "planSnapshot.type": "subscription",
+    });
 
     // Deactivate last previous active plan
     if (enrollment?.planExists) {
@@ -1581,25 +1538,30 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
               Enrollment.findOneAndUpdate({ _id: prevEnrollment._id }, { status: false, planExists: null }),
             ]);
           }
-
-          // Update expiration for already created branch
-          if (enrollment?.planExists) {
-            updateSubscriptions.push(
-              Branch.updateMany(
-                {
-                  retailerId: retailer._id,
-                  source: "subscription",
-                },
-                { enrollSubscriptionId: enrollSubscription._id }
-              )
-            );
-          }
         }
+
+        // Update expiration for already created branch
+        await Promise.all([
+          Branch.updateMany(
+            {
+              retailerId: retailer._id,
+              source: "subscription",
+            },
+            { enrollSubscriptionId: newEnrollSubscription._id }
+          ),
+          Stamp.updateMany(
+            {
+              retailerId: retailer._id,
+              source: "subscription",
+            },
+            { enrollSubscriptionId: newEnrollSubscription._id }
+          ),
+        ]);
       }
     }
 
     // Store Payment Info
-    const payment = await Payment.create({
+    const payment: any = await Payment.create({
       enrollmentId: enrollment?._id,
       enrollSubscriptionIds: Object.keys(subscriptionItemsMap),
       coupon: {
@@ -1621,7 +1583,6 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       currency,
       currencyRate,
       taxCost,
-      extraPayableAmount: Number(extraPayableAmount)?.toFixed(2),
       balanceAmount,
       paymentMethodDetails: invoice?.payment_intent?.payment_method, // Kind of Log Store
     });
@@ -1711,10 +1672,6 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
           }
         : null,
       total: `${(checkoutSession?.amount_total / 100).toFixed(2)} ${enrollment?.currency}`,
-      extraPayableAmount:
-        enrollment?.enrollStatus === "purchase" || !Number(extraPayableAmount)
-          ? null
-          : Number(extraPayableAmount)?.toFixed(2),
     };
 
     // console.log({ purchasedItems, subTotal, taxValue, couponValue, balanceAmount, invoiceMetadata });
@@ -1723,6 +1680,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       bankName: "Fauget Bank",
       accountName: "Juliana Silva",
       accountNo: "123-456-7890",
+      date: payment?.createdAt,
     };
 
     await Promise.all(updateSubscriptions);

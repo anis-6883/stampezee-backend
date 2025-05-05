@@ -3,6 +3,7 @@ import moment from "moment-timezone";
 import { apiResponse, asyncHandler, countryData, generateRandomColor } from "../../helpers";
 import Branch from "../../models/branch";
 import CollectStamp from "../../models/collect-stamp";
+import CurrencyExchange from "../../models/currency-exchange";
 import Customer from "../../models/customer";
 import Enrollment from "../../models/enrollment";
 import OrderStamp from "../../models/order-stamp";
@@ -157,7 +158,7 @@ export const superAdminDashboardRevenue = asyncHandler(async (req: IApiRequest, 
   ]);
 
   const data = {
-    totalRevenueInCAD: totalRevenue[0]?.totalRevenueInCAD - totalRefund[0]?.totalRefundAmountInCAD || 0,
+    totalRevenueInCAD: totalRevenue[0]?.totalRevenueInCAD - (totalRefund[0]?.totalRefundAmountInCAD || 0),
     activeSubscription,
     totalRefundAmountInCAD: totalRefund[0]?.totalRefundAmountInCAD,
   };
@@ -307,6 +308,9 @@ export const topOutlets = asyncHandler(async (req: IApiRequest, res: Response) =
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const retailer = await Retailer.findById(req.user?._id, { businessCurrency: 1 });
+  const currencyExchange = await CurrencyExchange.findOne({ currency: retailer?.businessCurrency });
+
   const [customerStats, result] = await Promise.all([
     Retailer.aggregate([
       {
@@ -450,7 +454,28 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
                         input: "$order_stamps",
                         as: "order",
                         in: {
-                          $multiply: [{ $ifNull: ["$$order.amount", 0] }, { $ifNull: ["$$order.exchangeRate", 1] }],
+                          $cond: {
+                            if: {
+                              $and: [{ $ne: ["$$order.exchangeRate", 0] }, { $ne: ["$$order.exchangeRate", null] }],
+                            },
+                            then: {
+                              $round: [
+                                {
+                                  $multiply: [
+                                    {
+                                      $divide: [
+                                        { $ifNull: ["$$order.amount", 0] },
+                                        { $ifNull: ["$$order.exchangeRate", 1] },
+                                      ],
+                                    },
+                                    { $ifNull: [currencyExchange.exchangeRate, 1] },
+                                  ],
+                                },
+                                2,
+                              ],
+                            },
+                            else: 0,
+                          },
                         },
                       },
                     },

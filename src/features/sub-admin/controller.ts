@@ -220,6 +220,13 @@ export const updateSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
     deleteFileFromS3Bucket(prevImage?.image);
   }
 
+  if (updatedBody?.deleteImageOnUpdate) {
+    const prevImage = await SubAdmin.findById(id, { image: 1 });
+    deleteFileFromS3Bucket(prevImage?.image);
+
+    updatedBody.image = null;
+  }
+
   const subAdmin: any = await SubAdmin.findOneAndUpdate({ _id: id }, updatedBody, {
     new: true,
     projection: { password: 0, createdAt: 0, updatedAt: 0 },

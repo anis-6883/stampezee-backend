@@ -11,7 +11,6 @@ import adminRoutes from "../routes/admin.routes";
 import mobileRoutes from "../routes/mobile.routes";
 import webRoutes from "../routes/web.routes";
 import config from "./config";
-import { sendForgotPassEmail } from "../features/user/service";
 
 const app = express();
 const env = process.env.NODE_ENV || "development";

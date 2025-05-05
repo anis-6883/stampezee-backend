@@ -3,7 +3,13 @@ import fs from "fs";
 import { Types } from "mongoose";
 import path from "path";
 import Stripe from "stripe";
-import { apiResponse, asyncHandler, calculateBalanceAmount, htmlToPdf } from "../../helpers";
+import {
+  apiResponse,
+  asyncHandler,
+  calculateBalanceAmount,
+  getFormattedDateForInvoice,
+  htmlToPdf,
+} from "../../helpers";
 import { makePaginate } from "../../helpers/index";
 import CurrencyExchange, { ICurrencyExchange } from "../../models/currency-exchange";
 import EnrollSubscription from "../../models/enroll-subscription";
@@ -548,10 +554,6 @@ export const getRetailerBillingPdf = asyncHandler(async (req: IApiRequest, res: 
         }
       : null,
     total: `${parseFloat(Math.abs(payment[0]?.amountTotal).toFixed(2))} ${payment[0]?.enrollment?.currency}`,
-    extraPayableAmount:
-      payment[0]?.enrollment?.enrollStatus === "purchase" || !payment[0]?.extraPayableAmount
-        ? null
-        : `${payment[0]?.extraPayableAmount} ${payment[0]?.enrollment?.currency}`,
   };
 
   const paymentInfo = {
@@ -566,7 +568,7 @@ export const getRetailerBillingPdf = asyncHandler(async (req: IApiRequest, res: 
   const pdfFileBuffer = path.join(process.cwd(), "/src/templates/invoice.pdf");
 
   res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", 'attachment; filename="invoice.pdf"');
+  res.setHeader("Content-Disposition", `attachment; filename="${getFormattedDateForInvoice(payment[0]?.createdAt)}"`);
   const stream = fs.createReadStream(pdfFileBuffer);
   stream.pipe(res);
 
@@ -609,6 +611,7 @@ export const getRetailerBillingPdfForFreeTrial = asyncHandler(async (req: IApiRe
     bankName: "Fauget Bank",
     accountName: "Juliana Silva",
     accountNo: "123-456-7890",
+    date: req?.body?.createdAt,
   };
 
   await htmlToPdf({ customerInfo, purchasedItems, invoiceMetadata, paymentInfo });

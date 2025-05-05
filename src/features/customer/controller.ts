@@ -5,6 +5,7 @@ import { ROLE } from "../../configs/constants";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import Branch from "../../models/branch";
 import CollectStamp from "../../models/collect-stamp";
+import CurrencyExchange from "../../models/currency-exchange";
 import Customer from "../../models/customer";
 import OrderStamp from "../../models/order-stamp";
 import { IApiRequest, IUser, Object } from "../../types";
@@ -104,12 +105,15 @@ export const getAllCustomers = asyncHandler(async (req: IApiRequest, res: Respon
 export const getSingleCustomer = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
   const query: Object = {};
+  let currencyExchangeRate = 1;
 
   if (req.role === ROLE.RETAILER) {
     const branches = await Branch.find({ retailerId: req.user._id }).select("_id");
     const branchIds = branches.map((branch) => branch._id);
-
     query.branchId = { $in: branchIds };
+
+    const currencyExchange = await CurrencyExchange.findOne({ currency: req.user?.businessCurrency });
+    currencyExchangeRate = currencyExchange?.exchangeRate ?? 1;
   }
 
   const customer = await Customer.aggregate([
@@ -146,7 +150,35 @@ export const getSingleCustomer = asyncHandler(async (req: IApiRequest, res: Resp
       $addFields: {
         totalCollectStamp: { $size: "$collectStamps" },
         totalScan: { $size: "$orderStamps" },
-        totalPurchased: { $sum: "$orderStamps.amount" },
+        totalPurchased: {
+          $sum: {
+            $map: {
+              input: "$orderStamps",
+              as: "order",
+              in: {
+                $cond: {
+                  if: {
+                    $and: [{ $ne: ["$$order.exchangeRate", 0] }, { $ne: ["$$order.exchangeRate", null] }],
+                  },
+                  then: {
+                    $round: [
+                      {
+                        $multiply: [
+                          {
+                            $divide: [{ $ifNull: ["$$order.amount", 0] }, { $ifNull: ["$$order.exchangeRate", 1] }],
+                          },
+                          { $ifNull: [currencyExchangeRate, 1] },
+                        ],
+                      },
+                      2,
+                    ],
+                  },
+                  else: 0,
+                },
+              },
+            },
+          },
+        },
         totalRewardCollect: {
           $size: {
             $filter: {
