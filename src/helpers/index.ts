@@ -106,6 +106,14 @@ export const numberField = (fieldName: string) =>
     "number.base": `${fieldName} must be number!`,
   });
 
+export const numberAndNullField = (fieldName: string) =>
+  Joi.number()
+    .allow(null)
+    .messages({
+      "number.base": `${fieldName} must be a number`,
+      "any.required": `${fieldName} is required`,
+    });
+
 export const booleanField = (fieldName: string) =>
   Joi.boolean().messages({
     "boolean.base": `${fieldName} be boolean!`,
