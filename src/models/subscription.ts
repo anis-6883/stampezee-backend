@@ -11,6 +11,8 @@ export interface ISubscription extends Document {
   allowTotalBranch?: number | null;
   allowTotalTeamMember?: number | null;
   allowTotalStamp?: number | null;
+  allowTotalScan?: number | null;
+  allowTotalUser?: number | null;
   image?: string | null;
   status?: boolean;
   softDeleted?: boolean;
@@ -34,6 +36,8 @@ const subscriptionSchema = new Schema<ISubscription>(
     allowTotalBranch: { type: Number, trim: true, default: null },
     allowTotalTeamMember: { type: Number, trim: true, default: null },
     allowTotalStamp: { type: Number, trim: true, default: null },
+    allowTotalScan: { type: Number, trim: true, default: null },
+    allowTotalUser: { type: Number, trim: true, default: null },
     image: { type: String, default: null },
     status: { type: Boolean, default: true },
     softDeleted: { type: Boolean, default: false },

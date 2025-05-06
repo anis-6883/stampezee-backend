@@ -10,6 +10,7 @@ import Sorting from "../../../../models/sorting";
 import Stamp from "../../../../models/stamp";
 import { IApiRequest } from "../../../../types";
 import { collectStampSchema } from "./validation";
+import Subscription from "../../../../models/subscription";
 
 /**
  * Get All Stamp Categories
@@ -111,16 +112,79 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
     },
   });
 
+  const freeTrialRetailers = await Enrollment.aggregate([
+    {
+      $match: {
+        planExists: "trial",
+        validityTo: { $gt: new Date() },
+        status: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "order_stamps",
+        let: { retailerId: "$retailerId" },
+        pipeline: [
+          {
+            $match: {
+              $expr: { $eq: ["$retailerId", "$$retailerId"] },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalOrders: { $sum: 1 },
+              customerIds: { $addToSet: "$customerId" },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              totalOrders: 1,
+              uniqueCustomers: { $size: "$customerIds" },
+            },
+          },
+        ],
+        as: "orderStats",
+      },
+    },
+    {
+      $addFields: {
+        totalOrders: { $ifNull: [{ $arrayElemAt: ["$orderStats.totalOrders", 0] }, 0] },
+        uniqueCustomers: { $ifNull: [{ $arrayElemAt: ["$orderStats.uniqueCustomers", 0] }, 0] },
+      },
+    },
+    {
+      $project: {
+        retailerId: 1,
+        totalOrders: 1,
+        uniqueCustomers: 1,
+      },
+    },
+  ]);
+
+  const subscription = await Subscription.findOne({ slug: "trial" }).select("allowTotalUser allowTotalScan");
+
   const activeSubscriptionRetailerIds = (
     await Enrollment.find(
       {
-        planExists: { $ne: null },
+        planExists: { $nin: [null, "trial"] },
         validityTo: { $gt: new Date() },
         status: true,
       },
       { retailerId: 1 }
     )
   ).map(({ retailerId }) => retailerId);
+
+  if (subscription?.allowTotalScan || subscription?.allowTotalUser) {
+    freeTrialRetailers.forEach((retailer: any) => {
+      if (subscription.allowTotalScan && retailer.totalOrders < subscription.allowTotalScan) {
+        activeSubscriptionRetailerIds.push(retailer.retailerId);
+      } else if (subscription.allowTotalUser && retailer.uniqueCustomers < subscription.allowTotalUser) {
+        activeSubscriptionRetailerIds.push(retailer.retailerId);
+      }
+    });
+  }
 
   const [branchSortByGio, docs, total] = await Promise.all([
     Branch.aggregate(gioPipeline),
@@ -136,6 +200,14 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
           retailerId: { $in: activeSubscriptionRetailerIds },
           ...(categoryId && { categoryId: mongoose.Types.ObjectId.createFromHexString(categoryId) }),
           ...(search && { $or: [{ title: { $regex: search, $options: "i" } }, { branchId: { $in: branchIds } }] }),
+        },
+      },
+      {
+        $lookup: {
+          from: "order_stamps",
+          localField: "retailerId",
+          foreignField: "retailerId",
+          as: "orderStamps",
         },
       },
       {

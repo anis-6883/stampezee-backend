@@ -1,5 +1,6 @@
 import Joi from "joi";
 import {
+  numberAndNullField,
   numberField,
   requiredBooleanField,
   requiredNumberField,
@@ -58,6 +59,16 @@ export const subscriptionSchema = Joi.object({
     then: requiredNumberField("allowTotalStamp"),
     otherwise: numberField("allowTotalStamp"),
   }),
+  allowTotalScan: Joi.alternatives().conditional("type", {
+    is: "subscription",
+    then: numberAndNullField("allowTotalScan"),
+    otherwise: numberAndNullField("allowTotalScan"),
+  }),
+  allowTotalUser: Joi.alternatives().conditional("type", {
+    is: "subscription",
+    then: numberAndNullField("allowTotalUser"),
+    otherwise: numberAndNullField("allowTotalUser"),
+  }),
   limit: Joi.alternatives().conditional("type", {
     is: "addon",
     then: requiredNumberField("limit"),
@@ -75,6 +86,8 @@ export const updateSubscriptionSchema = Joi.object({
   allowTotalBranch: numberField("allowTotalBranch"),
   allowTotalTeamMember: numberField("allowTotalTeamMember"),
   allowTotalStamp: numberField("allowTotalStamp"),
+  allowTotalScan: numberAndNullField("allowTotalScan"),
+  allowTotalUser: numberAndNullField("allowTotalUser"),
   limit: numberField("limit"),
 });
 
