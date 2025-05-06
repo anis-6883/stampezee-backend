@@ -59,28 +59,17 @@ export const createCategory = asyncHandler(async (req: IApiRequest, res: Respons
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getAllCategories = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10, search } = req.query;
-  const skip: number = (Number(page) - 1) * Number(limit);
-
+  const { search } = req.query;
   const query: any = { softDeleted: false };
 
-  if (search) {
-    const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
-    query.name = regex;
-  }
+  if (search) query.name = new RegExp(`.*${search}.*`, "i");
 
-  const [docs, total] = await Promise.all([
-    Category.find(query).limit(Number(limit)).skip(skip),
-    Category.find(query).countDocuments(),
-  ]);
-
+  const docs = await Category.find(query);
   const sorting = await Sorting.findOne({ title: "category" });
   const sortedIds = sorting ? sorting.sortedData : [];
 
   const categoryMap = new Map(docs.map((category) => [category._id.toString(), category]));
-  const sortedList = sortedIds.map((id) => categoryMap.get(id)).filter(Boolean);
-
-  const data = makePaginate(sortedList, Number(page), Number(limit), skip, total);
+  const data = sortedIds.map((id) => categoryMap.get(id)).filter(Boolean);
 
   return apiResponse(res, 200, true, "Categories fetched successfully!", data);
 });

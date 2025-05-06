@@ -102,20 +102,65 @@ export const getAllRefundsForSuperAdmin = asyncHandler(async (req: IApiRequest, 
                 pipeline: [
                   {
                     $project: {
-                      otp: 0,
-                      otpExpiry: 0,
-                      password: 0,
+                      storeName: 1,
+                      firstName: 1,
+                      lastName: 1,
+                      fullName: 1,
+                      email: 1,
+                      image: 1,
+                      phone: 1,
+                      dialCode: 1,
+                      country: 1,
                     },
                   },
                 ],
               },
             },
             {
-              $unwind: "$retailer",
+              $unwind: {
+                path: "$retailer",
+                preserveNullAndEmptyArrays: true,
+              },
             },
             {
-              $project: {
-                retailerId: 0,
+              $lookup: {
+                from: "enroll_subscriptions",
+                localField: "_id",
+                foreignField: "enrollmentId",
+                as: "enrollSubscription",
+                pipeline: [
+                  {
+                    $match: {
+                      "planSnapshot.type": "subscription",
+                    },
+                  },
+                  {
+                    $project: {
+                      "planSnapshot.price": 1,
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              $unwind: {
+                path: "$enrollSubscription",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+            {
+              $lookup: {
+                from: "payments",
+                localField: "_id",
+                foreignField: "enrollmentId",
+                as: "payments",
+                pipeline: [
+                  {
+                    $project: {
+                      paymentMethodDetails: 0,
+                    },
+                  },
+                ],
               },
             },
           ],
@@ -124,6 +169,63 @@ export const getAllRefundsForSuperAdmin = asyncHandler(async (req: IApiRequest, 
       {
         $unwind: {
           path: "$enrollment",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "enrollments",
+          localField: "prevEnrollmentId",
+          foreignField: "_id",
+          as: "prevEnrollment",
+          pipeline: [
+            {
+              $lookup: {
+                from: "enroll_subscriptions",
+                localField: "_id",
+                foreignField: "enrollmentId",
+                as: "enrollSubscription",
+                pipeline: [
+                  {
+                    $match: {
+                      "planSnapshot.type": "subscription",
+                    },
+                  },
+                  {
+                    $project: {
+                      "planSnapshot.price": 1,
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              $unwind: {
+                path: "$enrollSubscription",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+            {
+              $lookup: {
+                from: "payments",
+                localField: "_id",
+                foreignField: "enrollmentId",
+                as: "payments",
+                pipeline: [
+                  {
+                    $project: {
+                      paymentMethodDetails: 0,
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: "$prevEnrollment",
           preserveNullAndEmptyArrays: true,
         },
       },

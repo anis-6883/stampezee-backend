@@ -36,16 +36,18 @@ export const createCoupon = asyncHandler(async (req: IApiRequest, res: Response)
   if (subscriptions.length === 0) return apiResponse(res, 400, false, "Provided invalid packages!");
 
   if (createBody.discountType === "flat") {
-    subscriptions.forEach((subscription: any) => {
+    let greaterValue = "";
+
+    for (const subscription of subscriptions) {
       if (createBody.discount >= subscription.price / 2) {
-        return apiResponse(
-          res,
-          400,
-          false,
-          `Discount must be less than ${Number(subscription.price / 2).toFixed(2)} CAD of the package price!`
-        );
+        greaterValue = Number(subscription.price / 2).toFixed(2);
+        break;
       }
-    });
+    }
+
+    if (greaterValue) {
+      return apiResponse(res, 400, false, `Discount must be less than ${greaterValue} CAD of the package price!`);
+    }
   }
 
   const settings = await Settings.findOne(null, { "general.timezone": 1 });
@@ -173,16 +175,18 @@ export const updateCoupon = asyncHandler(async (req: IApiRequest, res: Response)
   if (subscriptions.length === 0) return apiResponse(res, 400, false, "Provided invalid packages!");
 
   if (updatedBody.discountType === "flat") {
-    subscriptions.forEach((subscription: any) => {
+    let greaterValue = "";
+
+    for (const subscription of subscriptions) {
       if (updatedBody.discount >= subscription.price / 2) {
-        return apiResponse(
-          res,
-          400,
-          false,
-          `Discount must be less than ${Number(subscription.price / 2).toFixed(2)} CAD of the package price!`
-        );
+        greaterValue = Number(subscription.price / 2).toFixed(2);
+        break;
       }
-    });
+    }
+
+    if (greaterValue) {
+      return apiResponse(res, 400, false, `Discount must be less than ${greaterValue} CAD of the package price!`);
+    }
   }
 
   const settings = await Settings.findOne(null, { "general.timezone": 1 });
