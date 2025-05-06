@@ -315,7 +315,7 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
     );
 
     // Step 1: Calculate Balance Amount & Check Refund
-    const balanceAmount: number = calculateBalanceAmount(
+    const [balanceAmount, usageAmount]: number[] = calculateBalanceAmount(
       enrollment.validityFrom,
       enrollment.validityTo,
       convertToSelectedCurrency
@@ -328,6 +328,7 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
         currencyRate: enrollment.currencyRate,
         enrollmentId: enrollment._id,
         refundAmount: parseFloat(Math.abs(balanceAmount).toFixed(2)),
+        usageAmount,
         refundStatus: "pending",
         plan: enrollSubscription?.planSnapshot?.slug,
         reason: "cancelled",

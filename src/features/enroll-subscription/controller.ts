@@ -433,7 +433,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         ((selectCurrency.exchangeRate / enrolled.currencyRate) * subscriptionPlan.planCurrentPrice).toFixed(2)
       );
 
-      const balanceAmount: number = calculateBalanceAmount(
+      const [balanceAmount, usageAmount]: number[] = calculateBalanceAmount(
         enrolled.validityFrom,
         enrolled.validityTo,
         convertToSelectedCurrency
@@ -614,7 +614,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             (selectCurrency.exchangeRate * prevAddon.planSnapshot.price).toFixed(2)
           );
 
-          const addonBalanceAmount: number = calculateBalanceAmount(
+          const [addonBalanceAmount]: number[] = calculateBalanceAmount(
             enrolled.validityFrom,
             enrolled.validityTo,
             convertToSelectedCurrency
@@ -640,7 +640,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               ((selectCurrency.exchangeRate / enrolled.currencyRate) * prevAddon.planCurrentPrice).toFixed(2)
             );
 
-            const addonBalanceAmount: number = calculateBalanceAmount(
+            const [addonBalanceAmount]: number[] = calculateBalanceAmount(
               enrolled.validityFrom,
               enrolled.validityTo,
               convertToSelectedCurrency
@@ -813,6 +813,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                 currency,
                 currencyRate: selectCurrency.exchangeRate,
                 refundAmount: parseFloat(Math.abs(totalAmount).toFixed(2)),
+                usageAmount,
                 refundStatus: "pending",
                 plan: pickPlan?.slug,
                 reason: "downgrade",
@@ -932,7 +933,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               ((selectCurrency.exchangeRate / enrolled.currencyRate) * prevAddon.planSnapshot.price).toFixed(2)
             );
 
-            const addonBalanceAmount: number = calculateBalanceAmount(
+            const [addonBalanceAmount]: number[] = calculateBalanceAmount(
               enrolled.validityFrom,
               enrolled.validityTo,
               convertToSelectedCurrency

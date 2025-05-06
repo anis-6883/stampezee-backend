@@ -358,7 +358,7 @@ export const checkPlanChange = (plans: string[], previousPlan: string, currentPl
   }
 };
 
-export const calculateBalanceAmount = (startDate: Date, expirationDate: Date, planPrice: number) => {
+export const calculateBalanceAmount = (startDate: Date, expirationDate: Date, planPrice: number): number[] => {
   const start = new Date(startDate);
   const end = new Date(expirationDate);
   const today = new Date();
@@ -374,7 +374,7 @@ export const calculateBalanceAmount = (startDate: Date, expirationDate: Date, pl
   const effectiveElapsedDuration = Math.min(Math.max(elapsedDuration, 0), totalDuration);
   const consumedPrice = (effectiveElapsedDuration / totalDuration) * planPrice;
 
-  return parseFloat((planPrice - consumedPrice).toFixed(2)); // return 2 decimal places
+  return [parseFloat((planPrice - consumedPrice).toFixed(2)), parseFloat(consumedPrice.toFixed(2))]; // return 2 decimal places
   // return planPrice - consumedPrice;
 };
 
