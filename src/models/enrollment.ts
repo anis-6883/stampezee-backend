@@ -17,7 +17,6 @@ export interface IEnrollment extends Document {
   currency: string;
   currencyRate: number;
   planChangeCost: number;
-  refundAmount: number;
   paymentStatus: "trial" | "pending" | "completed";
   enrollStatus: "trial" | "purchase" | "upgrade" | "downgrade";
   validityFrom?: Date;

@@ -102,9 +102,14 @@ export const getAllRefundsForSuperAdmin = asyncHandler(async (req: IApiRequest, 
                 pipeline: [
                   {
                     $project: {
-                      otp: 0,
-                      otpExpiry: 0,
-                      password: 0,
+                      firstName: 1,
+                      lastName: 1,
+                      fullName: 1,
+                      email: 1,
+                      image: 1,
+                      phone: 1,
+                      dialCode: 1,
+                      country: 1,
                     },
                   },
                 ],
@@ -114,8 +119,33 @@ export const getAllRefundsForSuperAdmin = asyncHandler(async (req: IApiRequest, 
               $unwind: "$retailer",
             },
             {
-              $project: {
-                retailerId: 0,
+              $lookup: {
+                from: "enroll_subscriptions",
+                localField: "_id",
+                foreignField: "enrollmentId",
+                as: "enrollSubscriptions",
+                pipeline: [
+                  {
+                    $match: {
+                      "planSnapshot.type": "subscription",
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              $lookup: {
+                from: "payments",
+                localField: "_id",
+                foreignField: "enrollmentId",
+                as: "payments",
+                pipeline: [
+                  {
+                    $project: {
+                      paymentMethodDetails: 0,
+                    },
+                  },
+                ],
               },
             },
           ],
