@@ -117,14 +117,17 @@ export const getAllRefundsForSuperAdmin = asyncHandler(async (req: IApiRequest, 
               },
             },
             {
-              $unwind: "$retailer",
+              $unwind: {
+                path: "$retailer",
+                preserveNullAndEmptyArrays: true,
+              },
             },
             {
               $lookup: {
                 from: "enroll_subscriptions",
                 localField: "_id",
                 foreignField: "enrollmentId",
-                as: "enrollSubscriptions",
+                as: "enrollSubscription",
                 pipeline: [
                   {
                     $match: {
@@ -132,6 +135,12 @@ export const getAllRefundsForSuperAdmin = asyncHandler(async (req: IApiRequest, 
                     },
                   },
                 ],
+              },
+            },
+            {
+              $unwind: {
+                path: "$enrollSubscription",
+                preserveNullAndEmptyArrays: true,
               },
             },
             {
