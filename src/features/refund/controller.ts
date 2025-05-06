@@ -102,6 +102,7 @@ export const getAllRefundsForSuperAdmin = asyncHandler(async (req: IApiRequest, 
                 pipeline: [
                   {
                     $project: {
+                      storeName: 1,
                       firstName: 1,
                       lastName: 1,
                       fullName: 1,
