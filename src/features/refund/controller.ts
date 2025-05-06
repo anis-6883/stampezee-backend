@@ -134,6 +134,11 @@ export const getAllRefundsForSuperAdmin = asyncHandler(async (req: IApiRequest, 
                       "planSnapshot.type": "subscription",
                     },
                   },
+                  {
+                    $project: {
+                      "planSnapshot.price": 1,
+                    },
+                  },
                 ],
               },
             },
@@ -164,6 +169,63 @@ export const getAllRefundsForSuperAdmin = asyncHandler(async (req: IApiRequest, 
       {
         $unwind: {
           path: "$enrollment",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "enrollments",
+          localField: "prevEnrollmentId",
+          foreignField: "_id",
+          as: "prevEnrollment",
+          pipeline: [
+            {
+              $lookup: {
+                from: "enroll_subscriptions",
+                localField: "_id",
+                foreignField: "enrollmentId",
+                as: "enrollSubscription",
+                pipeline: [
+                  {
+                    $match: {
+                      "planSnapshot.type": "subscription",
+                    },
+                  },
+                  {
+                    $project: {
+                      "planSnapshot.price": 1,
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              $unwind: {
+                path: "$enrollSubscription",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+            {
+              $lookup: {
+                from: "payments",
+                localField: "_id",
+                foreignField: "enrollmentId",
+                as: "payments",
+                pipeline: [
+                  {
+                    $project: {
+                      paymentMethodDetails: 0,
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: "$prevEnrollment",
           preserveNullAndEmptyArrays: true,
         },
       },
