@@ -54,8 +54,8 @@ export const superAdminDashboardCardStats = asyncHandler(async (req: IApiRequest
   const totalUser = totalVerifiedCustomer + totalVerifiedRetailer;
 
   const signup = {
-    retailer: ((totalVerifiedRetailer / totalUser) * 100).toFixed(2),
-    customer: ((totalVerifiedCustomer / totalUser) * 100).toFixed(2),
+    retailer: totalUser === 0 ? 0 : ((totalVerifiedRetailer / totalUser) * 100).toFixed(2),
+    customer: totalUser === 0 ? 0 : ((totalVerifiedCustomer / totalUser) * 100).toFixed(2),
   };
 
   const data = {
