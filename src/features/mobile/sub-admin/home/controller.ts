@@ -347,7 +347,10 @@ export const scanHistory = asyncHandler(async (req: IApiRequest, res: Response) 
         },
       },
       {
-        $unwind: "$retailer",
+        $unwind: {
+          path: "$retailer",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $project: {
@@ -442,13 +445,19 @@ export const recentScans = asyncHandler(async (req: IApiRequest, res: Response) 
               },
             },
             {
-              $unwind: "$stampDetails",
+              $unwind: {
+                path: "$stampDetails",
+                preserveNullAndEmptyArrays: true,
+              },
             },
           ],
         },
       },
       {
-        $unwind: "$collectedstamps",
+        $unwind: {
+          path: "$collectedstamps",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $addFields: {
@@ -516,7 +525,10 @@ export const orderDetails = asyncHandler(async (req: IApiRequest, res: Response)
             },
           },
           {
-            $unwind: "$stampDetails",
+            $unwind: {
+              path: "$stampDetails",
+              preserveNullAndEmptyArrays: true,
+            },
           },
         ],
       },
@@ -535,10 +547,16 @@ export const orderDetails = asyncHandler(async (req: IApiRequest, res: Response)
       },
     },
     {
-      $unwind: "$customer",
+      $unwind: {
+        path: "$customer",
+        preserveNullAndEmptyArrays: true,
+      },
     },
     {
-      $unwind: "$collectedstamps",
+      $unwind: {
+        path: "$collectedstamps",
+        preserveNullAndEmptyArrays: true,
+      },
     },
     {
       $addFields: {

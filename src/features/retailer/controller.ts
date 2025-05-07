@@ -444,7 +444,10 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
         },
       },
       {
-        $unwind: "$addonEnrollSubscriptions",
+        $unwind: {
+          path: "$addonEnrollSubscriptions",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $group: {

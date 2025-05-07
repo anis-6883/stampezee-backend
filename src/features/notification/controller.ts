@@ -3,7 +3,8 @@ import schedule from "node-schedule";
 import { PACKAGES } from "../../configs/constants";
 import notification from "../../configs/fcm";
 import { uploadFileToS3Bucket } from "../../configs/s3Bucket";
-import { apiResponse, asyncHandler, fileValidation, getUTC, makePaginate } from "../../helpers";
+import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
+import { convertToUTC } from "../../helpers/moment";
 import Customer from "../../models/customer";
 import Enrollment from "../../models/enrollment";
 import Notification from "../../models/notification";
@@ -11,7 +12,6 @@ import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
 import { IApiRequest } from "../../types";
 import { notificationBasedOnLocationSchema, notificationSchema, superAdminNotificationSchema } from "./validation";
-import { convertToUTC } from "../../helpers/moment";
 
 /**
  * Send A Notification to All Customers (Retailer)
@@ -53,7 +53,10 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
         },
       },
       {
-        $unwind: "$enrollSubscription",
+        $unwind: {
+          path: "$enrollSubscription",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $match: {
@@ -171,7 +174,10 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
         },
       },
       {
-        $unwind: "$enrollSubscription",
+        $unwind: {
+          path: "$enrollSubscription",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $match: {
@@ -357,7 +363,10 @@ export const getAllNotificationsForRetailer = asyncHandler(async (req: IApiReque
         },
       },
       {
-        $unwind: "$enrollSubscription",
+        $unwind: {
+          path: "$enrollSubscription",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $match: {

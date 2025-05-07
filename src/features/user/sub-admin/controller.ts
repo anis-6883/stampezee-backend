@@ -45,10 +45,16 @@ export const subAdminLogin = asyncHandler(async (req: Request, res: Response) =>
       },
     },
     {
-      $unwind: "$retailer",
+      $unwind: {
+        path: "$retailer",
+        preserveNullAndEmptyArrays: true,
+      },
     },
     {
-      $unwind: "$branch",
+      $unwind: {
+        path: "$branch",
+        preserveNullAndEmptyArrays: true,
+      },
     },
     {
       $project: {
@@ -113,10 +119,16 @@ export const subAdminProfile = asyncHandler(async (req: IApiRequest, res: Respon
       },
     },
     {
-      $unwind: "$retailer",
+      $unwind: {
+        path: "$retailer",
+        preserveNullAndEmptyArrays: true,
+      },
     },
     {
-      $unwind: "$branch",
+      $unwind: {
+        path: "$branch",
+        preserveNullAndEmptyArrays: true,
+      },
     },
     {
       $project: {

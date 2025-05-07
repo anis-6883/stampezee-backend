@@ -15,8 +15,7 @@ import Customer from "../../../models/customer";
 import OrderStamp from "../../../models/order-stamp";
 import SubAdmin from "../../../models/sub-admin";
 import { IApiRequest } from "../../../types";
-import { sendVerificationEmail, sendForgotPassEmail } from "../service";
-import { sendCustomerWelcomeEmail } from "./service";
+import { sendForgotPassEmail, sendVerificationEmail } from "../service";
 import {
   customerChangeForgetPasswordSchema,
   customerLoginSchema,
@@ -26,6 +25,7 @@ import {
   locationTokenSchema,
   verifyOtpSchema,
 } from "../validation";
+import { sendCustomerWelcomeEmail } from "./service";
 
 /**
  * Customer Registration & Send OTP
@@ -201,10 +201,16 @@ export const customerAndSubAdminLogin = asyncHandler(async (req: Request, res: R
       },
     },
     {
-      $unwind: "$retailer",
+      $unwind: {
+        path: "$retailer",
+        preserveNullAndEmptyArrays: true,
+      },
     },
     {
-      $unwind: "$branch",
+      $unwind: {
+        path: "$branch",
+        preserveNullAndEmptyArrays: true,
+      },
     },
     {
       $project: {
@@ -323,10 +329,16 @@ export const customerAndSubAdminProfile = asyncHandler(async (req: IApiRequest, 
         },
       },
       {
-        $unwind: "$retailer",
+        $unwind: {
+          path: "$retailer",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
-        $unwind: "$branch",
+        $unwind: {
+          path: "$branch",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $project: {

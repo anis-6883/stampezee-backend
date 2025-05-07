@@ -54,7 +54,10 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
         },
       },
       {
-        $unwind: "$enrollSubscription",
+        $unwind: {
+          path: "$enrollSubscription",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $match: {
@@ -305,7 +308,10 @@ export const getBranchCategoryImageList = asyncHandler(async (req: IApiRequest, 
               },
             },
             {
-              $unwind: "$enrollment",
+              $unwind: {
+                path: "$enrollment",
+                preserveNullAndEmptyArrays: true,
+              },
             },
             {
               $project: {

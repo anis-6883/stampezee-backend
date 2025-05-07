@@ -2,8 +2,8 @@ import { Response } from "express";
 import mongoose from "mongoose";
 import { apiResponse, asyncHandler, makePaginateForMobile } from "../../../../helpers";
 import CollectStamp from "../../../../models/collect-stamp";
-import { IApiRequest, IStamp } from "../../../../types";
 import Subscription from "../../../../models/subscription";
+import { IApiRequest, IStamp } from "../../../../types";
 
 /**
  * Get All Collected Stamps
@@ -69,7 +69,10 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
         },
       },
       {
-        $unwind: "$stamp",
+        $unwind: {
+          path: "$stamp",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $lookup: {
@@ -141,13 +144,19 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
               },
             },
             {
-              $unwind: "$retailer",
+              $unwind: {
+                path: "$retailer",
+                preserveNullAndEmptyArrays: true,
+              },
             },
           ],
         },
       },
       {
-        $unwind: "$branch",
+        $unwind: {
+          path: "$branch",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $lookup: {
@@ -291,7 +300,10 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
             },
           },
           {
-            $unwind: "$stampImage",
+            $unwind: {
+              path: "$stampImage",
+              preserveNullAndEmptyArrays: true,
+            },
           },
           {
             $project: {
@@ -325,7 +337,10 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
       },
     },
     {
-      $unwind: "$stamp",
+      $unwind: {
+        path: "$stamp",
+        preserveNullAndEmptyArrays: true,
+      },
     },
     {
       $lookup: {
@@ -343,16 +358,25 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
             },
           },
           {
-            $unwind: "$retailer",
+            $unwind: {
+              path: "$retailer",
+              preserveNullAndEmptyArrays: true,
+            },
           },
         ],
       },
     },
     {
-      $unwind: "$stamp",
+      $unwind: {
+        path: "$stamp",
+        preserveNullAndEmptyArrays: true,
+      },
     },
     {
-      $unwind: "$branch",
+      $unwind: {
+        path: "$branch",
+        preserveNullAndEmptyArrays: true,
+      },
     },
     {
       $project: {
