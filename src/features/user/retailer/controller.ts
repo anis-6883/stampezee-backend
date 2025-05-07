@@ -511,6 +511,13 @@ export const updateRetailerProfile = asyncHandler(async (req: IApiRequest, res: 
     deleteFileFromS3Bucket(prevImage?.image);
   }
 
+  if (updatedBody?.deleteImageOnUpdate) {
+    const prevImage = await Retailer.findById(req.user._id, { image: 1 });
+    deleteFileFromS3Bucket(prevImage?.image);
+
+    updatedBody.image = null;
+  }
+
   const retailer: any = await Retailer.findOneAndUpdate({ _id: req.user._id }, updatedBody, {
     new: true,
     projection: { password: 0, createdAt: 0, updatedAt: 0 },

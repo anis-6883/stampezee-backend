@@ -1,6 +1,6 @@
 import Joi from "joi";
 import {
-  numberField,
+  booleanField,
   requiredBooleanField,
   requiredEmailField,
   requiredStringField,
@@ -55,6 +55,7 @@ export const retailerSchemaUpdate = Joi.object({
   timezone: Joi.object({
     label: stringField("label"),
   }),
+  deleteImageOnUpdate: booleanField("deleteImageOnUpdate"),
 });
 
 export const retailerStatusSchema = Joi.object({

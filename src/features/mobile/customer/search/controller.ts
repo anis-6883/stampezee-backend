@@ -263,6 +263,16 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
                   $filter: { input: { $objectToArray: "$$ROOT" }, cond: { $ne: ["$$this.k", "branch"] } },
                 },
               },
+              {
+                condition: {
+                  $concat: [
+                    "Minimum purchase amount: ",
+                    { $toString: "$minPurchaseAmount" },
+                    " ",
+                    "$branch.retailer.businessCurrency",
+                  ],
+                },
+              },
             ],
           },
           "branch._id": "$branch._id",
@@ -271,6 +281,7 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
           "retailer._id": "$branch.retailer._id",
           "retailer.storeName": "$branch.retailer.storeName",
           "retailer.image": "$branch.retailer.image",
+          "retailer.businessCurrency": "$branch.retailer.businessCurrency",
           _id: 0,
         },
       },
