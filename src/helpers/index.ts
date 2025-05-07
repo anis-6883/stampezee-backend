@@ -107,10 +107,11 @@ export const numberField = (fieldName: string) =>
   });
 
 export const numberAndNullField = (fieldName: string) =>
-  Joi.number()
-    .allow(null)
+  Joi.alternatives()
+    .try(Joi.number(), Joi.valid(null), Joi.string().valid("null"))
     .messages({
       "number.base": `${fieldName} must be a number`,
+      "any.only": `${fieldName} must be a number, null, or "null"`,
       "any.required": `${fieldName} is required`,
     });
 

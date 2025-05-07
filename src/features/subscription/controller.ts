@@ -15,6 +15,13 @@ export const createSubscription = asyncHandler(async (req: IApiRequest, res: Res
   const result = await subscriptionSchema.validateAsync(req.body, {
     abortEarly: false,
   });
+  if (result?.allowTotalScan == "null") {
+    result.allowTotalScan = null;
+  }
+
+  if (result?.allowTotalUser == "null") {
+    result.allowTotalUser = null;
+  }
 
   result.superAdminId = req.user._id;
 
@@ -92,6 +99,14 @@ export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Res
   const result = await updateSubscriptionSchema.validateAsync(req.body, {
     abortEarly: false,
   });
+
+  if (result?.allowTotalScan == "null") {
+    result.allowTotalScan = null;
+  }
+
+  if (result?.allowTotalUser == "null") {
+    result.allowTotalUser = null;
+  }
 
   const { id } = req.params;
   const { softDeleted, image, ...updatedBody } = result;
