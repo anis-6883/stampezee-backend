@@ -212,25 +212,16 @@ export const refundDetailsForSuperAdmin = asyncHandler(async (req: IApiRequest, 
               from: "enroll_subscriptions",
               localField: "_id",
               foreignField: "enrollmentId",
-              as: "enrollSubscription",
+              as: "enrollSubscriptions",
               pipeline: [
-                {
-                  $match: {
-                    "planSnapshot.type": "subscription",
-                  },
-                },
                 {
                   $project: {
                     "planSnapshot.price": 1,
+                    "planSnapshot.type": 1,
+                    "planSnapshot.slug": 1,
                   },
                 },
               ],
-            },
-          },
-          {
-            $unwind: {
-              path: "$enrollSubscription",
-              preserveNullAndEmptyArrays: true,
             },
           },
           {
