@@ -1179,8 +1179,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       metadata, // Need for update info after complete payment
       discounts: coupons,
       success_url: `${process.env.FRONTEND_URL}/payment/complete`,
-      cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
       customer_email: req?.user?.email,
+      cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
       // customer: stripeCustomerID,
       // saved_payment_method_options: {
       //   allow_redisplay_filters: ["always"],

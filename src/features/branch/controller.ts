@@ -47,10 +47,7 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
       },
     },
     {
-      $unwind: {
-        path: "$enrollSubscription",
-        preserveNullAndEmptyArrays: true,
-      },
+      $unwind: "$enrollSubscription",
     },
     {
       $match: {
@@ -162,10 +159,7 @@ export const getAllBranches = asyncHandler(async (req: IApiRequest, res: Respons
               },
             },
             {
-              $unwind: {
-                path: "$enrollment",
-                preserveNullAndEmptyArrays: true,
-              },
+              $unwind: "$enrollment",
             },
             {
               $project: {
@@ -303,10 +297,7 @@ export const activateSystemDisabledBranch = asyncHandler(async (req: IApiRequest
       },
     },
     {
-      $unwind: {
-        path: "$enrollSubscription",
-        preserveNullAndEmptyArrays: true,
-      },
+      $unwind: "$enrollSubscription",
     },
     {
       $match: {
@@ -376,10 +367,7 @@ export const convertToAddonBranch = asyncHandler(async (req: IApiRequest, res: R
       },
     },
     {
-      $unwind: {
-        path: "$enrollSubscription",
-        preserveNullAndEmptyArrays: true,
-      },
+      $unwind: "$enrollSubscription",
     },
     {
       $match: {
