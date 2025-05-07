@@ -319,10 +319,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           },
         },
         {
-          $unwind: {
-            path: "$enrollSubscription",
-            preserveNullAndEmptyArrays: true,
-          },
+          $unwind: "$enrollSubscription",
         },
         {
           $project: {
@@ -417,7 +414,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     ////////////////////////////////////////////////////////////////////////
     const line_items: ILineItem[] = [];
     const coupons: { coupon: string }[] = [];
-    let stripeCustomerID = "";
+    // let stripeCustomerID = "";
 
     if (pickPlan && enrolled) {
       const changeMode: number = checkPlanChange(
@@ -461,7 +458,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
       metadata["enrollmentId"] = String(enrollment._id);
       metadata["balanceAmount"] = balanceAmount;
-      stripeCustomerID = enrolled.stripe.customerId;
+      // stripeCustomerID = enrolled.stripe.customerId;
 
       const prevAddons = await EnrollSubscription.find({
         enrollmentId: enrolled?._id,
@@ -1167,12 +1164,12 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         });
       }
 
-      const customer = await stripe.customers.create({
-        name: req?.user?.fullName,
-        email: req?.user?.email,
-      });
+      // const customer = await stripe.customers.create({
+      //   name: req?.user?.fullName,
+      //   email: req?.user?.email,
+      // });
 
-      stripeCustomerID = customer.id;
+      // stripeCustomerID = customer.id;
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -1183,11 +1180,12 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       discounts: coupons,
       success_url: `${process.env.FRONTEND_URL}/payment/complete`,
       cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
-      customer: stripeCustomerID,
-      saved_payment_method_options: {
-        allow_redisplay_filters: ["always"],
-        payment_method_save: "enabled",
-      },
+      customer_email: req?.user?.email,
+      // customer: stripeCustomerID,
+      // saved_payment_method_options: {
+      //   allow_redisplay_filters: ["always"],
+      //   payment_method_save: "enabled",
+      // },
     });
 
     const data: Object = { url: session?.url };
