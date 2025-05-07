@@ -60,7 +60,7 @@ export const forgotPassOtpTemplate = (verificationCode: string, name: string) =>
                   ${verificationCode}
                 </p>
                 <p style="font-size: 14px; color: #666">
-                  This OTP is valid for 10 minutes. Do not share it with anyone.
+                  This OTP is valid for 2 minutes. Do not share it with anyone.
                 </p>
                 <p style="margin-top: 30px">
                   If you didn’t request a password reset, you can safely ignore this message - your password will remain

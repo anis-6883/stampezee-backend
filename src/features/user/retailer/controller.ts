@@ -196,15 +196,15 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
  */
 export const retailerResendOtp = asyncHandler(async (req: IApiRequest, res: Response) => {
   const otp = getRandomInteger(100000, 999999);
-  const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+  const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 10 min
 
   if (req.user.isVerified) {
     return apiResponse(res, 400, false, "This retailer already verified!");
   }
 
-  // if (req.user.otpExpiry > new Date()) {
-  //   return apiResponse(res, 400, false, "Wait 2 minutes to resend OTP!");
-  // }
+  if (req.user.otpExpiry > new Date()) {
+    return apiResponse(res, 400, false, "Wait 2 minutes to resend OTP!");
+  }
 
   await Retailer.updateOne({ email: req.user.email }, { otp, otpExpiry });
 
@@ -588,7 +588,7 @@ export const retailerForgetPassword = asyncHandler(async (req: IApiRequest, res:
   }
 
   const otp = getRandomInteger(100000, 999999);
-  const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+  const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 10 min
 
   await Retailer.findByIdAndUpdate(retailer._id, { otp, otpExpiry });
 
@@ -608,11 +608,11 @@ export const retailerForgetPassword = asyncHandler(async (req: IApiRequest, res:
  */
 export const retailerForgetPasswordResendOtp = asyncHandler(async (req: IApiRequest, res: Response) => {
   const otp = getRandomInteger(100000, 999999);
-  const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+  const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 10 min
 
-  // if (req.user.otpExpiry > new Date()) {
-  //   return apiResponse(res, 400, false, "Wait 2 minutes to resend OTP!");
-  // }
+  if (req.user.otpExpiry > new Date()) {
+    return apiResponse(res, 400, false, "Wait 2 minutes to resend OTP!");
+  }
 
   await Retailer.updateOne({ email: req.user.email }, { otp, otpExpiry });
 
