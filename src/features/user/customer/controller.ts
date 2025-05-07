@@ -69,19 +69,20 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
     customerBody.password = await bcrypt.hash("12345678", 10);
 
     if (existingCustomer) {
-      const customer = await Customer.findByIdAndUpdate(
-        existingCustomer._id,
-        {
-          token,
-        },
-        {
-          new: true,
-        }
-      );
+      // const customer = await Customer.findByIdAndUpdate(
+      //   existingCustomer._id,
+      //   {
+      //     token,
+      //   },
+      //   {
+      //     new: true,
+      //   }
+      // );
 
-      const data = exclude(customer._doc, ["password", "otp", "otpExpiry"]);
+      // const data = exclude(customer._doc, ["password", "otp", "otpExpiry"]);
 
-      apiResponse(res, 201, true, "Login successfully!", data);
+      // apiResponse(res, 201, true, "Login successfully!", data);
+      return apiResponse(res, 400, false, "This account already exists. Please log in to continue.");
     } else {
       const customer: any = await Customer.create(customerBody);
       sendCustomerWelcomeEmail(customer.email, customer.fullName);
