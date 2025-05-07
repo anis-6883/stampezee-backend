@@ -20,6 +20,7 @@ import { IApiRequest } from "../../../types";
 import { sendInvoiceToEmail } from "../../enroll-subscription/service";
 import { retailerSchemaUpdate } from "../../retailer/validation";
 import { sendVerificationEmail } from "../service";
+import OrderStamp from "../../../models/order-stamp";
 import {
   forgetPasswordSchema,
   loginSchema,
@@ -469,7 +470,48 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
   }
 
   const { enrollSubscription, planExists, currency, validityFrom, validityTo } = planEnrollment[0] ?? {};
+  data.isLimitExceeded = false;
+  data.allowTotalScan = null;
+  data.allowTotalUser = null;
+  if (planExists == "trial") {
+    const [[freeTrialRetailers], subscription] = await Promise.all([
+      OrderStamp.aggregate([
+        {
+          $match: {
+            $expr: { $eq: ["$retailerId", req?.user?._id] },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalOrders: { $sum: 1 },
+            customerIds: { $addToSet: "$customerId" },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            totalOrders: 1,
+            uniqueCustomers: { $size: "$customerIds" },
+          },
+        },
+      ]),
+      Subscription.findOne({ slug: "trial" }).select("allowTotalUser allowTotalScan"),
+    ]);
+    if (freeTrialRetailers && subscription && (subscription.allowTotalScan || subscription.allowTotalUser)) {
+      const { allowTotalScan, allowTotalUser } = subscription;
+      const { totalOrders, uniqueCustomers } = freeTrialRetailers;
 
+      const scanLimitReached = allowTotalScan && totalOrders >= allowTotalScan;
+      const userLimitReached = allowTotalUser && uniqueCustomers >= allowTotalUser;
+
+      if (scanLimitReached || userLimitReached) {
+        data.isLimitExceeded = true;
+        data.allowTotalScan = allowTotalScan;
+        data.allowTotalUser = allowTotalUser;
+      }
+    }
+  }
   data.role = ROLE.RETAILER;
   data.plan = planExists ?? null;
   data.planPaymentCurrency = currency ?? null;
