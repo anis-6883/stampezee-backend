@@ -265,12 +265,18 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
               },
               {
                 condition: {
-                  $concat: [
-                    "Minimum purchase amount: ",
-                    { $toString: "$minPurchaseAmount" },
-                    " ",
-                    "$branch.retailer.businessCurrency",
-                  ],
+                  $cond: {
+                    if: { $eq: ["$minPurchaseAmount", 0] },
+                    then: "",
+                    else: {
+                      $concat: [
+                        "Minimum purchase amount: ",
+                        { $toString: "$minPurchaseAmount" },
+                        " ",
+                        "$branch.retailer.businessCurrency",
+                      ],
+                    },
+                  },
                 },
               },
             ],
