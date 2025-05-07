@@ -333,6 +333,78 @@ export const collectStamp = asyncHandler(async (req: IApiRequest, res: Response)
 
   if (!branch || !stamp) return apiResponse(res, 400, false, "Branch or Stamp not found!");
 
+  const [[freeTrialRetailers], subscription] = await Promise.all([
+    Enrollment.aggregate([
+      {
+        $match: {
+          retailerId: stamp.retailerId,
+          planExists: "trial",
+          validityTo: { $gt: new Date() },
+          status: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "order_stamps",
+          let: { retailerId: "$retailerId" },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ["$retailerId", "$$retailerId"] },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                totalOrders: { $sum: 1 },
+                customerIds: { $addToSet: "$customerId" },
+              },
+            },
+            {
+              $project: {
+                _id: 0,
+                totalOrders: 1,
+                uniqueCustomers: { $size: "$customerIds" },
+              },
+            },
+          ],
+          as: "orderStats",
+        },
+      },
+      {
+        $addFields: {
+          totalOrders: { $ifNull: [{ $arrayElemAt: ["$orderStats.totalOrders", 0] }, 0] },
+          uniqueCustomers: { $ifNull: [{ $arrayElemAt: ["$orderStats.uniqueCustomers", 0] }, 0] },
+        },
+      },
+      {
+        $project: {
+          retailerId: 1,
+          totalOrders: 1,
+          uniqueCustomers: 1,
+        },
+      },
+    ]),
+    Subscription.findOne({ slug: "trial" }).select("allowTotalUser allowTotalScan"),
+  ]);
+
+  if (freeTrialRetailers && subscription && (subscription.allowTotalScan || subscription.allowTotalUser)) {
+    const { allowTotalScan, allowTotalUser } = subscription;
+    const { totalOrders, uniqueCustomers } = freeTrialRetailers;
+
+    const scanLimitReached = allowTotalScan && totalOrders >= allowTotalScan;
+    const userLimitReached = allowTotalUser && uniqueCustomers >= allowTotalUser;
+
+    if (scanLimitReached || userLimitReached) {
+      return apiResponse(
+        res,
+        400,
+        false,
+        "This stamp card has been disabled. Please contact this retailer for more information."
+      );
+    }
+  }
+
   await CollectStamp.create({ branchId, stampId, customerId: req.user._id });
 
   return apiResponse(res, 200, true, "Stamp added successfully!");

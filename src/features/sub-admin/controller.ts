@@ -25,7 +25,7 @@ export const nextSubAdminEmail = asyncHandler(async (req: IApiRequest, res: Resp
 });
 
 /**
- * Create A Sub Admin
+ * Create A Loyalty Executive
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -86,11 +86,11 @@ export const createSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
   // Remove Sensitive Data
   const data = exclude(subAdmin._doc, ["password", "createdAt", "updatedAt"]);
 
-  return apiResponse(res, 201, true, "Sub Admin created successfully & sent mail!", data);
+  return apiResponse(res, 201, true, "Loyalty Executive created successfully & sent mail!", data);
 });
 
 /**
- * Get All Sub Admins
+ * Get All Loyalty Executives
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -155,7 +155,7 @@ export const getAllSubAdmins = asyncHandler(async (req: IApiRequest, res: Respon
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
-  return apiResponse(res, 200, true, "Sub Admins fetched successfully!", data);
+  return apiResponse(res, 200, true, "Loyalty Executives fetched successfully!", data);
 });
 
 /**
@@ -184,13 +184,13 @@ export const getSingleSubAdmin = asyncHandler(async (req: IApiRequest, res: Resp
   const { id } = req.params;
 
   const subAdmin = await SubAdmin.findOne({ _id: id }, { password: 0 });
-  if (!SubAdmin) return apiResponse(res, 404, false, "Sub Admin not found!");
+  if (!SubAdmin) return apiResponse(res, 404, false, "Loyalty Executive not found!");
 
-  return apiResponse(res, 201, true, "Sub Admin fetched successfully!", subAdmin);
+  return apiResponse(res, 201, true, "Loyalty Executive fetched successfully!", subAdmin);
 });
 
 /**
- * Update A Single Sub Admin
+ * Update A Single Loyalty Executive
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -232,9 +232,9 @@ export const updateSubAdmin = asyncHandler(async (req: IApiRequest, res: Respons
     projection: { password: 0, createdAt: 0, updatedAt: 0 },
   });
 
-  if (!subAdmin) return apiResponse(res, 404, false, "Sub Admin not found!");
+  if (!subAdmin) return apiResponse(res, 404, false, "Loyalty Executive not found!");
 
-  return apiResponse(res, 200, true, "Sub Admin updated successfully!", subAdmin);
+  return apiResponse(res, 200, true, "Loyalty Executive updated successfully!", subAdmin);
 });
 
 /**
@@ -260,13 +260,13 @@ export const updateSubAdminStatus = asyncHandler(async (req: IApiRequest, res: R
     }
   );
 
-  if (!subAdmin) return apiResponse(res, 404, false, "Sub admin not found!");
+  if (!subAdmin) return apiResponse(res, 404, false, "Loyalty Executive not found!");
 
-  return apiResponse(res, 200, true, "Sub admin status updated successfully!");
+  return apiResponse(res, 200, true, "Loyalty Executive status updated successfully!");
 });
 
 /**
- * Soft Delete A Sub Admin
+ * Soft Delete A Loyalty Executive
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -275,7 +275,7 @@ export const softDeleteSubAdmin = asyncHandler(async (req: IApiRequest, res: Res
   const { id } = req.params;
 
   const subAdmin = await SubAdmin.findById(id);
-  if (!subAdmin) return apiResponse(res, 404, false, "Sub Admin not found!");
+  if (!subAdmin) return apiResponse(res, 404, false, "Loyalty Executive not found!");
 
   await SubAdmin.findByIdAndUpdate(id, {
     email: `deleted-${new Date().toISOString()}-${subAdmin.email}`,
@@ -283,11 +283,11 @@ export const softDeleteSubAdmin = asyncHandler(async (req: IApiRequest, res: Res
     status: false,
   });
 
-  return apiResponse(res, 200, true, "Sub Admin deleted successfully!");
+  return apiResponse(res, 200, true, "Loyalty Executive deleted successfully!");
 });
 
 /**
- * Get All Deleted Sub Admins
+ * Get All Deleted Loyalty Executives
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -310,7 +310,7 @@ export const getAllDeletedSubAdmins = asyncHandler(async (req: IApiRequest, res:
 });
 
 /**
- * Confirm Delete A Single Sub Admin
+ * Confirm Delete A Single Loyalty Executive
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -323,7 +323,7 @@ export const confirmDeleteSubAdmin = asyncHandler(async (req: IApiRequest, res: 
   deleteFileFromS3Bucket(prevImage?.image);
 
   const subAdmin = await SubAdmin.findOneAndDelete({ _id: id });
-  if (!subAdmin) return apiResponse(res, 404, false, "Sub Admin not found!");
+  if (!subAdmin) return apiResponse(res, 404, false, "Loyalty Executive not found!");
 
-  return apiResponse(res, 200, true, "Sub Admin deleted successfully!");
+  return apiResponse(res, 200, true, "Loyalty Executive deleted successfully!");
 });
