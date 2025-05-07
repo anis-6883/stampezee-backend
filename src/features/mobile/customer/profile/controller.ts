@@ -78,7 +78,10 @@ export const customerScanHistory = asyncHandler(async (req: IApiRequest, res: Re
                     },
                   },
                   {
-                    $unwind: "$category",
+                    $unwind: {
+                      path: "$category",
+                      preserveNullAndEmptyArrays: true,
+                    },
                   },
                   {
                     $project: {
@@ -97,7 +100,10 @@ export const customerScanHistory = asyncHandler(async (req: IApiRequest, res: Re
               },
             },
             {
-              $unwind: "$stamp",
+              $unwind: {
+                path: "$stamp",
+                preserveNullAndEmptyArrays: true,
+              },
             },
             {
               $lookup: {
@@ -117,13 +123,19 @@ export const customerScanHistory = asyncHandler(async (req: IApiRequest, res: Re
               },
             },
             {
-              $unwind: "$branch",
+              $unwind: {
+                path: "$branch",
+                preserveNullAndEmptyArrays: true,
+              },
             },
           ],
         },
       },
       {
-        $unwind: "$collectstamp",
+        $unwind: {
+          path: "$collectstamp",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $lookup: {
@@ -144,7 +156,10 @@ export const customerScanHistory = asyncHandler(async (req: IApiRequest, res: Re
         },
       },
       {
-        $unwind: "$subAdmin",
+        $unwind: {
+          path: "$subAdmin",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $lookup: {
@@ -169,7 +184,10 @@ export const customerScanHistory = asyncHandler(async (req: IApiRequest, res: Re
         },
       },
       {
-        $unwind: "$customer",
+        $unwind: {
+          path: "$customer",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $project: {
@@ -250,7 +268,10 @@ export const customerCollectedRewardHistory = asyncHandler(async (req: IApiReque
                     },
                   },
                   {
-                    $unwind: "$category",
+                    $unwind: {
+                      path: "$category",
+                      preserveNullAndEmptyArrays: true,
+                    },
                   },
                   {
                     $project: {
@@ -269,7 +290,10 @@ export const customerCollectedRewardHistory = asyncHandler(async (req: IApiReque
               },
             },
             {
-              $unwind: "$stamp",
+              $unwind: {
+                path: "$stamp",
+                preserveNullAndEmptyArrays: true,
+              },
             },
             {
               $lookup: {
@@ -289,13 +313,19 @@ export const customerCollectedRewardHistory = asyncHandler(async (req: IApiReque
               },
             },
             {
-              $unwind: "$branch",
+              $unwind: {
+                path: "$branch",
+                preserveNullAndEmptyArrays: true,
+              },
             },
           ],
         },
       },
       {
-        $unwind: "$collectstamp",
+        $unwind: {
+          path: "$collectstamp",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $lookup: {
@@ -316,7 +346,10 @@ export const customerCollectedRewardHistory = asyncHandler(async (req: IApiReque
         },
       },
       {
-        $unwind: "$subAdmin",
+        $unwind: {
+          path: "$subAdmin",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $lookup: {
@@ -341,7 +374,10 @@ export const customerCollectedRewardHistory = asyncHandler(async (req: IApiReque
         },
       },
       {
-        $unwind: "$customer",
+        $unwind: {
+          path: "$customer",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $project: {

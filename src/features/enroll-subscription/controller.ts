@@ -319,7 +319,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           },
         },
         {
-          $unwind: "$enrollSubscription",
+          $unwind: {
+            path: "$enrollSubscription",
+            preserveNullAndEmptyArrays: true,
+          },
         },
         {
           $project: {

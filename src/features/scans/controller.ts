@@ -72,7 +72,10 @@ export const stampScanDetailsForRetailer = asyncHandler(async (req: IApiRequest,
                     },
                   },
                   {
-                    $unwind: "$category",
+                    $unwind: {
+                      path: "$category",
+                      preserveNullAndEmptyArrays: true,
+                    },
                   },
                   {
                     $project: {
@@ -91,7 +94,10 @@ export const stampScanDetailsForRetailer = asyncHandler(async (req: IApiRequest,
               },
             },
             {
-              $unwind: "$stamp",
+              $unwind: {
+                path: "$stamp",
+                preserveNullAndEmptyArrays: true,
+              },
             },
             {
               $lookup: {
@@ -111,13 +117,19 @@ export const stampScanDetailsForRetailer = asyncHandler(async (req: IApiRequest,
               },
             },
             {
-              $unwind: "$branch",
+              $unwind: {
+                path: "$branch",
+                preserveNullAndEmptyArrays: true,
+              },
             },
           ],
         },
       },
       {
-        $unwind: "$collectstamp",
+        $unwind: {
+          path: "$collectstamp",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $lookup: {
@@ -138,7 +150,10 @@ export const stampScanDetailsForRetailer = asyncHandler(async (req: IApiRequest,
         },
       },
       {
-        $unwind: "$subAdmin",
+        $unwind: {
+          path: "$subAdmin",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $lookup: {
@@ -163,7 +178,10 @@ export const stampScanDetailsForRetailer = asyncHandler(async (req: IApiRequest,
         },
       },
       {
-        $unwind: "$customer",
+        $unwind: {
+          path: "$customer",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $project: {
@@ -256,7 +274,10 @@ export const stampScanDetailsForSuperAdmin = asyncHandler(async (req: IApiReques
                     },
                   },
                   {
-                    $unwind: "$category",
+                    $unwind: {
+                      path: "$category",
+                      preserveNullAndEmptyArrays: true,
+                    },
                   },
                   {
                     $project: {
@@ -275,7 +296,10 @@ export const stampScanDetailsForSuperAdmin = asyncHandler(async (req: IApiReques
               },
             },
             {
-              $unwind: "$stamp",
+              $unwind: {
+                path: "$stamp",
+                preserveNullAndEmptyArrays: true,
+              },
             },
             {
               $lookup: {
@@ -295,13 +319,19 @@ export const stampScanDetailsForSuperAdmin = asyncHandler(async (req: IApiReques
               },
             },
             {
-              $unwind: "$branch",
+              $unwind: {
+                path: "$branch",
+                preserveNullAndEmptyArrays: true,
+              },
             },
           ],
         },
       },
       {
-        $unwind: "$collectstamp",
+        $unwind: {
+          path: "$collectstamp",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $lookup: {
@@ -322,7 +352,10 @@ export const stampScanDetailsForSuperAdmin = asyncHandler(async (req: IApiReques
         },
       },
       {
-        $unwind: "$subAdmin",
+        $unwind: {
+          path: "$subAdmin",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $lookup: {
@@ -347,7 +380,10 @@ export const stampScanDetailsForSuperAdmin = asyncHandler(async (req: IApiReques
         },
       },
       {
-        $unwind: "$customer",
+        $unwind: {
+          path: "$customer",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $lookup: {
@@ -373,7 +409,10 @@ export const stampScanDetailsForSuperAdmin = asyncHandler(async (req: IApiReques
         },
       },
       {
-        $unwind: "$retailer",
+        $unwind: {
+          path: "$retailer",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $project: {
