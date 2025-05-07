@@ -1,4 +1,5 @@
 import { Response } from "express";
+import { Types } from "mongoose";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import Refund from "../../models/refund";
 import { IApiRequest } from "../../types";
@@ -123,44 +124,8 @@ export const getAllRefundsForSuperAdmin = asyncHandler(async (req: IApiRequest, 
               },
             },
             {
-              $lookup: {
-                from: "enroll_subscriptions",
-                localField: "_id",
-                foreignField: "enrollmentId",
-                as: "enrollSubscription",
-                pipeline: [
-                  {
-                    $match: {
-                      "planSnapshot.type": "subscription",
-                    },
-                  },
-                  {
-                    $project: {
-                      "planSnapshot.price": 1,
-                    },
-                  },
-                ],
-              },
-            },
-            {
-              $unwind: {
-                path: "$enrollSubscription",
-                preserveNullAndEmptyArrays: true,
-              },
-            },
-            {
-              $lookup: {
-                from: "payments",
-                localField: "_id",
-                foreignField: "enrollmentId",
-                as: "payments",
-                pipeline: [
-                  {
-                    $project: {
-                      paymentMethodDetails: 0,
-                    },
-                  },
-                ],
+              $project: {
+                retailer: 1,
               },
             },
           ],
@@ -169,63 +134,6 @@ export const getAllRefundsForSuperAdmin = asyncHandler(async (req: IApiRequest, 
       {
         $unwind: {
           path: "$enrollment",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $lookup: {
-          from: "enrollments",
-          localField: "prevEnrollmentId",
-          foreignField: "_id",
-          as: "prevEnrollment",
-          pipeline: [
-            {
-              $lookup: {
-                from: "enroll_subscriptions",
-                localField: "_id",
-                foreignField: "enrollmentId",
-                as: "enrollSubscription",
-                pipeline: [
-                  {
-                    $match: {
-                      "planSnapshot.type": "subscription",
-                    },
-                  },
-                  {
-                    $project: {
-                      "planSnapshot.price": 1,
-                    },
-                  },
-                ],
-              },
-            },
-            {
-              $unwind: {
-                path: "$enrollSubscription",
-                preserveNullAndEmptyArrays: true,
-              },
-            },
-            {
-              $lookup: {
-                from: "payments",
-                localField: "_id",
-                foreignField: "enrollmentId",
-                as: "payments",
-                pipeline: [
-                  {
-                    $project: {
-                      paymentMethodDetails: 0,
-                    },
-                  },
-                ],
-              },
-            },
-          ],
-        },
-      },
-      {
-        $unwind: {
-          path: "$prevEnrollment",
           preserveNullAndEmptyArrays: true,
         },
       },
@@ -247,6 +155,161 @@ export const getAllRefundsForSuperAdmin = asyncHandler(async (req: IApiRequest, 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
   return apiResponse(res, 200, true, "Super Admin refund fetched successfully!", data);
+});
+
+/**
+ * Get Refund Details for Super Admin
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const refundDetailsForSuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { id } = req.params;
+  if (!Types.ObjectId.isValid(id)) return apiResponse(res, 400, false, "Please, provide valid id!");
+
+  const data = await Refund.aggregate([
+    {
+      $match: { _id: Types.ObjectId.createFromHexString(id) },
+    },
+    {
+      $lookup: {
+        from: "enrollments",
+        localField: "enrollmentId",
+        foreignField: "_id",
+        as: "enrollment",
+        pipeline: [
+          {
+            $lookup: {
+              from: "retailers",
+              localField: "retailerId",
+              foreignField: "_id",
+              as: "retailer",
+              pipeline: [
+                {
+                  $project: {
+                    storeName: 1,
+                    firstName: 1,
+                    lastName: 1,
+                    fullName: 1,
+                    email: 1,
+                    image: 1,
+                    phone: 1,
+                    dialCode: 1,
+                    country: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $unwind: {
+              path: "$retailer",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $lookup: {
+              from: "enroll_subscriptions",
+              localField: "_id",
+              foreignField: "enrollmentId",
+              as: "enrollSubscriptions",
+              pipeline: [
+                {
+                  $project: {
+                    "planSnapshot.price": 1,
+                    "planSnapshot.type": 1,
+                    "planSnapshot.slug": 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $lookup: {
+              from: "payments",
+              localField: "_id",
+              foreignField: "enrollmentId",
+              as: "payments",
+              pipeline: [
+                {
+                  $project: {
+                    paymentMethodDetails: 0,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: {
+        path: "$enrollment",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "enrollments",
+        localField: "prevEnrollmentId",
+        foreignField: "_id",
+        as: "prevEnrollment",
+        pipeline: [
+          {
+            $lookup: {
+              from: "enroll_subscriptions",
+              localField: "_id",
+              foreignField: "enrollmentId",
+              as: "enrollSubscription",
+              pipeline: [
+                {
+                  $match: {
+                    "planSnapshot.type": "subscription",
+                  },
+                },
+                {
+                  $project: {
+                    "planSnapshot.price": 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $unwind: {
+              path: "$enrollSubscription",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $lookup: {
+              from: "payments",
+              localField: "_id",
+              foreignField: "enrollmentId",
+              as: "payments",
+              pipeline: [
+                {
+                  $project: {
+                    paymentMethodDetails: 0,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: {
+        path: "$prevEnrollment",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+  ]);
+
+  if (!data.length) return apiResponse(res, 400, false, "Refund not found!");
+
+  return apiResponse(res, 200, true, "Super Admin refund fetched successfully!", data[0]);
 });
 
 /**
