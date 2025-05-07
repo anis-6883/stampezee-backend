@@ -273,7 +273,10 @@ export const getSingleCustomerScanList = asyncHandler(async (req: IApiRequest, r
                     },
                   },
                   {
-                    $unwind: "$category",
+                    $unwind: {
+                      path: "$category",
+                      preserveNullAndEmptyArrays: true,
+                    },
                   },
                   {
                     $project: {
@@ -292,7 +295,10 @@ export const getSingleCustomerScanList = asyncHandler(async (req: IApiRequest, r
               },
             },
             {
-              $unwind: "$stamp",
+              $unwind: {
+                path: "$stamp",
+                preserveNullAndEmptyArrays: true,
+              },
             },
             {
               $lookup: {
@@ -312,13 +318,19 @@ export const getSingleCustomerScanList = asyncHandler(async (req: IApiRequest, r
               },
             },
             {
-              $unwind: "$branch",
+              $unwind: {
+                path: "$branch",
+                preserveNullAndEmptyArrays: true,
+              },
             },
           ],
         },
       },
       {
-        $unwind: "$collectstamp",
+        $unwind: {
+          path: "$collectstamp",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $lookup: {
@@ -339,7 +351,10 @@ export const getSingleCustomerScanList = asyncHandler(async (req: IApiRequest, r
         },
       },
       {
-        $unwind: "$subAdmin",
+        $unwind: {
+          path: "$subAdmin",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $lookup: {
@@ -366,7 +381,10 @@ export const getSingleCustomerScanList = asyncHandler(async (req: IApiRequest, r
         },
       },
       {
-        $unwind: "$retailer",
+        $unwind: {
+          path: "$retailer",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $match: query,
