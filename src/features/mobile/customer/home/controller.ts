@@ -1,8 +1,9 @@
 import { Response } from "express";
 import mongoose from "mongoose";
-import { apiResponse, asyncHandler } from "../../../../helpers";
+import { apiResponse, asyncHandler, makePaginateForMobile } from "../../../../helpers";
 import CollectStamp from "../../../../models/collect-stamp";
 import { IApiRequest, IStamp } from "../../../../types";
+import Subscription from "../../../../models/subscription";
 
 /**
  * Get All Collected Stamps
@@ -11,160 +12,253 @@ import { IApiRequest, IStamp } from "../../../../types";
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const collectedStamps = await CollectStamp.aggregate([
-    {
-      $match: { customerId: req.user._id, softDeleted: false },
-    },
-    {
-      $lookup: {
-        from: "stamps",
-        localField: "stampId",
-        foreignField: "_id",
-        as: "stamp",
-        pipeline: [
-          {
-            $match: {
-              softDeleted: false,
-            },
-          },
-          {
-            $project: {
-              title: 1,
-              description: 1,
-              rules: 1,
-              noOfStampsToCollect: 1,
-              minPurchaseAmount: 1,
-              rewardType: 1,
-              promotionReward: 1,
-              discountReward: 1,
-              isExpired: {
-                $lt: ["$expiredAt", "$$NOW"],
-              },
-              isExpiredMessage: {
-                $cond: {
-                  if: { $lt: ["$expiredAt", "$$NOW"] },
-                  then: "This stamp is expired!",
-                  else: null,
-                },
-              },
-            },
-          },
-        ],
+  const { page = 1, limit = 10 }: any = req.query;
+  const skip: number = (Number(page) - 1) * Number(limit);
+
+  const [collectedStamps, total] = await Promise.all([
+    CollectStamp.aggregate([
+      {
+        $match: { customerId: req.user._id, softDeleted: false },
       },
-    },
-    {
-      $unwind: "$stamp",
-    },
-    {
-      $lookup: {
-        from: "branches",
-        localField: "branchId",
-        foreignField: "_id",
-        as: "branch",
-        pipeline: [
-          {
-            $lookup: {
-              from: "retailers",
-              localField: "retailerId",
-              foreignField: "_id",
-              as: "retailer",
-              pipeline: [
-                {
-                  $lookup: {
-                    from: "enrollments",
-                    localField: "_id",
-                    foreignField: "retailerId",
-                    as: "enrollments",
-                    pipeline: [
-                      {
-                        $match: {
-                          planExists: { $ne: null },
-                          paymentStatus: "completed",
-                          validityTo: { $gt: new Date() },
-                          status: true,
-                        },
-                      },
-                    ],
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
+        $lookup: {
+          from: "stamps",
+          localField: "stampId",
+          foreignField: "_id",
+          as: "stamp",
+          pipeline: [
+            {
+              $match: {
+                softDeleted: false,
+              },
+            },
+            {
+              $project: {
+                title: 1,
+                description: 1,
+                rules: 1,
+                noOfStampsToCollect: 1,
+                minPurchaseAmount: 1,
+                rewardType: 1,
+                promotionReward: 1,
+                discountReward: 1,
+                isExpired: {
+                  $lt: ["$expiredAt", "$$NOW"],
+                },
+                isExpiredMessage: {
+                  $cond: {
+                    if: { $lt: ["$expiredAt", "$$NOW"] },
+                    then: "This stamp is expired!",
+                    else: null,
                   },
                 },
-              ],
-            },
-          },
-          {
-            $unwind: "$retailer",
-          },
-        ],
-      },
-    },
-    {
-      $unwind: "$branch",
-    },
-    {
-      $lookup: {
-        from: "order_stamps",
-        localField: "_id",
-        foreignField: "collectStampId",
-        as: "stampsTaken",
-        pipeline: [
-          {
-            $match: {
-              rewardCollected: false,
-            },
-          },
-          {
-            $count: "totalStampsTaken",
-          },
-        ],
-      },
-    },
-    {
-      $unwind: {
-        path: "$stampsTaken",
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-    {
-      $project: {
-        _id: 1,
-        createdAt: 1,
-        stamp: {
-          $mergeObjects: [
-            "$stamp",
-            {
-              totalStampsCollected: {
-                $ifNull: ["$stampsTaken.totalStampsTaken", 0],
               },
-            },
-            {
-              isRewarded: "$rewardCollected",
             },
           ],
         },
-        "branch._id": "$branch._id",
-        "branch.name": "$branch.name",
-        "branch.address": "$branch.address.name",
-        "retailer._id": "$branch.retailer._id",
-        "retailer.storeName": "$branch.retailer.storeName",
-        "retailer.image": "$branch.retailer.image",
-        "retailer.isPlanExpired": {
-          $cond: {
-            if: { $gt: [{ $size: "$branch.retailer.enrollments" }, 0] },
-            then: false,
-            else: true,
-          },
+      },
+      {
+        $unwind: "$stamp",
+      },
+      {
+        $lookup: {
+          from: "branches",
+          localField: "branchId",
+          foreignField: "_id",
+          as: "branch",
+          pipeline: [
+            {
+              $lookup: {
+                from: "retailers",
+                localField: "retailerId",
+                foreignField: "_id",
+                as: "retailer",
+                pipeline: [
+                  {
+                    $lookup: {
+                      from: "enrollments",
+                      localField: "_id",
+                      foreignField: "retailerId",
+                      as: "enrollments",
+                      pipeline: [
+                        {
+                          $match: {
+                            planExists: { $ne: null },
+                            paymentStatus: { $in: ["trial", "completed"] },
+                            validityTo: { $gt: new Date() },
+                            status: true,
+                          },
+                        },
+                      ],
+                    },
+                  },
+                  {
+                    $lookup: {
+                      from: "order_stamps",
+                      let: { retailerId: "$_id" },
+                      pipeline: [
+                        {
+                          $match: {
+                            $expr: { $eq: ["$retailerId", "$$retailerId"] },
+                          },
+                        },
+                        {
+                          $group: {
+                            _id: null,
+                            totalOrders: { $sum: 1 },
+                            customerIds: { $addToSet: "$customerId" },
+                          },
+                        },
+                        {
+                          $project: {
+                            _id: 0,
+                            totalOrders: 1,
+                            uniqueCustomers: { $size: "$customerIds" },
+                          },
+                        },
+                      ],
+                      as: "orderStats",
+                    },
+                  },
+                  {
+                    $addFields: {
+                      totalOrders: { $ifNull: [{ $arrayElemAt: ["$orderStats.totalOrders", 0] }, 0] },
+                      uniqueCustomers: { $ifNull: [{ $arrayElemAt: ["$orderStats.uniqueCustomers", 0] }, 0] },
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              $unwind: "$retailer",
+            },
+          ],
         },
-        "retailer.isPlanExpiredMessage": {
-          $cond: {
-            if: { $gt: [{ $size: "$branch.retailer.enrollments" }, 0] },
-            then: null,
-            else: "This retailer is currently unavailable in the app.Please contact the retailer for details!",
+      },
+      {
+        $unwind: "$branch",
+      },
+      {
+        $lookup: {
+          from: "order_stamps",
+          localField: "_id",
+          foreignField: "collectStampId",
+          as: "stampsTaken",
+          pipeline: [
+            {
+              $match: {
+                rewardCollected: false,
+              },
+            },
+            {
+              $count: "totalStampsTaken",
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: "$stampsTaken",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          createdAt: 1,
+          stamp: {
+            $mergeObjects: [
+              "$stamp",
+              {
+                totalStampsCollected: {
+                  $ifNull: ["$stampsTaken.totalStampsTaken", 0],
+                },
+              },
+              {
+                isRewarded: "$rewardCollected",
+              },
+            ],
+          },
+          "branch._id": "$branch._id",
+          "branch.name": "$branch.name",
+          "branch.address": "$branch.address.name",
+          "retailer._id": "$branch.retailer._id",
+          "retailer.storeName": "$branch.retailer.storeName",
+          "retailer.image": "$branch.retailer.image",
+          "retailer.isPlanExpired": {
+            $cond: {
+              if: { $gt: [{ $size: "$branch.retailer.enrollments" }, 0] },
+              then: false,
+              else: true,
+            },
+          },
+          "retailer.isPlanExpiredMessage": {
+            $cond: {
+              if: { $gt: [{ $size: "$branch.retailer.enrollments" }, 0] },
+              then: null,
+              else: "This stamp card has been disabled. Please contact this retailer for more information.",
+            },
+          },
+          "retailer.totalOrders": "$branch.retailer.totalOrders",
+          "retailer.uniqueCustomers": "$branch.retailer.uniqueCustomers",
+          "retailer.planExists": {
+            $cond: {
+              if: { $gt: [{ $size: "$branch.retailer.enrollments" }, 0] },
+              then: {
+                $let: {
+                  vars: {
+                    firstEnrollment: { $arrayElemAt: ["$branch.retailer.enrollments", 0] },
+                  },
+                  in: "$$firstEnrollment.planExists",
+                },
+              },
+              else: null,
+            },
           },
         },
       },
-    },
+    ]),
+    CollectStamp.countDocuments({
+      customerId: req.user._id,
+      softDeleted: false,
+    }),
   ]);
 
-  return apiResponse(res, 200, true, "Collected stamps fetched successfully!", collectedStamps);
+  const subscription = await Subscription.findOne({ slug: "trial" }).select("allowTotalUser allowTotalScan");
+
+  if (collectedStamps.length > 0) {
+    collectedStamps.forEach((collectedStamp: any) => {
+      if (collectedStamp?.retailer.planExists === "trial") {
+        if (subscription?.allowTotalScan || subscription?.allowTotalUser) {
+          const { allowTotalScan, allowTotalUser } = subscription;
+          const { totalOrders, uniqueCustomers } = collectedStamp?.retailer;
+
+          const scanLimitReached = allowTotalScan && totalOrders >= allowTotalScan;
+          const userLimitReached = allowTotalUser && uniqueCustomers >= allowTotalUser;
+          if (scanLimitReached || userLimitReached) {
+            collectedStamp.retailer.isPlanExpired = true;
+            collectedStamp.retailer.isPlanExpiredMessage =
+              "This stamp card has been disabled. Please contact this retailer for more information.";
+          }
+        }
+      }
+    });
+  }
+
+  const mobilePagination = makePaginateForMobile(Number(page), Number(limit), skip, total);
+
+  return apiResponse(res, 200, true, "Collected stamps fetched successfully!", collectedStamps, mobilePagination);
 });
 
 /**

@@ -389,7 +389,6 @@ export const collectStamp = asyncHandler(async (req: IApiRequest, res: Response)
   ]);
 
   if (freeTrialRetailers && subscription && (subscription.allowTotalScan || subscription.allowTotalUser)) {
-    console.log("Inside");
     const { allowTotalScan, allowTotalUser } = subscription;
     const { totalOrders, uniqueCustomers } = freeTrialRetailers;
 
@@ -408,8 +407,5 @@ export const collectStamp = asyncHandler(async (req: IApiRequest, res: Response)
 
   await CollectStamp.create({ branchId, stampId, customerId: req.user._id });
 
-  return apiResponse(res, 200, true, "Stamp added successfully!", {
-    freeTrialRetailers,
-    subscription,
-  });
+  return apiResponse(res, 200, true, "Stamp added successfully!");
 });
