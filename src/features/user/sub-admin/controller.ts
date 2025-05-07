@@ -15,7 +15,7 @@ import { sendVerificationEmail } from "../service";
 import { forgetPasswordSchema, loginSchema, subAdminChangeForgetPasswordSchema, verifyOtpSchema } from "../validation";
 
 /**
- * Sub Admin Login
+ * Loyalty Executive Login
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -84,11 +84,11 @@ export const subAdminLogin = asyncHandler(async (req: Request, res: Response) =>
   // Remove Sensitive Data
   const data = exclude(subAdmin[0], ["password", "token"]);
 
-  return apiResponse(res, 200, true, "Sub Admin Login Successfully!", { token, ...data });
+  return apiResponse(res, 200, true, "Loyalty Executive Login Successfully!", { token, ...data });
 });
 
 /**
- * Sub Admin Profile
+ * Loyalty Executive Profile
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -141,11 +141,11 @@ export const subAdminProfile = asyncHandler(async (req: IApiRequest, res: Respon
   // Remove Sensitive Data
   const data = exclude(subAdmin[0], ["password"]);
 
-  return apiResponse(res, 200, true, "Sub Admin Profile", data);
+  return apiResponse(res, 200, true, "Loyalty Executive Profile", data);
 });
 
 /**
- * Sub Admin Forget Password
+ * Loyalty Executive Forget Password
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -160,7 +160,7 @@ export const subAdminForgetPassword = asyncHandler(async (req: IApiRequest, res:
   });
 
   if (!subAdmin) {
-    return apiResponse(res, 404, false, "Sub Admin not found!");
+    return apiResponse(res, 404, false, "Loyalty Executive not found!");
   }
 
   const otp = getRandomInteger(100000, 999999);

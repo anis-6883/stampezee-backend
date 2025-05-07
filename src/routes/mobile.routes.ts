@@ -22,7 +22,7 @@ router.use("/customer/reward-screen", authAndPermissionCheck(ROLE.CUSTOMER), rew
 router.use("/customer/notification-screen", authAndPermissionCheck(ROLE.CUSTOMER), notificationScreenCustomerRoutes);
 router.use("/customer/profile-screen", profileScreenCustomerRoutes);
 
-//#################### SUB ADMIN #########################
+//#################### Loyalty Executive #########################
 router.use("/sub-admin/home-screen", authAndPermissionCheck(ROLE.SUB_ADMIN), homeScreenSubAdminRoutes);
 
 export default router;

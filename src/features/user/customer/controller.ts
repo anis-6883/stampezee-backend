@@ -174,7 +174,7 @@ export const customerResendOtp = asyncHandler(async (req: IApiRequest, res: Resp
 });
 
 /**
- * Customer & Sub Admin Login
+ * Customer & Loyalty Executive Login
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
@@ -277,7 +277,11 @@ export const customerAndSubAdminLogin = asyncHandler(async (req: Request, res: R
     // Remove Sensitive Data
     const data = exclude(subAdmin[0], ["password"]);
 
-    return apiResponse(res, 200, true, "Sub admin login successfully!", { ...data, token, role: ROLE.SUB_ADMIN });
+    return apiResponse(res, 200, true, "Loyalty Executive login successfully!", {
+      ...data,
+      token,
+      role: ROLE.SUB_ADMIN,
+    });
   }
 
   return apiResponse(res, 401, false, "Please, complete your registration first!");
@@ -350,7 +354,7 @@ export const customerAndSubAdminProfile = asyncHandler(async (req: IApiRequest, 
 
     const data = exclude(subAdmin[0], ["password"]); // Remove Sensitive Data
 
-    return apiResponse(res, 200, true, "Fetched Sub Admin Profile! ", { ...data, role: ROLE.SUB_ADMIN });
+    return apiResponse(res, 200, true, "Fetched Loyalty Executive Profile! ", { ...data, role: ROLE.SUB_ADMIN });
   }
 
   return apiResponse(res, 500, false, "Something went wrong!");

@@ -46,7 +46,7 @@ export const sendRegistrationMail = async (
       <td style="background:#d32f2f; padding:20px 30px; text-align:center; color:white;">
         <img src="cid:stampezee_header_logo" alt="StampEzee Logo" width="100" style="margin-bottom:10px;" />
         <h1 style="margin:0; font-size:24px;">Welcome to StampEzee!</h1>
-        <p style="margin:5px 0 0; font-size:14px;">Your sub-admin account is now live.</p>
+        <p style="margin:5px 0 0; font-size:14px;">Your loyalty executive account is now live.</p>
       </td>
     </tr>
     <tr>
