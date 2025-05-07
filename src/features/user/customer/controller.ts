@@ -85,6 +85,8 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
       return apiResponse(res, 400, false, "This account already exists. Please log in to continue.");
     } else {
       const customer: any = await Customer.create(customerBody);
+      sendCustomerWelcomeEmail(customer.email, customer.fullName);
+
       const data = exclude(customer._doc, ["password", "otp", "otpExpiry"]);
       return apiResponse(res, 201, true, "Login successfully!", data);
     }

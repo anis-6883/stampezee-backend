@@ -21,6 +21,7 @@ import { sendInvoiceToEmail } from "../../enroll-subscription/service";
 import { retailerSchemaUpdate } from "../../retailer/validation";
 import { sendVerificationEmail } from "../service";
 import OrderStamp from "../../../models/order-stamp";
+import { sendRegistrationMail } from "../../retailer/service";
 import {
   forgetPasswordSchema,
   loginSchema,
@@ -155,6 +156,8 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
       accountNo: "123-456-7890",
       date: enrollment.createdAt,
     };
+
+    sendRegistrationMail(req.user.email, retailer?.fullName, retailer?.address, retailer?.storeName);
 
     await sendInvoiceToEmail({
       email: req?.user?.email,
