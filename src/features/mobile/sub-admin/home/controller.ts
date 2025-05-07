@@ -12,6 +12,7 @@ import Retailer from "../../../../models/retailer";
 import { IApiRequest, INumberObject, Object } from "../../../../types";
 import { stampCollected } from "../../socket/socket";
 import { orderStampSchema, updateStampSchema } from "./validation";
+import Subscription from "../../../../models/subscription";
 
 /**
  * Order Stamp After Sub-admin Scan the QR
@@ -24,6 +25,7 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
   if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
 
   const { collectStampId, number } = req?.body;
+
   const alreadyScanned = await OrderStamp.findOne({ collectStampId, number });
 
   if (alreadyScanned) {
@@ -43,6 +45,49 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
 
   if (!enrolledRetailer) {
     return apiResponse(res, 400, false, "Your subscription is expired. Please inform your administrator!");
+  }
+
+  if (enrolledRetailer.planExists === "trial") {
+    const [[freeTrialRetailers], subscription] = await Promise.all([
+      OrderStamp.aggregate([
+        {
+          $match: {
+            $expr: { $eq: ["$retailerId", req?.user?.retailerId] },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalOrders: { $sum: 1 },
+            customerIds: { $addToSet: "$customerId" },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            totalOrders: 1,
+            uniqueCustomers: { $size: "$customerIds" },
+          },
+        },
+      ]),
+      Subscription.findOne({ slug: "trial" }).select("allowTotalUser allowTotalScan"),
+    ]);
+    if (freeTrialRetailers && subscription && (subscription.allowTotalScan || subscription.allowTotalUser)) {
+      const { allowTotalScan, allowTotalUser } = subscription;
+      const { totalOrders, uniqueCustomers } = freeTrialRetailers;
+
+      const scanLimitReached = allowTotalScan && totalOrders >= allowTotalScan;
+      const userLimitReached = allowTotalUser && uniqueCustomers >= allowTotalUser;
+
+      if (scanLimitReached || userLimitReached) {
+        return apiResponse(
+          res,
+          400,
+          false,
+          "This stamp card has been disabled. Please contact the retailer for more information."
+        );
+      }
+    }
   }
 
   const [stampIsCollected, retailer] = await Promise.all([
