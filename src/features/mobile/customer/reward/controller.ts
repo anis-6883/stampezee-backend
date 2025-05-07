@@ -54,10 +54,7 @@ export const getAllReward = asyncHandler(async (req: IApiRequest, res: Response)
               },
             },
             {
-              $unwind: {
-                path: "$stampImage",
-                preserveNullAndEmptyArrays: true,
-              },
+              $unwind: "$stampImage",
             },
             {
               $project: {
@@ -77,10 +74,7 @@ export const getAllReward = asyncHandler(async (req: IApiRequest, res: Response)
         },
       },
       {
-        $unwind: {
-          path: "$stamp",
-          preserveNullAndEmptyArrays: true,
-        },
+        $unwind: "$stamp",
       },
       {
         $lookup: {
@@ -98,19 +92,13 @@ export const getAllReward = asyncHandler(async (req: IApiRequest, res: Response)
               },
             },
             {
-              $unwind: {
-                path: "$retailer",
-                preserveNullAndEmptyArrays: true,
-              },
+              $unwind: "$retailer",
             },
           ],
         },
       },
       {
-        $unwind: {
-          path: "$branch",
-          preserveNullAndEmptyArrays: true,
-        },
+        $unwind: "$branch",
       },
       {
         $project: {
@@ -149,10 +137,7 @@ export const getAllReward = asyncHandler(async (req: IApiRequest, res: Response)
         },
       },
       {
-        $unwind: {
-          path: "$stamp",
-          preserveNullAndEmptyArrays: true,
-        },
+        $unwind: "$stamp",
       },
       {
         $count: "total",

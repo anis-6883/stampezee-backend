@@ -2,8 +2,8 @@ import { Response } from "express";
 import mongoose from "mongoose";
 import { apiResponse, asyncHandler, makePaginateForMobile } from "../../../../helpers";
 import CollectStamp from "../../../../models/collect-stamp";
-import Subscription from "../../../../models/subscription";
 import { IApiRequest, IStamp } from "../../../../types";
+import Subscription from "../../../../models/subscription";
 
 /**
  * Get All Collected Stamps
@@ -69,10 +69,7 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
         },
       },
       {
-        $unwind: {
-          path: "$stamp",
-          preserveNullAndEmptyArrays: true,
-        },
+        $unwind: "$stamp",
       },
       {
         $lookup: {
@@ -144,19 +141,13 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
               },
             },
             {
-              $unwind: {
-                path: "$retailer",
-                preserveNullAndEmptyArrays: true,
-              },
+              $unwind: "$retailer",
             },
           ],
         },
       },
       {
-        $unwind: {
-          path: "$branch",
-          preserveNullAndEmptyArrays: true,
-        },
+        $unwind: "$branch",
       },
       {
         $lookup: {
@@ -316,10 +307,7 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
             },
           },
           {
-            $unwind: {
-              path: "$stampImage",
-              preserveNullAndEmptyArrays: true,
-            },
+            $unwind: "$stampImage",
           },
           {
             $project: {
@@ -353,10 +341,7 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
       },
     },
     {
-      $unwind: {
-        path: "$stamp",
-        preserveNullAndEmptyArrays: true,
-      },
+      $unwind: "$stamp",
     },
     {
       $lookup: {
@@ -374,25 +359,16 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
             },
           },
           {
-            $unwind: {
-              path: "$retailer",
-              preserveNullAndEmptyArrays: true,
-            },
+            $unwind: "$retailer",
           },
         ],
       },
     },
     {
-      $unwind: {
-        path: "$stamp",
-        preserveNullAndEmptyArrays: true,
-      },
+      $unwind: "$stamp",
     },
     {
-      $unwind: {
-        path: "$branch",
-        preserveNullAndEmptyArrays: true,
-      },
+      $unwind: "$branch",
     },
     {
       $project: {

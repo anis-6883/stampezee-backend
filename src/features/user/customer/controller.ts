@@ -204,16 +204,10 @@ export const customerAndSubAdminLogin = asyncHandler(async (req: Request, res: R
       },
     },
     {
-      $unwind: {
-        path: "$retailer",
-        preserveNullAndEmptyArrays: true,
-      },
+      $unwind: "$retailer",
     },
     {
-      $unwind: {
-        path: "$branch",
-        preserveNullAndEmptyArrays: true,
-      },
+      $unwind: "$branch",
     },
     {
       $project: {
@@ -332,16 +326,10 @@ export const customerAndSubAdminProfile = asyncHandler(async (req: IApiRequest, 
         },
       },
       {
-        $unwind: {
-          path: "$retailer",
-          preserveNullAndEmptyArrays: true,
-        },
+        $unwind: "$retailer",
       },
       {
-        $unwind: {
-          path: "$branch",
-          preserveNullAndEmptyArrays: true,
-        },
+        $unwind: "$branch",
       },
       {
         $project: {

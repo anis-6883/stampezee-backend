@@ -53,10 +53,7 @@ export const sendNotification = asyncHandler(async (req: IApiRequest, res: Respo
         },
       },
       {
-        $unwind: {
-          path: "$enrollSubscription",
-          preserveNullAndEmptyArrays: true,
-        },
+        $unwind: "$enrollSubscription",
       },
       {
         $match: {
@@ -174,10 +171,7 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
         },
       },
       {
-        $unwind: {
-          path: "$enrollSubscription",
-          preserveNullAndEmptyArrays: true,
-        },
+        $unwind: "$enrollSubscription",
       },
       {
         $match: {
@@ -363,10 +357,7 @@ export const getAllNotificationsForRetailer = asyncHandler(async (req: IApiReque
         },
       },
       {
-        $unwind: {
-          path: "$enrollSubscription",
-          preserveNullAndEmptyArrays: true,
-        },
+        $unwind: "$enrollSubscription",
       },
       {
         $match: {
