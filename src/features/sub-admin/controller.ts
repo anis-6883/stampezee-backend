@@ -254,6 +254,7 @@ export const updateSubAdminStatus = asyncHandler(async (req: IApiRequest, res: R
     { _id: id },
     {
       status,
+      token: "",
     },
     {
       new: true,
