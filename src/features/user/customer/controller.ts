@@ -91,7 +91,7 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
     customerBody.provider = provider;
     customerBody.password = await bcrypt.hash(customerBody.password, 10);
     customerBody.otp = getRandomInteger(100000, 999999);
-    customerBody.otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
+    customerBody.otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 min
 
     const token = generateSignature({ email: customerBody.email, role: ROLE.CUSTOMER, ott: true }, 600); //15 minute // 15 min
 
@@ -156,14 +156,10 @@ export const customerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
  */
 export const customerResendOtp = asyncHandler(async (req: IApiRequest, res: Response) => {
   const otp = getRandomInteger(100000, 999999);
-  const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
+  const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 min
 
   if (req.user.isVerified) {
     return apiResponse(res, 400, false, "This customer already verified!");
-  }
-
-  if (req.user.otpExpiry > new Date()) {
-    return apiResponse(res, 400, false, "Please, wait for 2 minutes before resend otp!");
   }
 
   await Customer.updateOne({ email: req.user.email }, { $set: { otp, otpExpiry } });
@@ -403,7 +399,7 @@ export const forgetPassword = asyncHandler(async (req: IApiRequest, res: Respons
   let name = "";
   let email = "";
   const otp = getRandomInteger(100000, 999999);
-  const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
+  const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 min
   if (customer) {
     await Customer.findByIdAndUpdate(customer._id, { otp, otpExpiry });
     token = generateSignature({ email: customer.email, role: ROLE.CUSTOMER, ott: true }, 600); //15 minute // 15 min
@@ -449,9 +445,9 @@ export const customerAndSubAdminForgetPasswordOtpVerify = asyncHandler(async (re
  */
 export const customerForgetPasswordResendOtp = asyncHandler(async (req: IApiRequest, res: Response) => {
   const otp = getRandomInteger(100000, 999999);
-  const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 2 min
+  const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 min
 
-  if (req.user.otpExpiry > new Date()) return apiResponse(res, 400, false, "Wait 2 minutes to resend OTP!");
+  // if (req.user.otpExpiry > new Date()) return apiResponse(res, 400, false, "Wait 2 minutes to resend OTP!");
   if (req.role === ROLE.CUSTOMER) {
     await Customer.updateOne({ email: req.user.email }, { otp, otpExpiry });
     sendForgotPassEmail(req.user.email, otp, req.user.fullName);
