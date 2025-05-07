@@ -197,6 +197,22 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
               {
                 isRewarded: "$rewardCollected",
               },
+              {
+                condition: {
+                  $cond: {
+                    if: { $eq: ["$stamp.minPurchaseAmount", 0] },
+                    then: "",
+                    else: {
+                      $concat: [
+                        "Minimum purchase amount: ",
+                        { $toString: "$stamp.minPurchaseAmount" },
+                        " ",
+                        "$branch.retailer.businessCurrency",
+                      ],
+                    },
+                  },
+                },
+              },
             ],
           },
           "branch._id": "$branch._id",
@@ -388,6 +404,22 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
             "$stamp",
             {
               isRewarded: "$rewardCollected",
+            },
+            {
+              condition: {
+                $cond: {
+                  if: { $eq: ["$stamp.minPurchaseAmount", 0] },
+                  then: "",
+                  else: {
+                    $concat: [
+                      "Minimum purchase amount: ",
+                      { $toString: "$stamp.minPurchaseAmount" },
+                      " ",
+                      "$branch.retailer.businessCurrency",
+                    ],
+                  },
+                },
+              },
             },
           ],
         },
