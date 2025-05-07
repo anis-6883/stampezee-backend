@@ -65,7 +65,7 @@ export const otpTemplate = (verificationCode: string, stampezee_header_logo: str
                   ${verificationCode}
                 </p>
                 <p style="font-size: 14px; color: #666">
-                  This OTP is valid for 10 minutes. Do not share it with anyone.
+                  This OTP is valid for 2 minutes. Do not share it with anyone.
                 </p>
                 <p style="margin-top: 30px">
                   If you did not request this OTP, please ignore this email or contact our support.

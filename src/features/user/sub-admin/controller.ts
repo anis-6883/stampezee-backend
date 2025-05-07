@@ -176,7 +176,7 @@ export const subAdminForgetPassword = asyncHandler(async (req: IApiRequest, res:
   }
 
   const otp = getRandomInteger(100000, 999999);
-  const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+  const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 10 min
 
   await SubAdmin.findByIdAndUpdate(subAdmin._id, { otp, otpExpiry });
 
@@ -214,11 +214,11 @@ export const subAdminForgetPasswordOtpVerify = asyncHandler(async (req: IApiRequ
  */
 export const subAdminForgetPasswordResendOtp = asyncHandler(async (req: IApiRequest, res: Response) => {
   const otp = getRandomInteger(100000, 999999);
-  const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+  const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 10 min
 
-  // if (req.user.otpExpiry > new Date()) {
-  //   return apiResponse(res, 400, false, "Wait 2 minutes to resend OTP!");
-  // }
+  if (req.user.otpExpiry > new Date()) {
+    return apiResponse(res, 400, false, "Wait 2 minutes to resend OTP!");
+  }
 
   await SubAdmin.updateOne({ email: req.user.contactEmail }, { otp, otpExpiry });
 
