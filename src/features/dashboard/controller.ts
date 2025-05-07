@@ -263,10 +263,7 @@ export const topOutlets = asyncHandler(async (req: IApiRequest, res: Response) =
       },
     },
     {
-      $unwind: {
-        path: "$retailer",
-        preserveNullAndEmptyArrays: true,
-      },
+      $unwind: "$retailer",
     },
     {
       $lookup: {
@@ -277,10 +274,7 @@ export const topOutlets = asyncHandler(async (req: IApiRequest, res: Response) =
       },
     },
     {
-      $unwind: {
-        path: "$branch",
-        preserveNullAndEmptyArrays: true,
-      },
+      $unwind: "$branch",
     },
     {
       $sort: {
@@ -346,10 +340,7 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
               },
             },
             {
-              $unwind: {
-                path: "$collectStamps",
-                preserveNullAndEmptyArrays: true,
-              },
+              $unwind: "$collectStamps",
             },
             {
               $group: {
@@ -367,10 +358,7 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
         },
       },
       {
-        $unwind: {
-          path: "$branchCustomer",
-          preserveNullAndEmptyArrays: true,
-        },
+        $unwind: "$branchCustomer",
       },
       {
         $addFields: {
@@ -650,10 +638,7 @@ export const avgCollectedStamp = asyncHandler(async (req: IApiRequest, res: Resp
       },
     },
     {
-      $unwind: {
-        path: "$collectStamps",
-        preserveNullAndEmptyArrays: true,
-      },
+      $unwind: "$collectStamps",
     },
     {
       $group: {
