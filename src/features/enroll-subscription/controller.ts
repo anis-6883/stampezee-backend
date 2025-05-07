@@ -182,7 +182,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         });
 
         const customerInfo = {
-          name: req?.user.firstName + req?.user?.lastName,
+          name: `${req?.user.firstName} ${req?.user?.lastName}`,
           phone: `${req?.user?.dialCode}-${req?.user?.phone}`,
           address: `${req?.user?.address}`,
         };

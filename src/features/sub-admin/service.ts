@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
-import Settings from "../../models/settings";
 import path from "path";
+import Settings from "../../models/settings";
 
 export const sendRegistrationMail = async (
   contactEmail: string,
@@ -46,7 +46,7 @@ export const sendRegistrationMail = async (
       <td style="background:#d32f2f; padding:20px 30px; text-align:center; color:white;">
         <img src="cid:stampezee_header_logo" alt="StampEzee Logo" width="100" style="margin-bottom:10px;" />
         <h1 style="margin:0; font-size:24px;">Welcome to StampEzee!</h1>
-        <p style="margin:5px 0 0; font-size:14px;">Your sub-admin account is now live.</p>
+        <p style="margin:5px 0 0; font-size:14px;">Your loyalty-executive account is now live.</p>
       </td>
     </tr>
     <tr>
@@ -57,7 +57,7 @@ export const sendRegistrationMail = async (
         </p>
         <table style="width:100%; font-size:15px; background:#f9f9f9; padding:10px; border-radius:8px; margin:20px 0;">
           <tr><td><strong>🛒 Store:</strong></td><td>${storeName}</td></tr>
-          <tr><td><strong>📍 Branch:</strong></td><td>${branchName} – Glen Erin</td></tr>
+          <tr><td><strong>📍 Branch:</strong></td><td>${branchName}</td></tr>
           <tr><td><strong>📧 Email:</strong></td><td>${email}</td></tr>
           <tr><td><strong>🔐 Password:</strong></td><td>${password}</td></tr>
         </table>
