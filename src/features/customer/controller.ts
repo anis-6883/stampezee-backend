@@ -52,6 +52,13 @@ export const getAllCustomers = asyncHandler(async (req: IApiRequest, res: Respon
           localField: "_id",
           foreignField: "customerId",
           as: "collectStamps",
+          pipeline: [
+            {
+              $match: {
+                softDeleted: false,
+              },
+            },
+          ],
         },
       },
       {
@@ -104,7 +111,7 @@ export const getAllCustomers = asyncHandler(async (req: IApiRequest, res: Respon
  */
 export const getSingleCustomer = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
-  const query: Object = {};
+  const query: Object = { softDeleted: false };
   let currencyExchangeRate = 1;
 
   if (req.role === ROLE.RETAILER) {
@@ -491,6 +498,13 @@ export const getAllRetailerCustomers = asyncHandler(async (req: IApiRequest, res
           localField: "_id",
           foreignField: "customerId",
           as: "collectStamps",
+          pipeline: [
+            {
+              $match: {
+                softDeleted: false,
+              },
+            },
+          ],
         },
       },
       {
