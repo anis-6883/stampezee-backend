@@ -52,13 +52,6 @@ export const getAllCustomers = asyncHandler(async (req: IApiRequest, res: Respon
           localField: "_id",
           foreignField: "customerId",
           as: "collectStamps",
-          pipeline: [
-            {
-              $match: {
-                softDeleted: false,
-              },
-            },
-          ],
         },
       },
       {
@@ -71,7 +64,16 @@ export const getAllCustomers = asyncHandler(async (req: IApiRequest, res: Respon
       },
       {
         $addFields: {
-          totalCollectStamp: { $size: "$collectStamps" },
+          totalStampsCollected: { $size: "$collectStamps" },
+          totalActiveStampsCollected: {
+            $size: {
+              $filter: {
+                input: "$collectStamps",
+                as: "collectStamp",
+                cond: { $eq: ["$$collectStamp.softDeleted", false] },
+              },
+            },
+          },
           totalScan: { $size: "$orderStamps" },
           totalRewardCollect: {
             $size: {
@@ -111,7 +113,7 @@ export const getAllCustomers = asyncHandler(async (req: IApiRequest, res: Respon
  */
 export const getSingleCustomer = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
-  const query: Object = { softDeleted: false };
+  const query: Object = {};
   let currencyExchangeRate = 1;
 
   if (req.role === ROLE.RETAILER) {
@@ -155,7 +157,16 @@ export const getSingleCustomer = asyncHandler(async (req: IApiRequest, res: Resp
     },
     {
       $addFields: {
-        totalCollectStamp: { $size: "$collectStamps" },
+        totalStampsCollected: { $size: "$collectStamps" },
+        totalActiveStampsCollected: {
+          $size: {
+            $filter: {
+              input: "$collectStamps",
+              as: "collectStamp",
+              cond: { $eq: ["$$collectStamp.softDeleted", false] },
+            },
+          },
+        },
         totalScan: { $size: "$orderStamps" },
         totalPurchased: {
           $sum: {
@@ -498,13 +509,6 @@ export const getAllRetailerCustomers = asyncHandler(async (req: IApiRequest, res
           localField: "_id",
           foreignField: "customerId",
           as: "collectStamps",
-          pipeline: [
-            {
-              $match: {
-                softDeleted: false,
-              },
-            },
-          ],
         },
       },
       {
@@ -517,7 +521,16 @@ export const getAllRetailerCustomers = asyncHandler(async (req: IApiRequest, res
       },
       {
         $addFields: {
-          totalCollectStamp: { $size: "$collectStamps" },
+          totalStampsCollected: { $size: "$collectStamps" },
+          totalActiveStampsCollected: {
+            $size: {
+              $filter: {
+                input: "$collectStamps",
+                as: "collectStamp",
+                cond: { $eq: ["$$collectStamp.softDeleted", false] },
+              },
+            },
+          },
           totalScan: { $size: "$orderStamps" },
           totalRewardCollect: {
             $size: {
