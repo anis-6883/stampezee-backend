@@ -21,7 +21,7 @@ import { IApiRequest } from "../../../types";
 import { sendInvoiceToEmail } from "../../enroll-subscription/service";
 import { sendRegistrationMail } from "../../retailer/service";
 import { retailerSchemaUpdate } from "../../retailer/validation";
-import { sendVerificationEmail } from "../service";
+import { sendForgotPassEmail, sendVerificationEmail } from "../service";
 import {
   forgetPasswordSchema,
   loginSchema,
@@ -598,7 +598,7 @@ export const retailerForgetPassword = asyncHandler(async (req: IApiRequest, res:
   const tempToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER, ott: true }, 600); //15 minute // 15 min
 
   // Send OTP to Email
-  sendVerificationEmail(retailer.email, otp);
+  sendForgotPassEmail(retailer.email, otp, retailer.fullName);
 
   return apiResponse(res, 200, true, "OTP sent successfully!", { temp: tempToken });
 });
