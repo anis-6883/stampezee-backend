@@ -14,14 +14,14 @@ import {
 import Branch from "../../../models/branch";
 import EnrollSubscription from "../../../models/enroll-subscription";
 import Enrollment from "../../../models/enrollment";
+import OrderStamp from "../../../models/order-stamp";
 import Retailer from "../../../models/retailer";
 import Subscription from "../../../models/subscription";
 import { IApiRequest } from "../../../types";
 import { sendInvoiceToEmail } from "../../enroll-subscription/service";
+import { sendRegistrationMail } from "../../retailer/service";
 import { retailerSchemaUpdate } from "../../retailer/validation";
 import { sendVerificationEmail } from "../service";
-import OrderStamp from "../../../models/order-stamp";
-import { sendRegistrationMail } from "../../retailer/service";
 import {
   forgetPasswordSchema,
   loginSchema,
@@ -130,7 +130,7 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     });
 
     const customerInfo = {
-      name: req?.user.firstName + req?.user?.lastName,
+      name: `${req?.user.firstName} ${req?.user?.lastName}`,
       phone: `${req?.user?.dialCode}-${req?.user?.phone}`,
       address: `${req?.user?.address}`,
     };

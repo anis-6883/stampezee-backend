@@ -299,7 +299,7 @@ export const customerAndSubAdminProfile = asyncHandler(async (req: IApiRequest, 
     const data = exclude(req.user, ["password", "otp", "otpExpiry"]); // Remove Sensitive Data
 
     [data.totalStamps, data.totalReward] = await Promise.all([
-      CollectStamp.countDocuments({ customerId: req?.user?._id }),
+      CollectStamp.countDocuments({ customerId: req?.user?._id, softDeleted: false }),
       OrderStamp.countDocuments({ customerId: req?.user?._id, rewardCollected: true }),
     ]);
 
