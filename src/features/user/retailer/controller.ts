@@ -130,7 +130,7 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     });
 
     const customerInfo = {
-      name: `${req?.user.firstName} ${req?.user?.lastName}`,
+      name: `${req?.user.firstName?.length > 26 ? `${req?.user.firstName?.slice(0, 26)}...` : req?.user.firstName} ${req?.user?.lastName?.length > 26 ? `${req?.user?.lastName?.slice(0, 26)}...` : req?.user?.lastName}`,
       phone: `${req?.user?.dialCode}-${req?.user?.phone}`,
       address: `${req?.user?.address}`,
     };

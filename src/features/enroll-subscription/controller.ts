@@ -182,7 +182,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         });
 
         const customerInfo = {
-          name: `${req?.user.firstName} ${req?.user?.lastName}`,
+          name: `${req?.user.firstName?.length > 26 ? `${req?.user.firstName?.slice(0, 26)}...` : req?.user.firstName} ${req?.user?.lastName?.length > 26 ? `${req?.user?.lastName?.slice(0, 26)}...` : req?.user?.lastName}`,
           phone: `${req?.user?.dialCode}-${req?.user?.phone}`,
           address: `${req?.user?.address}`,
         };
@@ -840,7 +840,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           );
 
           const customerInfo = {
-            name: `${req?.user.firstName} ${req?.user?.lastName}`,
+            name: `${req?.user.firstName?.length > 26 ? `${req?.user.firstName?.slice(0, 26)}...` : req?.user.firstName} ${req?.user?.lastName?.length > 26 ? `${req?.user?.lastName?.slice(0, 26)}...` : req?.user?.lastName}`,
             phone: `${req?.user?.dialCode}-${req?.user?.phone}`,
             address: `${req?.user?.address}`,
           };
@@ -1627,7 +1627,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
 
     // Prepare to send invoice
     const customerInfo = {
-      name: retailer?.fullName,
+      name: `${retailer.firstName?.length > 26 ? `${retailer.firstName?.slice(0, 26)}...` : retailer.firstName} ${retailer?.lastName?.length > 26 ? `${retailer?.lastName?.slice(0, 26)}...` : retailer?.lastName}`,
       phone: `${retailer?.dialCode}-${retailer?.phone}`,
       address: `${retailer?.address}`,
     };
