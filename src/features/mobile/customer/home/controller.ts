@@ -2,8 +2,8 @@ import { Response } from "express";
 import mongoose from "mongoose";
 import { apiResponse, asyncHandler, makePaginateForMobile } from "../../../../helpers";
 import CollectStamp from "../../../../models/collect-stamp";
-import { IApiRequest, IStamp } from "../../../../types";
 import Subscription from "../../../../models/subscription";
+import { IApiRequest, IStamp } from "../../../../types";
 
 /**
  * Get All Collected Stamps
@@ -39,11 +39,6 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
           as: "stamp",
           pipeline: [
             {
-              $match: {
-                softDeleted: false,
-              },
-            },
-            {
               $project: {
                 title: 1,
                 description: 1,
@@ -53,14 +48,21 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
                 rewardType: 1,
                 promotionReward: 1,
                 discountReward: 1,
+                softDeleted: 1,
                 isExpired: {
-                  $lt: ["$expiredAt", "$$NOW"],
+                  $or: [{ $lt: ["$expiredAt", "$$NOW"] }, { $eq: ["$softDeleted", true] }],
                 },
                 isExpiredMessage: {
                   $cond: {
-                    if: { $lt: ["$expiredAt", "$$NOW"] },
-                    then: "This stamp is expired!",
-                    else: null,
+                    if: { $eq: ["$softDeleted", true] },
+                    then: "This stamp has been removed by the retailer.",
+                    else: {
+                      $cond: {
+                        if: { $lt: ["$expiredAt", "$$NOW"] },
+                        then: "This stamp is expired!",
+                        else: null,
+                      },
+                    },
                   },
                 },
               },
