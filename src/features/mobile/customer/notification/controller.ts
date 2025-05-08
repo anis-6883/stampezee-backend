@@ -14,7 +14,7 @@ export const getAllNotificationsForCustomer = asyncHandler(async (req: IApiReque
   const skip: number = (Number(page) - 1) * Number(limit);
 
   const query = {
-    createdAt: { $gte: req?.user.createdAt },
+    createdAt: { $gte: req?.user.createdAt, $lte: new Date() },
     $or: [{ type: "all" }, { sentTo: { $in: [req?.user?._id.toString()] } }],
   };
 
