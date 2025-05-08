@@ -1,5 +1,5 @@
 import { Response } from "express";
-import mongoose from "mongoose";
+import mongoose, { Types } from "mongoose";
 import zlib from "zlib";
 import { uploadFileToS3Bucket } from "../../../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, formatErrorMsg, makePaginateForMobile } from "../../../../helpers";
@@ -9,10 +9,10 @@ import CurrencyExchange from "../../../../models/currency-exchange";
 import Enrollment from "../../../../models/enrollment";
 import OrderStamp from "../../../../models/order-stamp";
 import Retailer from "../../../../models/retailer";
+import Subscription from "../../../../models/subscription";
 import { IApiRequest, INumberObject, Object } from "../../../../types";
 import { stampCollected } from "../../socket/socket";
 import { orderStampSchema, updateStampSchema } from "./validation";
-import Subscription from "../../../../models/subscription";
 
 /**
  * Order Stamp After Sub-admin Scan the QR
@@ -240,11 +240,13 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const uploadInvoice = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result: any = updateStampSchema.validate(req.params);
+  const result: any = await updateStampSchema.validateAsync(req.body);
   if (result.error) return apiResponse(res, 400, false, formatErrorMsg(result));
 
-  const { amount } = req?.body;
+  const { amount } = result;
   const orderStampId = req?.params?.orderStampId;
+
+  if (!Types.ObjectId.isValid(orderStampId)) return apiResponse(res, 400, false, "Please, provide valid id!");
 
   const [orderIsAvailable, retailer] = await Promise.all([
     OrderStamp.aggregate([

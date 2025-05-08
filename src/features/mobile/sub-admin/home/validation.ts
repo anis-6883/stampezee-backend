@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { requiredObjectIdField } from "../../../../helpers";
+import { numberField, requiredObjectIdField } from "../../../../helpers";
 
 const number = Joi.number().required().min(1).messages({
   "any.required": "number is required!",
@@ -13,5 +13,5 @@ export const orderStampSchema = Joi.object({
 });
 
 export const updateStampSchema = Joi.object({
-  orderStampId: requiredObjectIdField("orderStampId"),
+  amount: numberField("amount"),
 });
