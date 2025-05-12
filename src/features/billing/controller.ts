@@ -236,8 +236,10 @@ export const getAllExistingAddons = asyncHandler(async (req: IApiRequest, res: R
         pipeline: [
           {
             $match: {
-              status: true,
+              status: false,
               deletedByRetailerAt: null,
+              "planSnapshot.type": "addon",
+              validAtAfterCancel: { $ne: null },
             },
           },
         ],
@@ -356,7 +358,7 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
           },
           {
             status: false,
-            deletedByRetailerAt: new Date(),
+            // deletedByRetailerAt: new Date(),
             validAtAfterCancel: enrollment.validityTo,
           }
         ),
@@ -388,7 +390,7 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
             },
             {
               status: false,
-              deletedByRetailerAt: new Date(),
+              // deletedByRetailerAt: new Date(),
               validAtAfterCancel: enrollment.validityTo,
             }
           ),
