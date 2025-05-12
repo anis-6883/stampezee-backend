@@ -172,13 +172,36 @@ export const customerScanHistory = asyncHandler(async (req: IApiRequest, res: Re
         $unwind: "$customer",
       },
       {
+        $lookup: {
+          from: "retailers",
+          localField: "retailerId",
+          foreignField: "_id",
+          as: "retailer",
+          pipeline: [
+            {
+              $project: {
+                _id: 0,
+                storeName: 1,
+                email: 1,
+                image: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: "$retailer",
+      },
+      {
         $project: {
           "scan.time": "$createdAt",
           "scan.rewardCollected": "$rewardCollected",
           "scan.stampNumber": "$number",
           "scan.amount": "$amount",
           "scan.invoice": "$invoice",
-          branch: "$collectstamp.branch",
+          branch: {
+            $mergeObjects: ["$collectstamp.branch", { image: "$retailer.image" }],
+          },
           offer: "$collectstamp.stamp",
           subAdmin: 1,
           customer: 1,
@@ -344,13 +367,36 @@ export const customerCollectedRewardHistory = asyncHandler(async (req: IApiReque
         $unwind: "$customer",
       },
       {
+        $lookup: {
+          from: "retailers",
+          localField: "retailerId",
+          foreignField: "_id",
+          as: "retailer",
+          pipeline: [
+            {
+              $project: {
+                _id: 0,
+                storeName: 1,
+                email: 1,
+                image: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: "$retailer",
+      },
+      {
         $project: {
           "scan.time": "$createdAt",
           "scan.rewardCollected": "$rewardCollected",
           "scan.stampNumber": "$number",
           "scan.amount": "$amount",
           "scan.invoice": "$invoice",
-          branch: "$collectstamp.branch",
+          branch: {
+            $mergeObjects: ["$collectstamp.branch", { image: "$retailer.image" }],
+          },
           offer: "$collectstamp.stamp",
           subAdmin: 1,
           customer: 1,
