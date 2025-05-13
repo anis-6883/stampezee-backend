@@ -50,17 +50,23 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
                 discountReward: 1,
                 softDeleted: 1,
                 isExpired: {
-                  $or: [{ $lt: ["$expiredAt", "$$NOW"] }, { $eq: ["$softDeleted", true] }],
+                  $or: [{ $lt: ["$expiredAt", "$$NOW"] }, { $eq: ["$softDeleted", true] }, { $eq: ["$status", false] }],
                 },
                 isExpiredMessage: {
                   $cond: {
                     if: { $eq: ["$softDeleted", true] },
-                    then: "This stamp has been removed by the retailer.",
+                    then: "This stamp has been removed by the retailer!",
                     else: {
                       $cond: {
                         if: { $lt: ["$expiredAt", "$$NOW"] },
                         then: "This stamp is expired!",
-                        else: null,
+                        else: {
+                          $cond: {
+                            if: { $eq: ["$status", false] },
+                            then: "This stamp has been de-activated!",
+                            else: null,
+                          },
+                        },
                       },
                     },
                   },
