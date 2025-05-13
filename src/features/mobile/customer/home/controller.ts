@@ -63,7 +63,7 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
                         else: {
                           $cond: {
                             if: { $eq: ["$status", false] },
-                            then: "This stamp has been de-activated!",
+                            then: "This Stamp Card has been disabled. Please contact the Retailer for more information!",
                             else: null,
                           },
                         },
