@@ -231,11 +231,6 @@ export const customerStatsWithCountryWise = asyncHandler(async (req: IApiRequest
 export const topOutlets = asyncHandler(async (req: IApiRequest, res: Response) => {
   const outlets = await OrderStamp.aggregate([
     {
-      $match: {
-        amount: { $gt: 0 }, // Filter by amount greater than 0
-      },
-    },
-    {
       $addFields: {
         amountInCAD: {
           $cond: {
