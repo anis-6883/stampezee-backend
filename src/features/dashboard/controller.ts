@@ -245,7 +245,9 @@ export const topOutlets = asyncHandler(async (req: IApiRequest, res: Response) =
       $group: {
         _id: "$branchId", // Group by branchId
         totalAmountInCAD: { $sum: "$amountInCAD" }, // Sum the converted amountInCAD for each branchId
-        retailerId: { $first: "$retailerId" }, // Capture the retailerId for each branchId
+        retailerId: { $first: "$retailerId" },
+        exchangeRate: { $first: "$exchangeRate" },
+        amountCurrency: { $first: "$amountCurrency" },
       },
     },
     {
@@ -278,7 +280,15 @@ export const topOutlets = asyncHandler(async (req: IApiRequest, res: Response) =
     {
       $project: {
         _id: 0,
-        totalAmountInCAD: 1,
+        totalRevenue: {
+          $round: [
+            {
+              $divide: ["$totalAmountInCAD", { $ifNull: ["$exchangeRate", 1] }],
+            },
+            2,
+          ],
+        },
+        amountCurrency: 1,
         retailer: {
           _id: "$retailer._id",
           storeName: "$retailer.storeName",
