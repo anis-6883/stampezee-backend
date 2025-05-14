@@ -42,7 +42,7 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
   const long = req.user.address.loc.coordinates[0];
   const lat = req.user.address.loc.coordinates[1];
 
-  if (!long || !lat) return apiResponse(res, 400, false, "Latitude & Longitude must be set!");
+  if (!long || !lat) return apiResponse(res, 400, false, "Please turn on your location.");
 
   // Find already collected stampIds
   const stampIds = (
