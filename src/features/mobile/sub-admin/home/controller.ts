@@ -80,6 +80,16 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
       const userLimitReached = allowTotalUser && uniqueCustomers >= allowTotalUser;
 
       if (scanLimitReached || userLimitReached) {
+        const response: Object = {
+          status: false,
+          message: "This stamp card has been disabled. Please contact the retailer for more information.",
+          eligibleForReward: false,
+          isRewarded: false,
+          totalStampCollected: null,
+          offer: null,
+        };
+        stampCollected({ collectStampId, response });
+
         return apiResponse(
           res,
           400,
@@ -193,6 +203,7 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
   };
 
   const response: Object = {
+    status: true,
     message: "Woahh! You're One Step Closer to Your Reward! 🥳",
     eligibleForReward: false,
     isRewarded: false,
