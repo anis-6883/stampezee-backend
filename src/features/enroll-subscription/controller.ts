@@ -137,7 +137,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     abortEarly: false,
   });
 
-  const { slugs, code, branchIds, stampIds, currency }: IEnrollSubscriptionBody = result;
+  const { slugs, code, branchIds, stampIds, currency, prevAddonEnrollmentIds }: IEnrollSubscriptionBody = result;
 
   if ((slugs.includes(PACKAGES.TRIAL) && slugs.length > 1) || (slugs.includes(PACKAGES.TRIAL) && code)) {
     return apiResponse(res, 400, false, "You can't take additional packages or coupon in free trial!");
@@ -182,7 +182,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         });
 
         const customerInfo = {
-          name: `${req?.user.firstName} ${req?.user?.lastName}`,
+          name: `${req?.user.firstName?.length > 26 ? `${req?.user.firstName?.slice(0, 26)}...` : req?.user.firstName} ${req?.user?.lastName?.length > 26 ? `${req?.user?.lastName?.slice(0, 26)}...` : req?.user?.lastName}`,
           phone: `${req?.user?.dialCode}-${req?.user?.phone}`,
           address: `${req?.user?.address}`,
         };
@@ -840,7 +840,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           );
 
           const customerInfo = {
-            name: `${req?.user.firstName} ${req?.user?.lastName}`,
+            name: `${req?.user.firstName?.length > 26 ? `${req?.user.firstName?.slice(0, 26)}...` : req?.user.firstName} ${req?.user?.lastName?.length > 26 ? `${req?.user?.lastName?.slice(0, 26)}...` : req?.user?.lastName}`,
             phone: `${req?.user?.dialCode}-${req?.user?.phone}`,
             address: `${req?.user?.address}`,
           };
@@ -1067,6 +1067,20 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       ///////////////////////////////////
       //////// New Subscription /////////
       ///////////////////////////////////
+
+      // Previous Addon Enroll Re-start
+      if (prevAddonEnrollmentIds && prevAddonEnrollmentIds.length > 0) {
+        const prevAddons = await Enrollment.find({
+          retailerId: req.user._id,
+          _id: { $in: prevAddonEnrollmentIds },
+        });
+
+        if (prevAddonEnrollmentIds.length !== prevAddons.length) {
+          return apiResponse(res, 400, false, `Provide valid prevAddonEnrollmentIds!`);
+        }
+
+        metadata["prevAddonEnrollmentIds"] = prevAddonEnrollmentIds.join(",");
+      }
 
       const enrollment = await Enrollment.create({
         retailerId: req.user._id,
@@ -1481,6 +1495,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       currency = "CAD",
       currencyRate = 1,
       taxCost = 0,
+      prevAddonEnrollmentIds = null,
     } = checkoutSession?.metadata;
 
     const enrollment = await Enrollment.findById(enrollmentId);
@@ -1627,7 +1642,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
 
     // Prepare to send invoice
     const customerInfo = {
-      name: retailer?.fullName,
+      name: `${retailer.firstName?.length > 26 ? `${retailer.firstName?.slice(0, 26)}...` : retailer.firstName} ${retailer?.lastName?.length > 26 ? `${retailer?.lastName?.slice(0, 26)}...` : retailer?.lastName}`,
       phone: `${retailer?.dialCode}-${retailer?.phone}`,
       address: `${retailer?.address}`,
     };
@@ -1687,6 +1702,39 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     };
 
     await Promise.all(updateSubscriptions);
+
+    // Previous Addon Enroll Re-start / Renew
+    if (prevAddonEnrollmentIds) {
+      const enrollmentIds = prevAddonEnrollmentIds.split(",");
+      const updateQuery = [];
+
+      if (enrollmentIds.length > 0) {
+        for (const id of enrollmentIds) {
+          const enrollment = await Enrollment.findById(id);
+
+          if (enrollment) {
+            updateQuery.push(
+              stripe.subscriptions.update(enrollment.stripe.subscriptionId, { cancel_at_period_end: false }),
+              Enrollment.findByIdAndUpdate(enrollment._id, { status: true }),
+              EnrollSubscription.updateMany(
+                {
+                  enrollmentId: enrollment._id,
+                  status: false,
+                  deletedByRetailerAt: null,
+                  validAtAfterCancel: { $ne: null },
+                },
+                {
+                  status: true,
+                  validAtAfterCancel: null,
+                }
+              )
+            );
+          }
+        }
+      }
+
+      Promise.all(updateQuery);
+    }
 
     await sendInvoiceToEmail({ email: retailer?.email, customerInfo, purchasedItems, invoiceMetadata, paymentInfo });
   } catch (err) {

@@ -236,8 +236,10 @@ export const getAllExistingAddons = asyncHandler(async (req: IApiRequest, res: R
         pipeline: [
           {
             $match: {
-              status: true,
+              status: false,
               deletedByRetailerAt: null,
+              "planSnapshot.type": "addon",
+              validAtAfterCancel: { $ne: null },
             },
           },
         ],
@@ -356,7 +358,7 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
           },
           {
             status: false,
-            deletedByRetailerAt: new Date(),
+            // deletedByRetailerAt: new Date(),
             validAtAfterCancel: enrollment.validityTo,
           }
         ),
@@ -388,7 +390,7 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
             },
             {
               status: false,
-              deletedByRetailerAt: new Date(),
+              // deletedByRetailerAt: new Date(),
               validAtAfterCancel: enrollment.validityTo,
             }
           ),
@@ -504,7 +506,7 @@ export const getRetailerBillingPdf = asyncHandler(async (req: IApiRequest, res: 
 
   const retailer = await Retailer.findById(payment[0]?.enrollment?.retailerId);
   const customerInfo = {
-    name: retailer?.fullName,
+    name: `${retailer.firstName?.length > 26 ? `${retailer.firstName?.slice(0, 26)}...` : retailer.firstName} ${retailer?.lastName?.length > 26 ? `${retailer?.lastName?.slice(0, 26)}...` : retailer?.lastName}`,
     phone: `${retailer?.dialCode}-${retailer?.phone}`,
     address: `${retailer?.address}`,
   };
@@ -588,7 +590,7 @@ export const getRetailerBillingPdfForFreeTrial = asyncHandler(async (req: IApiRe
 
   const retailer = await Retailer.findById(req?.user?._id);
   const customerInfo = {
-    name: retailer?.fullName,
+    name: `${retailer.firstName?.length > 26 ? `${retailer.firstName?.slice(0, 26)}...` : retailer.firstName} ${retailer?.lastName?.length > 26 ? `${retailer?.lastName?.slice(0, 26)}...` : retailer?.lastName}`,
     phone: `${retailer?.dialCode}-${retailer?.phone}`,
     address: `${retailer?.address}`,
   };

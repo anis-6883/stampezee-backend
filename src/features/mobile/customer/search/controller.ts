@@ -8,9 +8,9 @@ import Enrollment from "../../../../models/enrollment";
 import Retailer from "../../../../models/retailer";
 import Sorting from "../../../../models/sorting";
 import Stamp from "../../../../models/stamp";
+import Subscription from "../../../../models/subscription";
 import { IApiRequest } from "../../../../types";
 import { collectStampSchema } from "./validation";
-import Subscription from "../../../../models/subscription";
 
 /**
  * Get All Stamp Categories
@@ -234,13 +234,18 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
                 localField: "retailerId",
                 foreignField: "_id",
                 as: "retailer",
+                pipeline: [
+                  {
+                    $match: {
+                      status: true,
+                      softDeleted: false,
+                    },
+                  },
+                ],
               },
             },
             {
-              $unwind: {
-                path: "$retailer",
-                preserveNullAndEmptyArrays: true,
-              },
+              $unwind: "$retailer",
             },
           ],
         },

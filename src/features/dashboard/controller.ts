@@ -1,5 +1,4 @@
 import { Response } from "express";
-import moment from "moment-timezone";
 import { apiResponse, asyncHandler, countryData, generateRandomColor } from "../../helpers";
 import Branch from "../../models/branch";
 import CollectStamp from "../../models/collect-stamp";
@@ -10,8 +9,6 @@ import OrderStamp from "../../models/order-stamp";
 import Payment from "../../models/payment";
 import Refund from "../../models/refund";
 import Retailer from "../../models/retailer";
-import Settings from "../../models/settings";
-import Stamp from "../../models/stamp";
 import { IApiRequest, Object } from "../../types";
 
 /**
@@ -21,52 +18,49 @@ import { IApiRequest, Object } from "../../types";
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const superAdminDashboardCardStats = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const settings = await Settings.findOne();
+  const { start = undefined, end = undefined } = req.query;
 
-  const now = moment().tz(settings.general.timezone.label);
-  const startOfMonth = now.clone().startOf("month").startOf("day");
-  const endOfMonth = now.clone().endOf("month").endOf("day");
+  // const settings = await Settings.findOne();
+  // const now = moment().tz(settings.general.timezone.label);
+  // const startOfMonth = now.clone().startOf("month").startOf("day");
+  // const endOfMonth = now.clone().endOf("month").endOf("day");
 
-  const [
-    totalVerifiedRetailer,
-    totalVerifiedCustomer,
-    totalStamps,
-    newCustomerThisMonth,
-    newRetailerThisMonth,
-    newStampsThisMonth,
-  ] = await Promise.all([
-    Retailer.countDocuments({ isVerified: true, softDeleted: false }),
-    Customer.countDocuments({ isVerified: true, softDeleted: false }),
-    Stamp.countDocuments({ softDeleted: false }),
+  const [totalVerifiedCustomer, totalVerifiedRetailer] = await Promise.all([
     Customer.countDocuments({
       isVerified: true,
       softDeleted: false,
-      createdAt: { $gte: startOfMonth, $lt: endOfMonth },
+      ...(start &&
+        end && {
+          createdAt: {
+            $gte: new Date(`${start}T00:00:00` as string), // Greater than or equal to start date
+            $lte: new Date(`${end}T23:59:59` as string), // Less than or equal to end date
+          },
+        }),
     }),
     Retailer.countDocuments({
       isVerified: true,
       softDeleted: false,
-      createdAt: { $gte: startOfMonth, $lt: endOfMonth },
+      ...(start &&
+        end && {
+          createdAt: {
+            $gte: new Date(`${start}T00:00:00` as string), // Greater than or equal to start date
+            $lte: new Date(`${end}T23:59:59` as string), // Less than or equal to end date
+          },
+        }),
     }),
-    Stamp.countDocuments({ softDeleted: false, createdAt: { $gte: startOfMonth, $lt: endOfMonth } }),
   ]);
 
   const totalUser = totalVerifiedCustomer + totalVerifiedRetailer;
 
-  const signup = {
+  const signupRatio = {
     retailer: totalUser === 0 ? 0 : ((totalVerifiedRetailer / totalUser) * 100).toFixed(2),
     customer: totalUser === 0 ? 0 : ((totalVerifiedCustomer / totalUser) * 100).toFixed(2),
   };
 
   const data = {
-    totalUser,
     totalVerifiedCustomer,
     totalVerifiedRetailer,
-    newCustomerThisMonth,
-    newRetailerThisMonth,
-    totalStamps,
-    newStampsThisMonth,
-    signup,
+    signupRatio,
   };
 
   return apiResponse(res, 200, true, "Super admin dashboard card stats fetched successfully!", data);
@@ -251,7 +245,9 @@ export const topOutlets = asyncHandler(async (req: IApiRequest, res: Response) =
       $group: {
         _id: "$branchId", // Group by branchId
         totalAmountInCAD: { $sum: "$amountInCAD" }, // Sum the converted amountInCAD for each branchId
-        retailerId: { $first: "$retailerId" }, // Capture the retailerId for each branchId
+        retailerId: { $first: "$retailerId" },
+        exchangeRate: { $first: "$exchangeRate" },
+        amountCurrency: { $first: "$amountCurrency" },
       },
     },
     {
@@ -284,7 +280,15 @@ export const topOutlets = asyncHandler(async (req: IApiRequest, res: Response) =
     {
       $project: {
         _id: 0,
-        totalAmountInCAD: 1,
+        totalRevenue: {
+          $round: [
+            {
+              $divide: ["$totalAmountInCAD", { $ifNull: ["$exchangeRate", 1] }],
+            },
+            2,
+          ],
+        },
+        amountCurrency: 1,
         retailer: {
           _id: "$retailer._id",
           storeName: "$retailer.storeName",
