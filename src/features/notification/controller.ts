@@ -238,7 +238,7 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
   };
 
   const earthRadiusInMiles = 3959;
-  const radiusInMiles = radius ** 0.621371;
+  const radiusInMiles = radius * 0.621371;
 
   const deviceTokens = await Customer.aggregate([
     {
