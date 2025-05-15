@@ -343,6 +343,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   data.refreshToken = refreshToken;
 
   data.plan = planExists ?? null;
+  data.planTitle = planEnrollment[0]?.enrollSubscription?.planSnapshot?.title ?? null;
   data.planPaymentCurrency = currency ?? null;
   data.planPayment = enrollSubscription?.planCurrentPrice
     ? Number((planEnrollment[0]?.enrollSubscription?.planCurrentPrice).toFixed(2))
@@ -517,6 +518,7 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
   }
   data.role = ROLE.RETAILER;
   data.plan = planExists ?? null;
+  data.planTitle = planEnrollment[0]?.enrollSubscription?.planSnapshot?.title ?? null;
   data.planPaymentCurrency = currency ?? null;
   data.planPayment = enrollSubscription?.planCurrentPrice
     ? Number((planEnrollment[0]?.enrollSubscription?.planCurrentPrice).toFixed(2))
