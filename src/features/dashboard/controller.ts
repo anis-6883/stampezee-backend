@@ -737,10 +737,10 @@ export const rewardCollectPercentage = asyncHandler(async (req: IApiRequest, res
   if (result.length <= 0) {
     return apiResponse(res, 200, true, "Reward collect percentage fetched successfully!", {
       totalRewardCollectedTrue: 0,
-      totalRewardCollectedFalse: 0,
+      totalRewardCollectedFalse: 100,
       totalEligibleForReward: 0,
       rewardCollectedTruePercentage: 0,
-      rewardCollectedFalsePercentage: 0,
+      rewardCollectedFalsePercentage: 100,
     });
   }
 
