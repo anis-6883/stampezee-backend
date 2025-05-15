@@ -221,7 +221,7 @@ export const sendNotificationBasedOnLocation = asyncHandler(async (req: IApiRequ
       description,
       imageUrl: notificationObj.image,
       data: { image: notificationObj.image },
-      topic: settings.notification.firebaseTopics,
+      topic: "",
       tokens, // Will be empty if not using location-based notifications
     });
   };
