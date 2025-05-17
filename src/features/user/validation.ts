@@ -75,6 +75,7 @@ export const retailerRegisterSchema = Joi.object({
   email: requiredEmailField,
   password: requiredWeakPasswordField(8),
   storeName: requiredStringField("storeName"),
+  businessCurrency: requiredStringField("businessCurrency"),
   firstName: requiredStringField("firstName"),
   lastName: stringField("lastName"),
   dialCode: requiredStringField("dialCode"),
