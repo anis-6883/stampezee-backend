@@ -49,6 +49,7 @@ export const createRetailer = asyncHandler(async (req: IApiRequest, res: Respons
     fullName,
     image: imageKey,
     isVerified: true,
+    takeFreeTrial: true,
     verifiedAt: Date.now(),
     ref: req.role,
   });
@@ -78,7 +79,7 @@ export const createRetailer = asyncHandler(async (req: IApiRequest, res: Respons
   });
 
   await Branch.create({
-    name: "Default Branch",
+    name: newRetailer?.storeName,
     address: {
       loc: { type: "Point", coordinates: [retailer.longitude, retailer.latitude] },
       name: retailer.address,
