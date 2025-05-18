@@ -6,6 +6,8 @@ interface ISubscription {
   descriptions: string[];
   price: number;
   duration: number;
+  isUnlimited?: boolean;
+  unlimitedFieldName?: string;
   type: "addon" | "subscription";
   limit?: number;
   allowTotalBranch?: number;
@@ -39,6 +41,8 @@ const subscriptionSchema = new Schema<ISubscription>({
   },
   price: { type: Number, trim: true, required: true },
   duration: { type: Number, trim: true, default: 30 },
+  isUnlimited: { type: Boolean, default: false },
+  unlimitedFieldName: { type: String, default: null },
   type: { type: String, required: true, enum: ["addon", "subscription"] },
   limit: { type: Number, trim: true, default: null },
   allowTotalBranch: { type: Number, trim: true, default: null },

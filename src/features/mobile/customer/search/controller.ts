@@ -298,6 +298,7 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
       status: true,
       softDeleted: false,
       _id: { $nin: stampIds },
+      retailerId: { $in: activeSubscriptionRetailerIds },
       ...(categoryId && { categoryId: mongoose.Types.ObjectId.createFromHexString(categoryId) }),
       ...(search && { $or: [{ title: { $regex: search, $options: "i" } }, { branchId: { $in: branchIds } }] }),
     }),

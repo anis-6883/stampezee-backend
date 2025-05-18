@@ -4,6 +4,7 @@ import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../h
 import Subscription from "../../models/subscription";
 import { IApiRequest } from "../../types";
 import { subscriptionSchema, subscriptionStatusSchema, updateSubscriptionSchema } from "./validation";
+import { updateRetailerFreePlan } from "./service";
 
 /**
  * Create A Subscription
@@ -135,7 +136,9 @@ export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
   const updatedData: any = await Subscription.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
   if (!updatedData) return apiResponse(res, 404, false, "Subscription not found!");
-
+  if (result?.slug === "trial") {
+    updateRetailerFreePlan(updatedData);
+  }
   return apiResponse(res, 200, true, "Subscription updated successfully!", updatedData);
 });
 
