@@ -53,10 +53,9 @@ export const createCoupon = asyncHandler(async (req: IApiRequest, res: Response)
   const settings = await Settings.findOne(null, { "general.timezone": 1 });
   if (!settings?.general?.timezone) return apiResponse(res, 400, false, "Setup TimeZone First!");
 
-  console.log({ startedAt: createBody.startedAt, expiredAt: createBody.expiredAt });
   const systemTime = getUTC(createBody.startedAt, settings.general.timezone.label, true);
   const expireTime = getUTC(createBody.expiredAt, settings.general.timezone.label, false, true);
-  console.log({ systemTime, expireTime });
+
   createBody.startedAt = systemTime;
   createBody.expiredAt = expireTime;
 

@@ -3,8 +3,8 @@ import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bu
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
 import Subscription from "../../models/subscription";
 import { IApiRequest } from "../../types";
-import { subscriptionSchema, subscriptionStatusSchema, updateSubscriptionSchema } from "./validation";
 import { updateRetailerFreePlan } from "./service";
+import { subscriptionSchema, subscriptionStatusSchema, updateSubscriptionSchema } from "./validation";
 
 /**
  * Create A Subscription
@@ -101,44 +101,38 @@ export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Res
     abortEarly: false,
   });
 
-  if (result?.allowTotalScan == "null") {
-    result.allowTotalScan = null;
-  }
-
-  if (result?.allowTotalUser == "null") {
-    result.allowTotalUser = null;
-  }
+  if (result?.allowTotalScan == "null") result.allowTotalScan = null;
+  if (result?.allowTotalUser == "null") result.allowTotalUser = null;
 
   const { id } = req.params;
-  const { softDeleted, image, ...updatedBody } = result;
+  const { softDeleted, image, slug, ...updatedBody } = result;
 
-  const subscription = await Subscription.findOne({ slug: result.slug, _id: { $ne: id } });
+  const subscription = await Subscription.findOne({ slug, _id: { $ne: id } });
   if (subscription) return apiResponse(res, 400, false, "Slug must be unique!");
 
   // File Validation
   if (req.file) {
     const { status, message } = fileValidation(req.file, undefined, ["image/jpeg", "image/png", "image/jpg"]);
-    if (!status) {
-      return apiResponse(res, 400, false, "Invalid Request!", { image: message });
-    }
+    if (!status) return apiResponse(res, 400, false, "Invalid Request!", { image: message });
   }
 
   // Upload File to S3 Bucket
   if (req.file) {
     const { status, key } = await uploadFileToS3Bucket(req.file.buffer, req.file.mimetype, "subscription");
-    if (status) {
-      updatedBody.image = key;
-    }
+    if (status) updatedBody.image = key;
+
     // Delete Existing Image if have
     const prevImage = await Subscription.findById(id, { image: 1 });
     deleteFileFromS3Bucket(prevImage?.image);
   }
 
-  const updatedData: any = await Subscription.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
+  if (!updatedBody?.isUnlimited) updatedBody.unlimitedFieldName = null;
+
+  const updatedData = await Subscription.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
   if (!updatedData) return apiResponse(res, 404, false, "Subscription not found!");
-  if (result?.slug === "trial") {
-    updateRetailerFreePlan(updatedData);
-  }
+
+  if (updatedData?.slug === "trial") updateRetailerFreePlan(updatedData);
+
   return apiResponse(res, 200, true, "Subscription updated successfully!", updatedData);
 });
 

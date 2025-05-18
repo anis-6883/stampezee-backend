@@ -18,10 +18,6 @@ const type = Joi.string().trim().lowercase().valid("addon", "subscription").mess
 //   "any.only": "type must be [7, 30]",
 // });
 
-const duration = Joi.number().messages({
-  "number.base": "duration must be number!",
-});
-
 const descriptions = Joi.array()
   .items(
     Joi.string().required().messages({
@@ -39,7 +35,7 @@ export const subscriptionSchema = Joi.object({
   type: type.required().messages({
     "any.required": "type is required!",
   }),
-  duration,
+  duration: numberField("duration"),
   descriptions: descriptions.required().messages({
     "any.required": "descriptions is required!",
   }),
@@ -81,8 +77,18 @@ export const updateSubscriptionSchema = Joi.object({
   slug: stringField("slug"),
   type,
   isUnlimited: requiredBooleanField("isUnlimited"),
-  duration,
-  unlimitedFieldName: stringField("unlimitedFieldName"),
+  duration: Joi.alternatives().conditional("isUnlimited", {
+    is: true,
+    then: numberField("duration"),
+    otherwise: numberField("duration").greater(0).messages({
+      "number.greater": "duration must be greater than 0!",
+    }),
+  }),
+  unlimitedFieldName: Joi.alternatives().conditional("isUnlimited", {
+    is: true,
+    then: requiredStringField("unlimitedFieldName"),
+    otherwise: stringField("unlimitedFieldName"),
+  }),
   price: numberField("price"),
   descriptions,
   allowTotalBranch: numberField("allowTotalBranch"),
