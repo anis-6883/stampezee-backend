@@ -163,6 +163,7 @@ export const getAllBranches = asyncHandler(async (req: IApiRequest, res: Respons
             },
             {
               $project: {
+                unlimitedFieldName: "$planSnapshot.unlimitedFieldName",
                 validityFrom: "$enrollment.validityFrom",
                 validityTo: "$enrollment.validityTo",
               },
