@@ -786,7 +786,7 @@ export const attachPaymentMethod = asyncHandler(async (req: IApiRequest, res: Re
   const stripe = new Stripe(stripeSecretKey);
 
   const paymentMethod = await stripe.paymentMethods.attach(paymentMethodId, { customer: customerId });
-  await stripe.customers.update(customerId, { invoice_settings: { default_payment_method: paymentMethodId } });
+  await stripe.customers.update(customerId);
 
   return apiResponse(res, 200, true, "Attach payment method successfully!", paymentMethod);
 });
