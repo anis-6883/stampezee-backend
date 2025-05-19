@@ -6,6 +6,11 @@ export const portalSchema = Joi.object({
   returnUrl: requiredStringField("returnUrl"),
 });
 
+export const changePaymentMethodSchema = Joi.object({
+  subscriptionId: requiredStringField("subscriptionId"),
+  paymentMethodId: requiredStringField("paymentMethodId"),
+});
+
 export const enrollSubscriptionSchema = Joi.object({
   enrollSubscriptionId: requiredObjectIdField("enrollSubscriptionId"),
 });
