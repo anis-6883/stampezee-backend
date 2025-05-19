@@ -19,7 +19,7 @@ import Refund from "../../models/refund";
 import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
 import { IApiRequest } from "../../types";
-import { enrollSubscriptionSchema, portalSchema } from "./validation";
+import { changePaymentMethodSchema, enrollSubscriptionSchema, portalSchema } from "./validation";
 
 /**
  * Get All Subscription Billings
@@ -707,6 +707,67 @@ export const setupPaymentIntent = asyncHandler(async (req: IApiRequest, res: Res
 });
 
 /**
+ * Get Payment Method By Id
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const findPaymentMethod = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { paymentMethodId } = req.params;
+
+  const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
+  if (!paymentMetadata) return apiResponse(res, 400, false, "Something went wrong in Stripe settings!");
+
+  const { stripeSecretKey } = paymentMetadata?.stripe;
+  const stripe = new Stripe(stripeSecretKey);
+
+  try {
+    const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+    return apiResponse(res, 200, true, "Get payment method successfully!", paymentMethod);
+  } catch (err) {
+    return apiResponse(res, 400, false, "Unknown payment method id!");
+  }
+});
+
+/**
+ * Change Payment Method for Subscription
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const changePaymentMethod = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await changePaymentMethodSchema.validateAsync(req.body, {
+    abortEarly: false,
+  });
+
+  const { paymentMethodId, subscriptionId } = result;
+
+  const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
+  if (!paymentMetadata) return apiResponse(res, 400, false, "Something went wrong in Stripe settings!");
+
+  const { stripeSecretKey } = paymentMetadata?.stripe;
+  const stripe = new Stripe(stripeSecretKey);
+
+  try {
+    await Promise.all([stripe.paymentMethods.retrieve(paymentMethodId), stripe.subscriptions.retrieve(subscriptionId)]);
+  } catch (err) {
+    return apiResponse(res, 400, false, "Unknown payment method or subscription id!");
+  }
+
+  await Promise.all([
+    stripe.subscriptions.update(subscriptionId, {
+      default_payment_method: paymentMethodId,
+    }),
+    Enrollment.findOneAndUpdate(
+      { "stripe.subscriptionId": subscriptionId },
+      { "stripe.paymentMethodId": paymentMethodId }
+    ),
+  ]);
+
+  return apiResponse(res, 200, true, "Change payment method successfully!");
+});
+
+/**
  * Attach Payment Method with Customer ID
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
@@ -725,7 +786,7 @@ export const attachPaymentMethod = asyncHandler(async (req: IApiRequest, res: Re
   const stripe = new Stripe(stripeSecretKey);
 
   const paymentMethod = await stripe.paymentMethods.attach(paymentMethodId, { customer: customerId });
-  await stripe.customers.update(customerId, { invoice_settings: { default_payment_method: paymentMethodId } });
+  await stripe.customers.update(customerId);
 
   return apiResponse(res, 200, true, "Attach payment method successfully!", paymentMethod);
 });

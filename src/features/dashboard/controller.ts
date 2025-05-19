@@ -614,54 +614,34 @@ export const retailerStatsWithCountryWise = asyncHandler(async (req: IApiRequest
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const avgCollectedStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { start = undefined, end = undefined } = req.query;
-
-  const result = await Branch.aggregate([
+  const result = await OrderStamp.aggregate([
     {
       $match: { retailerId: req.user._id },
     },
     {
-      $lookup: {
-        from: "collect_stamps",
-        localField: "_id",
-        foreignField: "branchId",
-        as: "collectStamps",
-        pipeline: [
-          {
-            $match: {
-              ...(start &&
-                end && {
-                  createdAt: {
-                    $gte: new Date(`${start}T00:00:00` as string), // Greater than or equal to start date
-                    $lte: new Date(`${end}T23:59:59` as string), // Less than or equal to end date
-                  },
-                }),
-            },
-          },
-        ],
+      $group: {
+        _id: "$customerId",
+        totalCustomerStamps: { $sum: 1 },
       },
     },
     {
-      $unwind: "$collectStamps",
-    },
-    {
       $group: {
-        _id: "$retailerId",
-        totalStampsCollected: { $sum: 1 },
-        totalCustomer: { $addToSet: "$collectStamps.customerId" },
+        _id: null,
+        totalStampsCollected: { $sum: "$totalCustomerStamps" },
+        totalCustomer: { $sum: 1 },
       },
     },
     {
       $project: {
         _id: 0,
         totalStampsCollected: 1,
-        totalCustomer: { $size: "$totalCustomer" },
+        totalCustomer: 1,
         avgStampCollect: {
-          $cond: {
-            if: { $gt: [{ $size: "$totalCustomer" }, 0] }, // Avoid division by zero
-            then: { $round: [{ $divide: ["$totalStampsCollected", { $size: "$totalCustomer" }] }] },
-            else: 0,
-          },
+          $cond: [
+            { $eq: ["$totalCustomer", 0] },
+            0,
+            { $round: [{ $divide: ["$totalStampsCollected", "$totalCustomer"] }, 0] },
+          ],
         },
       },
     },
