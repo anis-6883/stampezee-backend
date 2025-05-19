@@ -384,7 +384,7 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
 
   const subscription = await Subscription.findOne({ slug: "trial" }).select("allowTotalUser allowTotalScan");
 
-  const stampIds = await CollectStamp.find({ customerId: req.user._id, softDeleted: false }).distinct("_id");
+  const stampIds = await CollectStamp.find({ customerId: req.user._id }).distinct("stampId");
 
   const searchQuery: any = {};
 
@@ -398,14 +398,11 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
     ];
   }
 
-  const activeSubscriptionRetailerIds = await Enrollment.find(
-    {
-      planExists: { $nin: [null, "trial"] },
-      validityTo: { $gt: new Date() },
-      status: true,
-    },
-    { retailerId: 1 }
-  ).distinct("retailerId");
+  const activeSubscriptionRetailerIds = await Enrollment.find({
+    planExists: { $nin: [null, "trial"] },
+    validityTo: { $gt: new Date() },
+    status: true,
+  }).distinct("retailerId");
 
   const stampQuery: any = {
     startedAt: { $lte: new Date() },
@@ -416,6 +413,7 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
     softDeleted: false,
     _id: { $nin: stampIds },
   };
+
   if (categoryId) {
     stampQuery.categoryId = new mongoose.Types.ObjectId(categoryId);
   }
