@@ -884,9 +884,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                 ? null
                 : `${enrollment?.planChangeCost.toFixed(2)} ${enrollment?.currency}`,
             couponDiscount: couponValue !== 0 ? `${couponValue.toFixed(2)} ${enrollment?.currency}` : null,
-            taxDiscount: enrollment?.taxSnapshot ? `${taxValue?.toFixed(2)} ${enrollment?.currency}` : null,
+            taxDiscount: enrollment?.taxSnapshot?.taxTitle ? `${taxValue?.toFixed(2)} ${enrollment?.currency}` : null,
             coupon,
-            tax: enrollment?.taxSnapshot
+            tax: enrollment?.taxSnapshot?.taxTitle
               ? {
                   taxTitle: enrollment?.taxSnapshot?.taxTitle,
                   taxCost: enrollment?.taxSnapshot?.taxCost,
@@ -1657,9 +1657,9 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       couponDiscount: payment?.coupon?._id
         ? `${payment?.coupon?.discountAmount?.toFixed(2)} ${payment?.currency}`
         : null,
-      taxDiscount: enrollment?.taxSnapshot ? `${taxValue?.toFixed(2)} ${enrollment?.currency}` : null,
+      taxDiscount: enrollment?.taxSnapshot?.taxTitle ? `${taxValue?.toFixed(2)} ${enrollment?.currency}` : null,
       coupon: payment.coupon,
-      tax: enrollment?.taxSnapshot
+      tax: enrollment?.taxSnapshot?.taxTitle
         ? {
             taxTitle: enrollment?.taxSnapshot?.taxTitle,
             taxCost: enrollment?.taxSnapshot?.taxCost,

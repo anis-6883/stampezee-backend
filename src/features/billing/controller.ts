@@ -544,13 +544,13 @@ export const getRetailerBillingPdf = asyncHandler(async (req: IApiRequest, res: 
     couponDiscount: payment[0]?.coupon?._id
       ? `${payment[0]?.coupon?.discountAmount?.toFixed(2)} ${payment[0]?.enrollment?.currency}`
       : null,
-    taxDiscount: payment[0]?.enrollment?.taxSnapshot
+    taxDiscount: payment[0]?.enrollment?.taxSnapshot?.taxTitle
       ? `${taxValue?.toFixed(2)} ${payment[0]?.enrollment?.currency}`
       : null,
     coupon: {
       discount: payment[0]?.coupon?.discount,
     },
-    tax: payment[0]?.enrollment?.taxSnapshot
+    tax: payment[0]?.enrollment?.taxSnapshot?.taxTitle
       ? {
           taxTitle: payment[0]?.enrollment?.taxSnapshot?.taxTitle,
           taxCost: payment[0]?.enrollment?.taxSnapshot?.taxCost,
