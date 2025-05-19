@@ -424,6 +424,21 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
             },
             {
               $lookup: {
+                from: "collect_stamps",
+                localField: "_id",
+                foreignField: "branchId",
+                as: "rewardCollects",
+                pipeline: [
+                  {
+                    $match: {
+                      rewardCollected: true,
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              $lookup: {
                 from: "order_stamps",
                 localField: "_id",
                 foreignField: "branchId",
@@ -446,13 +461,34 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
               },
             },
             {
+              $lookup: {
+                from: "stamps",
+                localField: "_id",
+                foreignField: "branchId",
+                as: "stampCards",
+                pipeline: [
+                  {
+                    $match: {
+                      startedAt: { $lte: new Date() },
+                      expiredAt: { $gte: new Date() },
+                      isPublished: true,
+                      status: true,
+                      softDeleted: false,
+                    },
+                  },
+                ],
+              },
+            },
+            {
               $project: {
                 _id: 1,
                 name: 1,
+                totalRewardCollected: { $size: "$rewardCollects" },
                 address: "$address.name",
                 totalCustomer: { $ifNull: ["$collect_stamps.totalCustomer", 0] },
                 totalSubAdmin: { $size: "$sub_admins" },
-                totalOrder: { $size: "$order_stamps" },
+                totalStamps: { $size: "$order_stamps" },
+                totalStampsCard: { $size: "$stampCards" },
                 totalRevenue: {
                   $reduce: {
                     input: {
