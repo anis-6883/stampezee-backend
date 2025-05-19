@@ -36,7 +36,7 @@ export const getAllCategories = asyncHandler(async (req: IApiRequest, res: Respo
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getAllStampsByLocationDeprecated = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { page = 1, limit = 10, search = "", categoryId }: any = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
   const long = req.user.address.loc.coordinates[0];
@@ -321,6 +321,218 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
   const mobilePagination = makePaginateForMobile(Number(page), Number(limit), skip, total);
 
   return apiResponse(res, 200, true, "Location by stamp fetched successfully!", sortedStamps, mobilePagination);
+});
+
+export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { page = 1, limit = 10, search = "", categoryId }: any = req.query;
+  const skip: number = (Number(page) - 1) * Number(limit);
+  const long = req.user.address.loc.coordinates[0];
+  const lat = req.user.address.loc.coordinates[1];
+
+  if (!long || !lat) return apiResponse(res, 400, false, "Please turn on your location.");
+
+  const freeTrialRetailers = await Enrollment.aggregate([
+    {
+      $match: {
+        planExists: "trial",
+        validityTo: { $gt: new Date() },
+        status: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "order_stamps",
+        let: { retailerId: "$retailerId" },
+        pipeline: [
+          {
+            $match: {
+              $expr: { $eq: ["$retailerId", "$$retailerId"] },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalOrders: { $sum: 1 },
+              customerIds: { $addToSet: "$customerId" },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              totalOrders: 1,
+              uniqueCustomers: { $size: "$customerIds" },
+            },
+          },
+        ],
+        as: "orderStats",
+      },
+    },
+    {
+      $addFields: {
+        totalOrders: { $ifNull: [{ $arrayElemAt: ["$orderStats.totalOrders", 0] }, 0] },
+        uniqueCustomers: { $ifNull: [{ $arrayElemAt: ["$orderStats.uniqueCustomers", 0] }, 0] },
+      },
+    },
+    {
+      $project: {
+        retailerId: 1,
+        totalOrders: 1,
+        uniqueCustomers: 1,
+      },
+    },
+  ]);
+
+  const subscription = await Subscription.findOne({ slug: "trial" }).select("allowTotalUser allowTotalScan");
+
+  const stampIds = await CollectStamp.find({ customerId: req.user._id }).distinct("stampId");
+
+  const searchQuery: any = {};
+
+  if (search) {
+    const regex = new RegExp(`.*${search}.*`, "i"); // Case-insensitive search
+    searchQuery.$or = [
+      { "retailer.storeName": regex },
+      { "stamp.title": regex },
+      { "stamp.description": regex },
+      { name: regex }, // Branch name
+    ];
+  }
+
+  const activeSubscriptionRetailerIds = await Enrollment.find({
+    planExists: { $nin: [null, "trial"] },
+    validityTo: { $gt: new Date() },
+    status: true,
+  }).distinct("retailerId");
+
+  const stampQuery: any = {
+    startedAt: { $lte: new Date() },
+    expiredAt: { $gte: new Date() },
+    isPublished: true,
+    retailerId: { $in: activeSubscriptionRetailerIds },
+    status: true,
+    softDeleted: false,
+    _id: { $nin: stampIds },
+  };
+
+  if (categoryId) {
+    stampQuery.categoryId = new mongoose.Types.ObjectId(categoryId);
+  }
+  if (subscription?.allowTotalScan || subscription?.allowTotalUser) {
+    freeTrialRetailers.forEach((retailer: any) => {
+      if (subscription.allowTotalScan && retailer.totalOrders < subscription.allowTotalScan) {
+        activeSubscriptionRetailerIds.push(retailer.retailerId);
+      } else if (subscription.allowTotalUser && retailer.uniqueCustomers < subscription.allowTotalUser) {
+        activeSubscriptionRetailerIds.push(retailer.retailerId);
+      }
+    });
+  }
+
+  const [{ data, totalCount }] = await Branch.aggregate([
+    {
+      $geoNear: {
+        near: { type: "Point", coordinates: [Number(long), Number(lat)] },
+        distanceField: "distance",
+        spherical: true,
+        maxDistance: 500 * 1609.34, //500 KM. converted into miles
+      },
+    },
+    {
+      $lookup: {
+        from: "stamps",
+        localField: "_id",
+        foreignField: "branchId",
+        as: "stamp",
+        pipeline: [
+          {
+            $match: stampQuery,
+          },
+        ],
+      },
+    },
+    {
+      $unwind: "$stamp",
+    },
+    {
+      $lookup: {
+        from: "retailers",
+        localField: "retailerId",
+        foreignField: "_id",
+        as: "retailer",
+        pipeline: [
+          {
+            $match: {
+              status: true,
+              softDeleted: false,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: "$retailer",
+    },
+    // Apply search
+    ...(search ? [{ $match: searchQuery }] : []),
+    {
+      $project: {
+        _id: 0,
+        branch: {
+          _id: "$_id",
+          name: "$name",
+          address: "$address.name",
+        },
+        retailer: {
+          _id: "$retailer._id",
+          storeName: "$retailer.storeName",
+          image: "$retailer.image",
+          businessCurrency: "$retailer.businessCurrency",
+        },
+        stamp: {
+          _id: "$stamp._id",
+          title: "$stamp.title",
+          description: "$stamp.description",
+          rules: "$stamp.rules",
+          noOfStampsToCollect: "$stamp.noOfStampsToCollect",
+          minPurchaseAmount: "$stamp.minPurchaseAmount",
+          condition: {
+            $cond: {
+              if: { $eq: ["$stamp.minPurchaseAmount", 0] },
+              then: "",
+              else: {
+                $concat: [
+                  "Minimum purchase amount: ",
+                  { $toString: "$stamp.minPurchaseAmount" },
+                  " ",
+                  "$retailer.businessCurrency",
+                ],
+              },
+            },
+          },
+          rewardType: "$stamp.rewardType",
+          promotionReward: "$stamp.promotionReward",
+          discountReward: "$stamp.discountReward",
+          totalStampLimit: "$stamp.totalStampLimit",
+          startedAt: "$stamp.startedAt",
+          expiredAt: "$stamp.expiredAt",
+        },
+      },
+    },
+    {
+      $facet: {
+        data: [{ $skip: skip }, { $limit: Number(limit) }],
+        totalCount: [{ $count: "count" }],
+      },
+    },
+  ]);
+
+  const mobilePagination = makePaginateForMobile(
+    Number(page),
+    Number(limit),
+    skip,
+    totalCount.length > 0 ? totalCount[0].count : 0
+  );
+
+  return apiResponse(res, 200, true, "Location by stamp fetched successfully!", data, mobilePagination);
 });
 
 /**
