@@ -461,8 +461,8 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
         pipeline: [
           {
             $match: {
-              // status: true,
-              // softDeleted: false,
+              status: true,
+              softDeleted: false,
             },
           },
         ],
