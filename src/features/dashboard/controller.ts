@@ -825,12 +825,14 @@ export const rewardCollectPercentage = asyncHandler(async (req: IApiRequest, res
   }
 
   if (result2.length <= 0) {
+    data.totalReward = 0;
     data.totalRewardCollectedTrue = 0;
     data.totalRewardCollectedFalse = 0;
     data.rewardCollectedTruePercentage = 0;
     data.rewardCollectedFalsePercentage = 0;
   } else {
     const filterData = calculatePercentages(result2);
+    data.totalReward = filterData.totalCount;
     data.totalRewardCollectedTrue = filterData.counts.true;
     data.totalRewardCollectedFalse = filterData.counts.false;
     data.rewardCollectedTruePercentage = filterData.percentages.true;
