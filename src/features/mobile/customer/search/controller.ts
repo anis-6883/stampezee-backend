@@ -392,8 +392,8 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
     const regex = new RegExp(`.*${search}.*`, "i"); // Case-insensitive search
     searchQuery.$or = [
       { "retailer.storeName": regex },
-      { "stamps.title": regex },
-      { "stamps.description": regex },
+      { "stamp.title": regex },
+      { "stamp.description": regex },
       { name: regex }, // Branch name
     ];
   }
@@ -489,33 +489,33 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
           image: "$retailer.image",
           businessCurrency: "$retailer.businessCurrency",
         },
-        stamps: {
-          _id: "$stamps._id",
-          title: "$stamps.title",
-          description: "$stamps.description",
-          rules: "$stamps.rules",
-          noOfStampsToCollect: "$stamps.noOfStampsToCollect",
-          minPurchaseAmount: "$stamps.minPurchaseAmount",
+        stamp: {
+          _id: "$stamp._id",
+          title: "$stamp.title",
+          description: "$stamp.description",
+          rules: "$stamp.rules",
+          noOfStampsToCollect: "$stamp.noOfStampsToCollect",
+          minPurchaseAmount: "$stamp.minPurchaseAmount",
           condition: {
             $cond: {
-              if: { $eq: ["$stamps.minPurchaseAmount", 0] },
+              if: { $eq: ["$stamp.minPurchaseAmount", 0] },
               then: "",
               else: {
                 $concat: [
                   "Minimum purchase amount: ",
-                  { $toString: "$stamps.minPurchaseAmount" },
+                  { $toString: "$stamp.minPurchaseAmount" },
                   " ",
                   "$retailer.businessCurrency",
                 ],
               },
             },
           },
-          rewardType: "$stamps.rewardType",
-          promotionReward: "$stamps.promotionReward",
-          discountReward: "$stamps.discountReward",
-          totalStampLimit: "$stamps.totalStampLimit",
-          startedAt: "$stamps.startedAt",
-          expiredAt: "$stamps.expiredAt",
+          rewardType: "$stamp.rewardType",
+          promotionReward: "$stamp.promotionReward",
+          discountReward: "$stamp.discountReward",
+          totalStampLimit: "$stamp.totalStampLimit",
+          startedAt: "$stamp.startedAt",
+          expiredAt: "$stamp.expiredAt",
         },
       },
     },
