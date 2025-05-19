@@ -754,9 +754,15 @@ export const changePaymentMethod = asyncHandler(async (req: IApiRequest, res: Re
     return apiResponse(res, 400, false, "Unknown payment method or subscription id!");
   }
 
-  await stripe.subscriptions.update(subscriptionId, {
-    default_payment_method: paymentMethodId,
-  });
+  await Promise.all([
+    stripe.subscriptions.update(subscriptionId, {
+      default_payment_method: paymentMethodId,
+    }),
+    Enrollment.findOneAndUpdate(
+      { "stripe.subscriptionId": subscriptionId },
+      { "stripe.paymentMethodId": paymentMethodId }
+    ),
+  ]);
 
   return apiResponse(res, 200, true, "Change payment method successfully!");
 });
