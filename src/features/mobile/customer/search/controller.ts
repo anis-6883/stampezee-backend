@@ -384,7 +384,7 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
 
   const subscription = await Subscription.findOne({ slug: "trial" }).select("allowTotalUser allowTotalScan");
 
-  const stampIds = await CollectStamp.find({ customerId: req.user._id }).distinct("stampId");
+  const stampIds = await CollectStamp.find({ customerId: req.user._id, softDeleted: false }).distinct("stampId");
 
   const searchQuery: any = {};
 
