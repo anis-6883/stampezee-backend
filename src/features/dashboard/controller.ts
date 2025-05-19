@@ -10,6 +10,7 @@ import Payment from "../../models/payment";
 import Refund from "../../models/refund";
 import Retailer from "../../models/retailer";
 import { IApiRequest, Object } from "../../types";
+import { calculatePercentages } from "./service";
 
 /**
  * Get Super Admin Dashboard Card Stats (Super Admin)
@@ -665,64 +666,140 @@ export const avgCollectedStamp = asyncHandler(async (req: IApiRequest, res: Resp
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const rewardCollectPercentage = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const branches = await Branch.find({ retailerId: req.user._id }).select("_id");
+  const branches = await Branch.find({ retailerId: req.user._id, status: true, softDeleted: false }).select("_id");
   const branchIds = branches.map((branch) => branch._id);
 
-  const result = await CollectStamp.aggregate([
-    {
-      $match: {
-        branchId: { $in: branchIds },
-        // softDeleted: false,
+  const [result1, result2] = await Promise.all([
+    CollectStamp.aggregate([
+      {
+        $match: {
+          branchId: { $in: branchIds },
+        },
       },
-    },
-    {
-      $group: {
-        _id: null, // Group by null to get totals across the entire collection
-        totalRewardCollectedTrue: {
-          $sum: { $cond: [{ $eq: ["$rewardCollected", true] }, 1, 0] },
+      {
+        $lookup: {
+          from: "order_stamps",
+          localField: "_id",
+          foreignField: "collectStampId",
+          as: "scans",
         },
-        totalRewardCollectedFalse: {
-          $sum: { $cond: [{ $eq: ["$rewardCollected", false] }, 1, 0] },
-        },
-        totalEligibleForReward: {
-          $sum: { $cond: [{ $eq: ["$eligibleForReward", true] }, 1, 0] },
-        },
-        totalCount: { $sum: 1 }, // Total documents counted
       },
-    },
-    {
-      $project: {
-        _id: 0,
-        totalRewardCollectedTrue: 1,
-        totalRewardCollectedFalse: 1,
-        totalEligibleForReward: 1,
-        rewardCollectedTruePercentage: {
-          $cond: {
-            if: { $gt: ["$totalCount", 0] },
-            then: { $round: [{ $multiply: [{ $divide: ["$totalRewardCollectedTrue", "$totalCount"] }, 100] }, 2] },
-            else: 0,
-          },
+      {
+        $lookup: {
+          from: "stamps",
+          localField: "stampId",
+          foreignField: "_id",
+          as: "stamp",
         },
-        rewardCollectedFalsePercentage: {
-          $cond: {
-            if: { $gt: ["$totalCount", 0] },
-            then: { $round: [{ $multiply: [{ $divide: ["$totalRewardCollectedFalse", "$totalCount"] }, 100] }, 2] },
-            else: 0,
+      },
+      {
+        $unwind: "$stamp",
+      },
+      {
+        $addFields: {
+          noOfStampsToCollect: "$stamp.noOfStampsToCollect",
+          scansCount: { $size: "$scans" },
+          isCompleted: {
+            $eq: ["$stamp.noOfStampsToCollect", { $size: "$scans" }],
           },
         },
       },
-    },
+      {
+        $project: {
+          customerId: 1,
+          isCompleted: 1,
+        },
+      },
+      {
+        $group: {
+          _id: "$customerId",
+          isCompleted: { $max: { $cond: ["$isCompleted", 1, 0] } },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalEligibleForReward: {
+            $sum: "$isCompleted",
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalEligibleForReward: 1,
+        },
+      },
+    ]),
+    CollectStamp.aggregate([
+      {
+        $match: {
+          branchId: { $in: branchIds },
+        },
+      },
+      {
+        $lookup: {
+          from: "order_stamps",
+          localField: "_id",
+          foreignField: "collectStampId",
+          as: "scans",
+        },
+      },
+      {
+        $lookup: {
+          from: "stamps",
+          localField: "stampId",
+          foreignField: "_id",
+          as: "stamp",
+        },
+      },
+      {
+        $unwind: "$stamp",
+      },
+      {
+        $addFields: {
+          noOfStampsToCollect: "$stamp.noOfStampsToCollect",
+          scansCount: { $size: "$scans" },
+          isCompleted: {
+            $eq: ["$stamp.noOfStampsToCollect", { $size: "$scans" }],
+          },
+        },
+      },
+      {
+        $project: {
+          customerId: 1,
+          isCompleted: 1,
+        },
+      },
+      {
+        $group: {
+          _id: "$isCompleted",
+          totalCount: { $sum: 1 },
+        },
+      },
+    ]),
   ]);
 
-  if (result.length <= 0) {
-    return apiResponse(res, 200, true, "Reward collect percentage fetched successfully!", {
-      totalRewardCollectedTrue: 0,
-      totalRewardCollectedFalse: 0,
-      totalEligibleForReward: 0,
-      rewardCollectedTruePercentage: 0,
-      rewardCollectedFalsePercentage: 0,
-    });
+  const data: any = {};
+
+  if (result1.length > 0) {
+    data.totalEligibleForReward = result1[0].totalEligibleForReward;
+  } else {
+    data.totalEligibleForReward = 0;
   }
 
-  return apiResponse(res, 200, true, "Reward collect percentage fetched successfully!", result[0]);
+  if (result2.length <= 0) {
+    data.totalRewardCollectedTrue = 0;
+    data.totalRewardCollectedFalse = 0;
+    data.rewardCollectedTruePercentage = 0;
+    data.rewardCollectedFalsePercentage = 0;
+  } else {
+    const filterData = calculatePercentages(result2);
+    data.totalRewardCollectedTrue = filterData.counts.true;
+    data.totalRewardCollectedFalse = filterData.counts.false;
+    data.rewardCollectedTruePercentage = filterData.percentages.true;
+    data.rewardCollectedFalsePercentage = filterData.percentages.false;
+  }
+
+  return apiResponse(res, 200, true, "Reward collect percentage fetched successfully!", data);
 });
