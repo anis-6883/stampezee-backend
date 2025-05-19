@@ -28,7 +28,7 @@ import Settings from "../../models/settings";
 import Stamp from "../../models/stamp";
 import Subscription, { ISubscription } from "../../models/subscription";
 import { getInvoiceTemplate } from "../../templates/invoice";
-import { IApiRequest, IEnrollSubscriptionBody, ILineItem, Object } from "../../types";
+import { IApiRequest, IEnrollSubscriptionBody, ILineItem } from "../../types";
 import { sendInvoiceToEmail } from "./service";
 import { couponSchema, enrollmentSchema } from "./validation";
 
@@ -414,7 +414,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     ////////////////////////////////////////////////////////////////////////
     const line_items: ILineItem[] = [];
     const coupons: { coupon: string }[] = [];
-    // let stripeCustomerID = "";
+    let stripeCustomerID = enrolled ? enrolled.stripe.customerId : null;
 
     if (pickPlan && enrolled) {
       const changeMode: number = checkPlanChange(
@@ -458,7 +458,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
       metadata["enrollmentId"] = String(enrollment._id);
       metadata["balanceAmount"] = balanceAmount;
-      // stripeCustomerID = enrolled.stripe.customerId;
 
       const prevAddons = await EnrollSubscription.find({
         enrollmentId: enrolled?._id,
@@ -1178,33 +1177,33 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         });
       }
 
-      // const customer = await stripe.customers.create({
-      //   name: req?.user?.fullName,
-      //   email: req?.user?.email,
-      // });
+      if (!enrolled) {
+        const customer = await stripe.customers.create({
+          name: req?.user?.fullName,
+          email: req?.user?.email,
+        });
 
-      // stripeCustomerID = customer.id;
+        stripeCustomerID = customer.id;
+      }
     }
 
     const session = await stripe.checkout.sessions.create({
       line_items,
       mode: "subscription",
-      payment_method_types: ["card"],
       metadata, // Need for update info after complete payment
       discounts: coupons,
       success_url: `${process.env.FRONTEND_URL}/payment/complete`,
-      customer_email: req?.user?.email,
       cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
-      // customer: stripeCustomerID,
-      // saved_payment_method_options: {
-      //   allow_redisplay_filters: ["always"],
-      //   payment_method_save: "enabled",
-      // },
+      customer: stripeCustomerID,
+      payment_method_types: ["card"],
+      saved_payment_method_options: {
+        allow_redisplay_filters: ["always"],
+        payment_method_save: "enabled",
+      },
+      payment_method_collection: "always",
     });
 
-    const data: Object = { url: session?.url };
-
-    return apiResponse(res, 200, true, "Send to Payment Page!", data);
+    return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
   }
 
   return apiResponse(res, 400, false, "Only one subscription plan and no duplicate addons are allowed!");
@@ -1428,10 +1427,9 @@ function checkInvoicePaymentMethod(invoiceId: any, enrollmentId: any, paymentId:
  */
 const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, stripe: Stripe): Promise<void> => {
   try {
-    const [checkoutSession, retailer, freeTrailSubscription] = await Promise.all<[any, any, any]>([
+    const [checkoutSession, retailer] = await Promise.all<[any, any]>([
       stripe.checkout.sessions.retrieve(eventObject.id),
       Retailer.findOne({ email: eventObject.customer_details.email }),
-      Subscription.findOne({ slug: "trial" }),
     ]);
 
     const invoice: any = await stripe.invoices.retrieve(eventObject.invoice as string, {
@@ -1459,29 +1457,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
 
     // If a user takes a plan without taking the free trial, then the free trial isn't applicable anymore
     if (!retailer.takeFreeTrial) {
-      if (freeTrailSubscription) {
-        const now = moment();
-        const expireDate = moment().add(freeTrailSubscription.duration, "days");
-
-        const [enrollment] = await Promise.all([
-          Enrollment.create({
-            retailerId: retailer._id,
-            planExists: PACKAGES.TRIAL,
-            paymentStatus: "trial",
-            validityFrom: now,
-            validityTo: expireDate,
-            enrollStatus: "trial",
-            status: false,
-          }),
-          Retailer.findByIdAndUpdate(retailer._id, { takeFreeTrial: true }),
-        ]);
-
-        await EnrollSubscription.create({
-          enrollmentId: enrollment?._id,
-          planSnapshot: freeTrailSubscription,
-          status: false,
-        });
-      }
+      await Retailer.findByIdAndUpdate(retailer._id, { takeFreeTrial: true });
     }
 
     let updateSubscriptions: any = [];
