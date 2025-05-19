@@ -3,6 +3,7 @@ import {
   attachPaymentMethod,
   cancelBasePlanOrAddOn,
   detachPaymentMethod,
+  findPaymentMethod,
   getAllPaymentMethod,
   getRetailerBillingPdf,
   setDefaultPaymentMethod,
@@ -16,6 +17,7 @@ router.get("/subscription/all", getSubscriptionPayments);
 router.post("/retailer-billing-portal", getRetailerBillingPortal);
 router.delete("/cancel-subscription", cancelBasePlanOrAddOn);
 router.get("/subscription/find/:id", getSingleSubscriptionPayment);
+router.get("/find-payment-method/:paymentMethodId", findPaymentMethod);
 router.post("/download-pdf/:id", getRetailerBillingPdf);
 
 router.post("/attach-payment-method", attachPaymentMethod);
