@@ -10,7 +10,7 @@ import Payment from "../../models/payment";
 import Refund from "../../models/refund";
 import Retailer from "../../models/retailer";
 import { IApiRequest, Object } from "../../types";
-import { calculatePercentages } from "./service";
+import { calculateRewardPercentages } from "./service";
 
 /**
  * Get Super Admin Dashboard Card Stats (Super Admin)
@@ -797,20 +797,24 @@ export const rewardCollectPercentage = asyncHandler(async (req: IApiRequest, res
           noOfStampsToCollect: "$stamp.noOfStampsToCollect",
           scansCount: { $size: "$scans" },
           isCompleted: {
-            $eq: ["$stamp.noOfStampsToCollect", { $size: "$scans" }],
+            $gte: [{ $size: "$scans" }, "$stamp.noOfStampsToCollect"],
+          },
+          isRewardCollected: {
+            $gt: [{ $size: "$scans" }, "$stamp.noOfStampsToCollect"],
           },
         },
       },
       {
         $project: {
-          customerId: 1,
           isCompleted: 1,
+          isRewardCollected: 1,
         },
       },
       {
         $group: {
-          _id: "$isCompleted",
-          totalCount: { $sum: 1 },
+          _id: null,
+          totalEligibleForReward: { $sum: { $cond: [{ $eq: ["$isCompleted", true] }, 1, 0] } },
+          totalRewardCollected: { $sum: { $cond: [{ $eq: ["$isRewardCollected", true] }, 1, 0] } },
         },
       },
     ]),
@@ -831,12 +835,13 @@ export const rewardCollectPercentage = asyncHandler(async (req: IApiRequest, res
     data.rewardCollectedTruePercentage = 0;
     data.rewardCollectedFalsePercentage = 0;
   } else {
-    const filterData = calculatePercentages(result2);
-    data.totalReward = filterData.totalCount;
-    data.totalRewardCollectedTrue = filterData.counts.true;
-    data.totalRewardCollectedFalse = filterData.counts.false;
-    data.rewardCollectedTruePercentage = filterData.percentages.true;
-    data.rewardCollectedFalsePercentage = filterData.percentages.false;
+    const filterData = calculateRewardPercentages(result2[0]);
+
+    data.totalReward = result2[0].totalEligibleForReward + result2[0].totalRewardCollected;
+    data.totalRewardCollectedTrue = result2[0].totalRewardCollected;
+    data.totalRewardCollectedFalse = result2[0].totalEligibleForReward;
+    data.rewardCollectedTruePercentage = filterData.collectedPercentage;
+    data.rewardCollectedFalsePercentage = filterData.notCollectedPercentage;
   }
 
   return apiResponse(res, 200, true, "Reward collect percentage fetched successfully!", data);

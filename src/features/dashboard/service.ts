@@ -1,26 +1,20 @@
-export function calculatePercentages(data: any) {
-  let total = 0;
-  let counts: any = {
-    true: 0,
-    false: 0,
-  };
+export function calculateRewardPercentages(data: any) {
+  const { totalEligibleForReward, totalRewardCollected } = data;
 
-  data.forEach((item: any) => {
-    total += item.totalCount;
-    counts[item._id] += item.totalCount;
-  });
+  const total = totalEligibleForReward + totalRewardCollected;
 
-  const percentages =
-    total === 0
-      ? { true: 0, false: 0 }
-      : {
-          true: Number(((counts.true / total) * 100).toFixed(2)),
-          false: Number(((counts.false / total) * 100).toFixed(2)),
-        };
+  if (total === 0) {
+    return {
+      collectedPercentage: 0,
+      notCollectedPercentage: 0,
+    };
+  }
+
+  const collectedPercentage = (totalRewardCollected / total) * 100;
+  const notCollectedPercentage = (totalEligibleForReward / total) * 100;
 
   return {
-    totalCount: total,
-    counts,
-    percentages,
+    collectedPercentage: parseFloat(collectedPercentage.toFixed(2)),
+    notCollectedPercentage: parseFloat(notCollectedPercentage.toFixed(2)),
   };
 }
