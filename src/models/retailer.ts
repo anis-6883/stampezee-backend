@@ -31,6 +31,7 @@ interface IRetailer extends Document {
     label: string;
   };
   softDeleted: boolean;
+  stripeCustomerId: string;
 }
 
 const retailerSchema = new Schema<IRetailer>(
@@ -65,6 +66,7 @@ const retailerSchema = new Schema<IRetailer>(
       label: { type: String, default: "America/Toronto (-5)", trim: true },
     },
     softDeleted: { type: Boolean, default: false },
+    stripeCustomerId: { type: String, trim: true, default: null },
   },
   {
     timestamps: true,

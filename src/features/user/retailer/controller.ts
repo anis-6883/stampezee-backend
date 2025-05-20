@@ -51,7 +51,7 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
 
   const existingRetailer = await Retailer.findOne({ email: retailerBody.email });
   if (existingRetailer && existingRetailer.isVerified) {
-    return apiResponse(res, 400, false, "This email already registered!");
+    return apiResponse(res, 400, false, "This Email ID has already been registered!");
   }
 
   existingRetailer
@@ -108,7 +108,7 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
       planExists: PACKAGES.TRIAL,
       paymentStatus: "trial",
       validityFrom: moment(),
-      validityTo: moment().add(freeTrial.duration, "days"),
+      validityTo: freeTrial?.isUnlimited ? new Date("3030-01-01") : moment().add(freeTrial.duration, "days"),
       enrollStatus: "trial",
     });
 
@@ -138,7 +138,7 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     let subTotal = 0;
     const purchasedItems = [
       {
-        title: "Free Trial",
+        title: enrollSubscription?.planSnapshot?.title,
         quantity: 1,
         unitPrice: `0.00 CAD`,
         total: `0.00 CAD`,
@@ -146,7 +146,7 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     ];
 
     const invoiceMetadata = {
-      invoiceNo: "INV-" + req?.user?._id.toHexString()?.slice(-8).toUpperCase(),
+      invoiceNo: "INV-" + enrollment?._id.toHexString()?.slice(-8).toUpperCase(),
       subtotal: `${Number(subTotal).toFixed(2)} CAD`,
       total: `0.00 CAD`,
     };
@@ -239,7 +239,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
   // Check Subscription & Addon Enrollment
-  const [planEnrollment, addonEnrollments] = await Promise.all([
+  const [planEnrollment, addonEnrollments, firstPayment] = await Promise.all([
     Enrollment.aggregate([
       {
         $match: {
@@ -320,6 +320,10 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
         },
       },
     ]),
+    Enrollment.findOne({
+      retailerId: retailer._id,
+      planExists: { $nin: [null, "trial"] },
+    }),
   ]);
 
   const slugMap = getSlugCountMap(addonEnrollments);
@@ -337,6 +341,9 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   const data = exclude(retailer._doc, ["password", "otp", "otpExpiry", "createdAt", "updatedAt", "softDeleted"]);
 
   const { enrollSubscription, planExists, currency, validityFrom, validityTo } = planEnrollment[0] ?? {};
+
+  if (firstPayment) data.paymentCurrency = firstPayment?.currency;
+  else data.paymentCurrency = null;
 
   data.role = ROLE.RETAILER;
   data.accessToken = accessToken;
@@ -383,7 +390,7 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
   const data = exclude(req.user, ["password", "otp", "otpExpiry", "createdAt", "updatedAt", "softDeleted"]);
 
   // Check Subscription & Addon Enrollment
-  const [planEnrollment, addonEnrollments] = await Promise.all([
+  const [planEnrollment, addonEnrollments, firstPayment] = await Promise.all([
     Enrollment.aggregate([
       {
         $match: {
@@ -464,6 +471,10 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
         },
       },
     ]),
+    Enrollment.findOne({
+      retailerId: req.user._id,
+      planExists: { $nin: [null, "trial"] },
+    }),
   ]);
 
   const slugMap = getSlugCountMap(addonEnrollments);
@@ -517,6 +528,10 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
       }
     }
   }
+
+  if (firstPayment) data.paymentCurrency = firstPayment?.currency;
+  else data.paymentCurrency = null;
+
   data.role = ROLE.RETAILER;
   data.plan = planExists ?? null;
   data.planTitle = planEnrollment[0]?.enrollSubscription?.planSnapshot?.title ?? null;

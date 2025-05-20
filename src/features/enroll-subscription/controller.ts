@@ -143,6 +143,16 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     return apiResponse(res, 400, false, "You can't take additional packages or coupon in free trial!");
   }
 
+  // Check the previous currency
+  const firstPayment = await Enrollment.findOne({
+    retailerId: req.user._id,
+    planExists: { $nin: [null, "trial"] },
+  });
+
+  if (firstPayment && firstPayment.currency != currency) {
+    return apiResponse(res, 400, false, `Your can only purchase with ${firstPayment.currency} currency!`);
+  }
+
   // Enroll Free Trial
   if (slugs.includes(PACKAGES.TRIAL)) {
     if (!req.user.takeFreeTrial) {
@@ -190,7 +200,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         let subTotal = 0;
         const purchasedItems = [
           {
-            title: "Free Trial",
+            title: enrollSubscription?.planSnapshot?.title,
             quantity: 1,
             unitPrice: `0.00 CAD`,
             total: `0.00 CAD`,
@@ -198,7 +208,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         ];
 
         const invoiceMetadata = {
-          invoiceNo: "INV-" + req?.user?._id.toHexString()?.slice(-8).toUpperCase(),
+          invoiceNo: "INV-" + enrollment?._id.toHexString()?.slice(-8).toUpperCase(),
           subtotal: `${Number(subTotal).toFixed(2)} CAD`,
           total: `0.00 CAD`,
         };
@@ -414,7 +424,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     ////////////////////////////////////////////////////////////////////////
     const line_items: ILineItem[] = [];
     const coupons: { coupon: string }[] = [];
-    let stripeCustomerID = enrolled ? enrolled.stripe.customerId : null;
+    let stripeCustomerID = req.user.stripeCustomerId ? req.user.stripeCustomerId : null;
 
     if (pickPlan && enrolled) {
       const changeMode: number = checkPlanChange(
@@ -1177,10 +1187,14 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         });
       }
 
-      if (!enrolled) {
+      if (!req.user.stripeCustomerId) {
         const customer = await stripe.customers.create({
           name: req?.user?.fullName,
           email: req?.user?.email,
+        });
+
+        await Retailer.findByIdAndUpdate(req.user._id, {
+          stripeCustomerId: customer.id,
         });
 
         stripeCustomerID = customer.id;
