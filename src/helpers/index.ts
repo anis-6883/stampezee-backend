@@ -59,7 +59,7 @@ export const apiResponse = (
 
 export const emailField = Joi.string().email().trim().lowercase().messages({
   "string.base": "email must be string!",
-  "string.email": "email must be valid format!",
+  "string.email": "Please enter a valid email address!",
   "string.empty": "email must not be empty!",
 });
 
