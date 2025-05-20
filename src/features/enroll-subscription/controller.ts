@@ -149,9 +149,9 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     planExists: { $nin: [null, "trial"] },
   });
 
-  if (firstPayment && firstPayment.currency != currency) {
-    return apiResponse(res, 400, false, `Your can only purchase with ${firstPayment.currency} currency!`);
-  }
+  // if (firstPayment && firstPayment.currency != currency) {
+  //   return apiResponse(res, 400, false, `Your can only purchase with ${firstPayment.currency} currency!`);
+  // }
 
   // Enroll Free Trial
   if (slugs.includes(PACKAGES.TRIAL)) {
@@ -1201,23 +1201,27 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       }
     }
 
-    const session = await stripe.checkout.sessions.create({
-      line_items,
-      mode: "subscription",
-      metadata, // Need for update info after complete payment
-      discounts: coupons,
-      success_url: `${process.env.FRONTEND_URL}/payment/complete`,
-      cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
-      customer: stripeCustomerID,
-      payment_method_types: ["card"],
-      saved_payment_method_options: {
-        allow_redisplay_filters: ["always"],
-        payment_method_save: "enabled",
-      },
-      payment_method_collection: "always",
-    });
+    try {
+      const session = await stripe.checkout.sessions.create({
+        line_items,
+        mode: "subscription",
+        metadata, // Need for update info after complete payment
+        discounts: coupons,
+        success_url: `${process.env.FRONTEND_URL}/payment/complete`,
+        cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
+        customer: stripeCustomerID,
+        payment_method_types: ["card"],
+        saved_payment_method_options: {
+          allow_redisplay_filters: ["always"],
+          payment_method_save: "enabled",
+        },
+        payment_method_collection: "always",
+      });
 
-    return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
+      return apiResponse(res, 200, true, "Send to Payment Page!", { url: session?.url });
+    } catch (err) {
+      return apiResponse(res, 400, true, "Payment Error", { changeCurrency: true });
+    }
   }
 
   return apiResponse(res, 400, false, "Only one subscription plan and no duplicate addons are allowed!");
