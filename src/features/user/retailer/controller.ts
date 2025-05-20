@@ -108,7 +108,7 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
       planExists: PACKAGES.TRIAL,
       paymentStatus: "trial",
       validityFrom: moment(),
-      validityTo: moment().add(freeTrial.duration, "days"),
+      validityTo: freeTrial?.isUnlimited ? new Date("3030-01-01") : moment().add(freeTrial.duration, "days"),
       enrollStatus: "trial",
     });
 
