@@ -503,8 +503,10 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
       ]),
       Subscription.findOne({ slug: "trial" }).select("allowTotalUser allowTotalScan"),
     ]);
+    const { allowTotalScan, allowTotalUser } = subscription;
+    data.allowTotalScan = allowTotalScan;
+    data.allowTotalUser = allowTotalUser;
     if (freeTrialRetailers && subscription && (subscription.allowTotalScan || subscription.allowTotalUser)) {
-      const { allowTotalScan, allowTotalUser } = subscription;
       const { totalOrders, uniqueCustomers } = freeTrialRetailers;
 
       const scanLimitReached = allowTotalScan && totalOrders >= allowTotalScan;
@@ -512,8 +514,6 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
 
       if (scanLimitReached || userLimitReached) {
         data.isLimitExceeded = true;
-        data.allowTotalScan = allowTotalScan;
-        data.allowTotalUser = allowTotalUser;
       }
     }
   }
