@@ -51,7 +51,7 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
 
   const existingRetailer = await Retailer.findOne({ email: retailerBody.email });
   if (existingRetailer && existingRetailer.isVerified) {
-    return apiResponse(res, 400, false, "This email already registered!");
+    return apiResponse(res, 400, false, "This Email ID has already been registered!");
   }
 
   existingRetailer
@@ -138,7 +138,7 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     let subTotal = 0;
     const purchasedItems = [
       {
-        title: "Free Trial",
+        title: enrollSubscription?.planSnapshot?.title,
         quantity: 1,
         unitPrice: `0.00 CAD`,
         total: `0.00 CAD`,
@@ -146,7 +146,7 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     ];
 
     const invoiceMetadata = {
-      invoiceNo: "INV-" + req?.user?._id.toHexString()?.slice(-8).toUpperCase(),
+      invoiceNo: "INV-" + enrollment?._id.toHexString()?.slice(-8).toUpperCase(),
       subtotal: `${Number(subTotal).toFixed(2)} CAD`,
       total: `0.00 CAD`,
     };
