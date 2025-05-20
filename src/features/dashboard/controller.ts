@@ -827,7 +827,17 @@ export const rewardCollectPercentage = asyncHandler(async (req: IApiRequest, res
       {
         $group: {
           _id: null,
-          totalEligibleForReward: { $sum: { $cond: [{ $eq: ["$isCompleted", true] }, 1, 0] } },
+          totalEligibleForReward: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [{ $eq: ["$isCompleted", true] }, { $eq: ["$isRewardCollected", false] }],
+                },
+                1,
+                0,
+              ],
+            },
+          },
           totalRewardCollected: { $sum: { $cond: [{ $eq: ["$isRewardCollected", true] }, 1, 0] } },
         },
       },
@@ -850,7 +860,6 @@ export const rewardCollectPercentage = asyncHandler(async (req: IApiRequest, res
     data.rewardCollectedFalsePercentage = 0;
   } else {
     const filterData = calculateRewardPercentages(result2[0]);
-
     data.totalReward = result2[0].totalEligibleForReward + result2[0].totalRewardCollected;
     data.totalRewardCollectedTrue = result2[0].totalRewardCollected;
     data.totalRewardCollectedFalse = result2[0].totalEligibleForReward;
