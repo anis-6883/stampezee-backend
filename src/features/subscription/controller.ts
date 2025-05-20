@@ -127,6 +127,7 @@ export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Res
   }
 
   if (!updatedBody?.isUnlimited) updatedBody.unlimitedFieldName = null;
+  else updatedBody.duration = 0;
 
   const updatedData = await Subscription.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
   if (!updatedData) return apiResponse(res, 404, false, "Subscription not found!");
