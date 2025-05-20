@@ -78,6 +78,7 @@ export interface IUser {
   timezone?: {
     label: string;
   };
+  stripeCustomerId?: string | null;
 }
 
 export interface IApiRequest extends Request {
