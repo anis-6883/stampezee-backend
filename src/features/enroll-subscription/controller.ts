@@ -200,7 +200,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         let subTotal = 0;
         const purchasedItems = [
           {
-            title: "Free Trial",
+            title: enrollSubscription?.planSnapshot?.title,
             quantity: 1,
             unitPrice: `0.00 CAD`,
             total: `0.00 CAD`,
@@ -208,7 +208,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         ];
 
         const invoiceMetadata = {
-          invoiceNo: "INV-" + req?.user?._id.toHexString()?.slice(-8).toUpperCase(),
+          invoiceNo: "INV-" + enrollment?._id.toHexString()?.slice(-8).toUpperCase(),
           subtotal: `${Number(subTotal).toFixed(2)} CAD`,
           total: `0.00 CAD`,
         };

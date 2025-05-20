@@ -588,7 +588,10 @@ export const getRetailerBillingPdfForFreeTrial = asyncHandler(async (req: IApiRe
   const { id } = req.params;
   if (!Types.ObjectId.isValid(id)) return apiResponse(res, 400, false, "Please, provide valid id!");
 
-  const retailer = await Retailer.findById(req?.user?._id);
+  const [retailer, enrollSubscription] = await Promise.all([
+    Retailer.findById(req?.user?._id),
+    EnrollSubscription.findOne({ enrollmentId: id }),
+  ]);
   const customerInfo = {
     name: `${retailer.firstName?.length > 26 ? `${retailer.firstName?.slice(0, 26)}...` : retailer.firstName} ${retailer?.lastName?.length > 26 ? `${retailer?.lastName?.slice(0, 26)}...` : retailer?.lastName}`,
     phone: `${retailer?.dialCode}-${retailer?.phone}`,
@@ -598,7 +601,7 @@ export const getRetailerBillingPdfForFreeTrial = asyncHandler(async (req: IApiRe
   let subTotal = 0;
   const purchasedItems = [
     {
-      title: "Free Trial",
+      title: enrollSubscription?.planSnapshot?.title,
       quantity: 1,
       unitPrice: `0.00 CAD`,
       total: `0.00 CAD`,
