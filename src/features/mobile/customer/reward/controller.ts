@@ -22,7 +22,13 @@ export const getAllReward = asyncHandler(async (req: IApiRequest, res: Response)
         },
       },
       {
+        $addFields: {
+          eligibleSort: { $cond: [{ $eq: ["$eligibleForReward", true] }, 1, 0] },
+        },
+      },
+      {
         $sort: {
+          eligibleSort: -1,
           updatedAt: -1,
         },
       },
