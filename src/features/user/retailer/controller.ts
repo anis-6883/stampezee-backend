@@ -355,7 +355,9 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   data.plan = planExists ?? null;
   data.planTitle = planEnrollment[0]?.enrollSubscription?.planSnapshot?.title ?? null;
   data.unlimitedFieldName = planEnrollment[0]?.enrollSubscription?.planSnapshot?.unlimitedFieldName ?? null;
-  data.planPaymentCurrency = currency ?? null;
+  if (data?.planPaymentCurrency == null) {
+    data.planPaymentCurrency = currency ?? null;
+  }
   data.planPayment = enrollSubscription?.planCurrentPrice
     ? Number((planEnrollment[0]?.enrollSubscription?.planCurrentPrice).toFixed(2))
     : null;
@@ -542,7 +544,9 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
   data.plan = planExists ?? null;
   data.planTitle = planEnrollment[0]?.enrollSubscription?.planSnapshot?.title ?? null;
   data.unlimitedFieldName = planEnrollment[0]?.enrollSubscription?.planSnapshot?.unlimitedFieldName ?? null;
-  data.planPaymentCurrency = currency ?? null;
+  if (data?.planPaymentCurrency == null) {
+    data.planPaymentCurrency = currency ?? null;
+  }
   data.planPayment = enrollSubscription?.planCurrentPrice
     ? Number((planEnrollment[0]?.enrollSubscription?.planCurrentPrice).toFixed(2))
     : null;
