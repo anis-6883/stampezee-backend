@@ -1,4 +1,5 @@
 import { Response } from "express";
+import moment from "moment-timezone";
 import { apiResponse, asyncHandler, countryData, generateRandomColor } from "../../helpers";
 import Branch from "../../models/branch";
 import CollectStamp from "../../models/collect-stamp";
@@ -9,6 +10,7 @@ import OrderStamp from "../../models/order-stamp";
 import Payment from "../../models/payment";
 import Refund from "../../models/refund";
 import Retailer from "../../models/retailer";
+import Settings from "../../models/settings";
 import { IApiRequest, Object } from "../../types";
 import { calculateRewardPercentages } from "./service";
 
@@ -21,12 +23,12 @@ import { calculateRewardPercentages } from "./service";
 export const superAdminDashboardCardStats = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { start = undefined, end = undefined } = req.query;
 
-  // const settings = await Settings.findOne();
-  // const now = moment().tz(settings.general.timezone.label);
-  // const startOfMonth = now.clone().startOf("month").startOf("day");
-  // const endOfMonth = now.clone().endOf("month").endOf("day");
+  const settings = await Settings.findOne();
+  const now = moment().tz(settings.general.timezone.label);
+  const startOfMonth = now.clone().startOf("month").startOf("day");
+  const endOfMonth = now.clone().endOf("month").endOf("day");
 
-  const [totalVerifiedCustomer, totalVerifiedRetailer] = await Promise.all([
+  const [totalVerifiedCustomer, totalVerifiedRetailer, newRetailerThisMonth, newCustomerThisMonth] = await Promise.all([
     Customer.countDocuments({
       isVerified: true,
       softDeleted: false,
@@ -49,6 +51,16 @@ export const superAdminDashboardCardStats = asyncHandler(async (req: IApiRequest
           },
         }),
     }),
+    Retailer.countDocuments({
+      isVerified: true,
+      softDeleted: false,
+      createdAt: { $gte: startOfMonth, $lt: endOfMonth },
+    }),
+    Customer.countDocuments({
+      isVerified: true,
+      softDeleted: false,
+      createdAt: { $gte: startOfMonth, $lt: endOfMonth },
+    }),
   ]);
 
   const totalUser = totalVerifiedCustomer + totalVerifiedRetailer;
@@ -61,6 +73,8 @@ export const superAdminDashboardCardStats = asyncHandler(async (req: IApiRequest
   const data = {
     totalVerifiedCustomer,
     totalVerifiedRetailer,
+    newRetailerThisMonth,
+    newCustomerThisMonth,
     signupRatio,
   };
 
