@@ -316,6 +316,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
       },
       {
         $project: {
+          currency: 1,
           slugs: 1,
         },
       },
@@ -327,6 +328,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   ]);
 
   const slugMap = getSlugCountMap(addonEnrollments);
+  const currencyTushar = addonEnrollments[0]?.currency; //Remove_Tushar
   const activeAddonSlugs = [];
   const { BRANCH, STAMP, CUSTOM_STAMP_IMAGE, PUSH_NOTIFICATION_USER, PUSH_NOTIFICATION_LOCATION } = PACKAGES;
 
@@ -339,6 +341,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
 
   // Remove Sensitive Data
   const data = exclude(retailer._doc, ["password", "otp", "otpExpiry", "createdAt", "updatedAt", "softDeleted"]);
+  data.paymentCurrency = currencyTushar ?? null; //Remove_Tushar
 
   const { enrollSubscription, planExists, currency, validityFrom, validityTo } = planEnrollment[0] ?? {};
 
@@ -467,6 +470,7 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
       },
       {
         $project: {
+          currency: 1,
           slugs: 1,
         },
       },
@@ -478,6 +482,8 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
   ]);
 
   const slugMap = getSlugCountMap(addonEnrollments);
+  const currencyTushar = addonEnrollments[0]?.currency; //Remove_Tushar
+  data.paymentCurrency = currencyTushar ?? null; //Remove_Tushar
   const activeAddonSlugs = [];
   const { BRANCH, STAMP, CUSTOM_STAMP_IMAGE, PUSH_NOTIFICATION_USER, PUSH_NOTIFICATION_LOCATION } = PACKAGES;
 
