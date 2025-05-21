@@ -24,7 +24,21 @@ export const superAdminDashboardCardStats = asyncHandler(async (req: IApiRequest
   const { start = undefined, end = undefined } = req.query;
 
   const settings = await Settings.findOne();
+  const timezone = settings.general.timezone.label;
   const now = moment().tz(settings.general.timezone.label);
+
+  let startDate, endDate;
+
+  // Handle date logic
+  if (start) {
+    startDate = moment.tz(start, timezone).startOf("day").toDate();
+    endDate = end ? moment.tz(end, timezone).endOf("day").toDate() : moment.tz(start, timezone).endOf("day").toDate(); // treat start as end
+  }
+
+  const dateFilter: Object = {};
+  if (startDate) dateFilter.$gte = startDate;
+  if (endDate) dateFilter.$lte = endDate;
+
   const startOfMonth = now.clone().startOf("month").startOf("day");
   const endOfMonth = now.clone().endOf("month").endOf("day");
 
@@ -32,24 +46,12 @@ export const superAdminDashboardCardStats = asyncHandler(async (req: IApiRequest
     Customer.countDocuments({
       isVerified: true,
       softDeleted: false,
-      ...(start &&
-        end && {
-          createdAt: {
-            $gte: new Date(`${start}T00:00:00` as string), // Greater than or equal to start date
-            $lte: new Date(`${end}T23:59:59` as string), // Less than or equal to end date
-          },
-        }),
+      ...(start || end ? { createdAt: dateFilter } : {}),
     }),
     Retailer.countDocuments({
       isVerified: true,
       softDeleted: false,
-      ...(start &&
-        end && {
-          createdAt: {
-            $gte: new Date(`${start}T00:00:00` as string), // Greater than or equal to start date
-            $lte: new Date(`${end}T23:59:59` as string), // Less than or equal to end date
-          },
-        }),
+      ...(start || end ? { createdAt: dateFilter } : {}),
     }),
     Retailer.countDocuments({
       isVerified: true,
@@ -331,6 +333,23 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
   const retailer = await Retailer.findById(req.user?._id, { businessCurrency: 1 });
   const currencyExchange = await CurrencyExchange.findOne({ currency: retailer?.businessCurrency });
 
+  const { start = undefined, end = undefined } = req.query;
+
+  const settings = await Settings.findOne();
+  const timezone = settings.general.timezone.label;
+
+  let startDate, endDate;
+
+  // Handle date logic
+  if (start) {
+    startDate = moment.tz(start, timezone).startOf("day").toDate();
+    endDate = end ? moment.tz(end, timezone).endOf("day").toDate() : moment.tz(start, timezone).endOf("day").toDate(); // treat start as end
+  }
+
+  const dateFilter: Object = {};
+  if (startDate) dateFilter.$gte = startDate;
+  if (endDate) dateFilter.$lte = endDate;
+
   const [customerStats, result] = await Promise.all([
     Retailer.aggregate([
       {
@@ -356,6 +375,13 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
                 localField: "_id",
                 foreignField: "branchId",
                 as: "collectStamps",
+                pipeline: [
+                  {
+                    $match: {
+                      ...(start || end ? { createdAt: dateFilter } : {}),
+                    },
+                  },
+                ],
               },
             },
             {
@@ -446,6 +472,7 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
                   {
                     $match: {
                       rewardCollected: true,
+                      ...(start || end ? { createdAt: dateFilter } : {}),
                     },
                   },
                 ],
@@ -457,6 +484,13 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
                 localField: "_id",
                 foreignField: "branchId",
                 as: "order_stamps",
+                pipeline: [
+                  {
+                    $match: {
+                      ...(start || end ? { createdAt: dateFilter } : {}),
+                    },
+                  },
+                ],
               },
             },
             {
@@ -469,6 +503,7 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
                   {
                     $match: {
                       softDeleted: false,
+                      ...(start || end ? { createdAt: dateFilter } : {}),
                     },
                   },
                 ],
@@ -488,6 +523,7 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
                       isPublished: true,
                       status: true,
                       softDeleted: false,
+                      ...(start || end ? { createdAt: dateFilter } : {}),
                     },
                   },
                 ],
@@ -545,25 +581,6 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
         },
       },
       {
-        $lookup: {
-          from: "stamps",
-          localField: "_id",
-          foreignField: "retailerId",
-          as: "stamps",
-          pipeline: [
-            {
-              $match: {
-                startedAt: { $lte: new Date() },
-                expiredAt: { $gte: new Date() },
-                isPublished: true,
-                status: true,
-                softDeleted: false,
-              },
-            },
-          ],
-        },
-      },
-      {
         $addFields: {
           currentPlan: {
             $cond: {
@@ -573,7 +590,7 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
             },
           },
           totalActiveBranches: { $size: "$branches" },
-          totalStampCards: { $size: "$stamps" },
+          totalStampCards: { $sum: "$branches.totalStampsCards" },
           totalStamps: { $sum: "$branches.totalStamps" },
           totalRevenue: { $sum: "$branches.totalRevenue" },
         },
@@ -665,9 +682,29 @@ export const retailerStatsWithCountryWise = asyncHandler(async (req: IApiRequest
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const avgCollectedStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { start = undefined, end = undefined } = req.query;
+
+  const settings = await Settings.findOne();
+  const timezone = settings.general.timezone.label;
+
+  let startDate, endDate;
+
+  // Handle date logic
+  if (start) {
+    startDate = moment.tz(start, timezone).startOf("day").toDate();
+    endDate = end ? moment.tz(end, timezone).endOf("day").toDate() : moment.tz(start, timezone).endOf("day").toDate(); // treat start as end
+  }
+
+  const dateFilter: Object = {};
+  if (startDate) dateFilter.$gte = startDate;
+  if (endDate) dateFilter.$lte = endDate;
+
   const result = await OrderStamp.aggregate([
     {
-      $match: { retailerId: req.user._id },
+      $match: {
+        retailerId: req.user._id,
+        ...(start || end ? { createdAt: dateFilter } : {}),
+      },
     },
     {
       $group: {
@@ -719,6 +756,23 @@ export const rewardCollectPercentage = asyncHandler(async (req: IApiRequest, res
   const branches = await Branch.find({ retailerId: req.user._id, status: true, softDeleted: false }).select("_id");
   const branchIds = branches.map((branch) => branch._id);
 
+  const { start = undefined, end = undefined } = req.query;
+
+  const settings = await Settings.findOne();
+  const timezone = settings.general.timezone.label;
+
+  let startDate, endDate;
+
+  // Handle date logic
+  if (start) {
+    startDate = moment.tz(start, timezone).startOf("day").toDate();
+    endDate = end ? moment.tz(end, timezone).endOf("day").toDate() : moment.tz(start, timezone).endOf("day").toDate(); // treat start as end
+  }
+
+  const dateFilter: Object = {};
+  if (startDate) dateFilter.$gte = startDate;
+  if (endDate) dateFilter.$lte = endDate;
+
   const [result1, result2] = await Promise.all([
     CollectStamp.aggregate([
       {
@@ -732,6 +786,13 @@ export const rewardCollectPercentage = asyncHandler(async (req: IApiRequest, res
           localField: "_id",
           foreignField: "collectStampId",
           as: "scans",
+          pipeline: [
+            {
+              $match: {
+                ...(start || end ? { createdAt: dateFilter } : {}),
+              },
+            },
+          ],
         },
       },
       {
@@ -793,6 +854,13 @@ export const rewardCollectPercentage = asyncHandler(async (req: IApiRequest, res
           localField: "_id",
           foreignField: "collectStampId",
           as: "scans",
+          pipeline: [
+            {
+              $match: {
+                ...(start || end ? { createdAt: dateFilter } : {}),
+              },
+            },
+          ],
         },
       },
       {
