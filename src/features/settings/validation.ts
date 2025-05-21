@@ -1,5 +1,6 @@
 import Joi from "joi";
 import { numberField, stringField } from "../../helpers/index";
+import { app } from "firebase-admin";
 
 export const settingsSchema = Joi.object({
   general: Joi.object({
@@ -41,6 +42,32 @@ export const settingsSchema = Joi.object({
   }).messages({
     "object.base": "notification must be object!",
   }),
+
+  appVersion: Joi.object({
+    ios: Joi.object({
+      name: stringField("name"),
+      version: numberField("version"),
+      forceUpdate: Joi.boolean().default(false),
+      appUrl: stringField("appUrl"),
+      buttonText: stringField("buttonText"),
+      description: stringField("description"),
+    }).messages({
+      "object.base": "ios must be object!",
+    }),
+    android: Joi.object({
+      name: stringField("name"),
+      version: numberField("version"),
+      forceUpdate: Joi.boolean().default(false),
+      appUrl: stringField("appUrl"),
+      buttonText: stringField("buttonText"),
+      description: stringField("description"),
+    }).messages({
+      "object.base": "android must be object!",
+    }),
+  }).messages({
+    "object.base": "appVersion must be object!",
+  }),
+
   page: Joi.object({
     terms: stringField("terms"),
     policy: stringField("policy"),

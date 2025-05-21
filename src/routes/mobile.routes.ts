@@ -9,8 +9,11 @@ import homeScreenSubAdminRoutes from "../features/mobile/sub-admin/home/route";
 import customerAuthRoutes from "../features/user/customer/route";
 import subAdminAuthRoutes from "../features/user/sub-admin/route";
 import { authAndPermissionCheck } from "../middlewares/authMiddleware";
+import { getSettings } from "../features/mobile/common/controller";
 
 const router = express.Router();
+
+router.get("/app-version", getSettings);
 
 router.use("/auth-screen/sub-admin", subAdminAuthRoutes);
 router.use("/auth-screen/customer", customerAuthRoutes);

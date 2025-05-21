@@ -1,3 +1,4 @@
+import { app } from "firebase-admin";
 import { Document, model, Schema } from "mongoose";
 
 // Define interfaces for each sub-document
@@ -37,6 +38,15 @@ interface INotification extends Document {
   oneSignalApiKey: string;
 }
 
+interface IAppVersion extends Document {
+  name: string;
+  version: string;
+  forceUpdate: boolean;
+  appUrl: string;
+  buttonText: string;
+  description: string;
+}
+
 interface IPage extends Document {
   terms: string;
   policy: string;
@@ -70,6 +80,10 @@ interface ISettings extends Document {
   mail: IMail;
   notification: INotification;
   s3Bucket: IS3Bucket;
+  appVersion: {
+    ios: IAppVersion;
+    android: IAppVersion;
+  };
   stripe: IStripe;
   googleMap: IGoogleMap;
   page: IPage;
@@ -126,6 +140,24 @@ const settingsSchema = new Schema<ISettings>(
       taxTitle: { type: String, default: "", trim: true },
       taxCost: { type: Number, default: 1 },
       taxStatus: { type: String, enum: ["on", "off"], default: "on" },
+    },
+    appVersion: {
+      ios: {
+        name: { type: String, default: "", trim: true },
+        version: { type: Number, default: 1, trim: true },
+        forceUpdate: { type: Boolean, default: false },
+        appUrl: { type: String, default: "", trim: true },
+        buttonText: { type: String, default: "", trim: true },
+        description: { type: String, default: "", trim: true },
+      },
+      android: {
+        name: { type: String, default: "", trim: true },
+        version: { type: Number, default: 1, trim: true },
+        forceUpdate: { type: Boolean, default: false },
+        appUrl: { type: String, default: "", trim: true },
+        buttonText: { type: String, default: "", trim: true },
+        description: { type: String, default: "", trim: true },
+      },
     },
     googleMap: {
       googleMapsApiKey: { type: String, default: "", trim: true },
