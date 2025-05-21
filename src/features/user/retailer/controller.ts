@@ -316,6 +316,11 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
         },
       },
       {
+        $match: {
+          slugs: { $ne: [], $exists: true },
+        },
+      },
+      {
         $project: {
           currency: 1,
           slugs: 1,
@@ -464,6 +469,11 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
               in: "$$subscription.slug",
             },
           },
+        },
+      },
+      {
+        $match: {
+          slugs: { $ne: [], $exists: true },
         },
       },
       {
