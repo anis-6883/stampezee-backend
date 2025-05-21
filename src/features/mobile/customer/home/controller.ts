@@ -76,7 +76,7 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
                     else: {
                       $cond: {
                         if: { $lt: ["$expiredAt", "$$NOW"] },
-                        then: "This stamp is expired!",
+                        then: "The stamp card has expired!",
                         else: {
                           $cond: {
                             if: {
