@@ -24,3 +24,10 @@ export const getUTC = (
 
   return new Date(m.utc().format()); // returns UTC Date object
 };
+
+export const countDaysLeft = (date: Date) => {
+  var now = moment();
+  var inputDate = moment(date);
+  var difference = inputDate.diff(now, "days");
+  return difference + 1;
+};

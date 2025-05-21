@@ -11,6 +11,7 @@ import {
   getRandomInteger,
   getSlugCountMap,
 } from "../../../helpers";
+import { countDaysLeft } from "../../../helpers/moment";
 import Branch from "../../../models/branch";
 import EnrollSubscription from "../../../models/enroll-subscription";
 import Enrollment from "../../../models/enrollment";
@@ -315,6 +316,11 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
         },
       },
       {
+        $match: {
+          slugs: { $ne: [], $exists: true },
+        },
+      },
+      {
         $project: {
           currency: 1,
           slugs: 1,
@@ -357,6 +363,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
     : null;
   data.planStartAt = validityFrom ?? null;
   data.planValidAt = validityTo ?? null;
+  data.planDaysLeft = validityTo ? countDaysLeft(validityTo) : null;
   data.activeAddonSlugs = activeAddonSlugs;
 
   data.totalBranch = (enrollSubscription?.planSnapshot?.allowTotalBranch ?? 0) + (slugMap[BRANCH] ?? 0);
@@ -465,6 +472,11 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
         },
       },
       {
+        $match: {
+          slugs: { $ne: [], $exists: true },
+        },
+      },
+      {
         $project: {
           currency: 1,
           slugs: 1,
@@ -542,6 +554,7 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
     : null;
   data.planStartAt = validityFrom ?? null;
   data.planValidAt = validityTo ?? null;
+  data.planDaysLeft = validityTo ? countDaysLeft(validityTo) : null;
   data.activeAddonSlugs = activeAddonSlugs;
 
   data.totalBranch = (enrollSubscription?.planSnapshot?.allowTotalBranch ?? 0) + (slugMap[BRANCH] ?? 0);
