@@ -442,6 +442,11 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
                 as: "collect_stamps",
                 pipeline: [
                   {
+                    $match: {
+                      ...(start || end ? { createdAt: dateFilter } : {}),
+                    },
+                  },
+                  {
                     $group: {
                       _id: "$branchId", // Group by branchId
                       uniqueCustomers: { $addToSet: "$customerId" }, // Collect unique customerId values in a set
@@ -622,58 +627,7 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const retailerStatsWithCountryWise = asyncHandler(async (req: IApiRequest, res: Response) => {
-  // Perform the aggregation to get country-wise counts and total count
-  const retailerCounts = await Retailer.aggregate([
-    {
-      $group: {
-        _id: "$country",
-        count: { $sum: 1 }, // Count retailers in each country
-      },
-    },
-    {
-      $group: {
-        _id: null,
-        totalRetailers: { $sum: "$count" }, // Total count of all retailers
-        countries: {
-          $push: {
-            country: "$_id",
-            count: "$count",
-          },
-        },
-      },
-    },
-    {
-      $project: {
-        _id: 0,
-        totalRetailers: 1,
-        countries: 1,
-      },
-    },
-  ]);
-
-  if (!retailerCounts.length) {
-    return apiResponse(res, 200, true, "Customer countries fetched successfully!", {
-      totalRetailers: 0,
-      countries: [],
-    });
-  }
-
-  const { totalRetailers, countries } = retailerCounts[0];
-
-  // Map the results to the desired format
-  const formattedResponse = countries.map((c: any) => ({
-    country: countryData?.find((item: any) => item?.country === c.country)?.code?.toLocaleLowerCase(),
-    name: c.country,
-    value: Math.round((c.count / totalRetailers) * 100), // Percentage value
-    style: generateRandomColor(), // Random color for background
-  }));
-
-  return apiResponse(res, 200, true, "Retailer countries fetched successfully!", {
-    totalRetailers,
-    countries: formattedResponse?.sort((a: any, b: any) => b.value - a.value),
-  });
-});
+export const retailerStatsWithCountryWise = asyncHandler(async (req: IApiRequest, res: Response) => {});
 
 /**
  * Get Avg Stamp Collect per Customer (Retailer)
