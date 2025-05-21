@@ -45,6 +45,7 @@ export const settingsSchema = Joi.object({
 
   appVersion: Joi.object({
     ios: Joi.object({
+      name: stringField("name"),
       version: numberField("version"),
       forceUpdate: Joi.boolean().default(false),
       appUrl: stringField("appUrl"),
@@ -54,6 +55,7 @@ export const settingsSchema = Joi.object({
       "object.base": "ios must be object!",
     }),
     android: Joi.object({
+      name: stringField("name"),
       version: numberField("version"),
       forceUpdate: Joi.boolean().default(false),
       appUrl: stringField("appUrl"),

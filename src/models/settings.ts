@@ -39,6 +39,7 @@ interface INotification extends Document {
 }
 
 interface IAppVersion extends Document {
+  name: string;
   version: string;
   forceUpdate: boolean;
   appUrl: string;
@@ -142,6 +143,7 @@ const settingsSchema = new Schema<ISettings>(
     },
     appVersion: {
       ios: {
+        name: { type: String, default: "", trim: true },
         version: { type: Number, default: 1, trim: true },
         forceUpdate: { type: Boolean, default: false },
         appUrl: { type: String, default: "", trim: true },
@@ -149,6 +151,7 @@ const settingsSchema = new Schema<ISettings>(
         description: { type: String, default: "", trim: true },
       },
       android: {
+        name: { type: String, default: "", trim: true },
         version: { type: Number, default: 1, trim: true },
         forceUpdate: { type: Boolean, default: false },
         appUrl: { type: String, default: "", trim: true },
