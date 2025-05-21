@@ -239,7 +239,7 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   if (!isPasswordValid) return apiResponse(res, 401, false, "Invalid Credentials!");
 
   // Check Subscription & Addon Enrollment
-  const [planEnrollment, addonEnrollments, firstPayment] = await Promise.all([
+  const [planEnrollment, addonEnrollments] = await Promise.all([
     Enrollment.aggregate([
       {
         $match: {
@@ -321,15 +321,10 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
         },
       },
     ]),
-    Enrollment.findOne({
-      retailerId: retailer._id,
-      planExists: { $nin: [null, "trial"] },
-    }),
   ]);
 
   const slugMap = getSlugCountMap(addonEnrollments);
-  const currencyTushar = addonEnrollments[0]?.currency; //Remove_Tushar
-  const activeAddonSlugs = [];
+  const activeAddonSlugs: string[] = [];
   const { BRANCH, STAMP, CUSTOM_STAMP_IMAGE, PUSH_NOTIFICATION_USER, PUSH_NOTIFICATION_LOCATION } = PACKAGES;
 
   for (const slug of [BRANCH, STAMP, CUSTOM_STAMP_IMAGE, PUSH_NOTIFICATION_USER, PUSH_NOTIFICATION_LOCATION]) {
@@ -341,7 +336,6 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
 
   // Remove Sensitive Data
   const data = exclude(retailer._doc, ["password", "otp", "otpExpiry", "createdAt", "updatedAt", "softDeleted"]);
-  data.planPaymentCurrency = currencyTushar ?? null; //Remove_Tushar
 
   const { enrollSubscription, planExists, currency, validityFrom, validityTo } = planEnrollment[0] ?? {};
 
@@ -354,13 +348,8 @@ export const retailerLogin = asyncHandler(async (req: Request, res: Response) =>
   data.unlimitedFieldName = planEnrollment[0]?.enrollSubscription?.planSnapshot?.unlimitedFieldName ?? null;
   data.planPaymentCurrency = currency ?? null;
 
-  if (firstPayment) {
-    if (data.planPaymentCurrency === null) {
-      data.planPaymentCurrency = firstPayment?.currency; //TUSHAR
-    }
-    data.paymentCurrency = firstPayment?.currency;
-  } else {
-    data.paymentCurrency = null;
+  if (currency || activeAddonSlugs.length > 0) {
+    data.stripePaymentCurrency = currency ?? addonEnrollments[0]?.currency ?? null;
   }
 
   data.planPayment = enrollSubscription?.planCurrentPrice
@@ -400,7 +389,7 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
   const data = exclude(req.user, ["password", "otp", "otpExpiry", "createdAt", "updatedAt", "softDeleted"]);
 
   // Check Subscription & Addon Enrollment
-  const [planEnrollment, addonEnrollments, firstPayment] = await Promise.all([
+  const [planEnrollment, addonEnrollments] = await Promise.all([
     Enrollment.aggregate([
       {
         $match: {
@@ -482,16 +471,10 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
         },
       },
     ]),
-    Enrollment.findOne({
-      retailerId: req.user._id,
-      planExists: { $nin: [null, "trial"] },
-    }),
   ]);
 
   const slugMap = getSlugCountMap(addonEnrollments);
-  const currencyTushar = addonEnrollments[0]?.currency; //Remove_Tushar
-  data.planPaymentCurrency = currencyTushar ?? null; //Remove_Tushar
-  const activeAddonSlugs = [];
+  const activeAddonSlugs: string[] = [];
   const { BRANCH, STAMP, CUSTOM_STAMP_IMAGE, PUSH_NOTIFICATION_USER, PUSH_NOTIFICATION_LOCATION } = PACKAGES;
 
   for (const slug of [BRANCH, STAMP, CUSTOM_STAMP_IMAGE, PUSH_NOTIFICATION_USER, PUSH_NOTIFICATION_LOCATION]) {
@@ -502,6 +485,7 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
   data.isLimitExceeded = false;
   data.allowTotalScan = null;
   data.allowTotalUser = null;
+
   if (planExists == "trial") {
     const [[freeTrialRetailers], subscription] = await Promise.all([
       OrderStamp.aggregate([
@@ -527,6 +511,7 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
       ]),
       Subscription.findOne({ slug: "trial" }).select("allowTotalUser allowTotalScan"),
     ]);
+
     const { allowTotalScan, allowTotalUser } = subscription;
     data.allowTotalScan = allowTotalScan;
     data.allowTotalUser = allowTotalUser;
@@ -548,13 +533,8 @@ export const retailerProfile = asyncHandler(async (req: IApiRequest, res: Respon
   data.unlimitedFieldName = planEnrollment[0]?.enrollSubscription?.planSnapshot?.unlimitedFieldName ?? null;
   data.planPaymentCurrency = currency ?? null;
 
-  if (firstPayment) {
-    if (data.planPaymentCurrency === null) {
-      data.planPaymentCurrency = firstPayment?.currency; //TUSHAR
-    }
-    data.paymentCurrency = firstPayment?.currency;
-  } else {
-    data.paymentCurrency = null;
+  if (currency || activeAddonSlugs.length > 0) {
+    data.stripePaymentCurrency = currency ?? addonEnrollments[0]?.currency ?? null;
   }
 
   data.planPayment = enrollSubscription?.planCurrentPrice
