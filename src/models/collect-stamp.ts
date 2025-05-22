@@ -6,6 +6,7 @@ interface ICollectStamp extends Document {
   stampId: Types.ObjectId;
   eligibleForReward: boolean;
   rewardCollected: boolean;
+  status: boolean;
   softDeleted: boolean;
 }
 
@@ -16,6 +17,7 @@ const collectStampSchema = new Schema<ICollectStamp>(
     stampId: { type: "ObjectId", ref: "Stamp", required: true },
     eligibleForReward: { type: Boolean, default: false },
     rewardCollected: { type: Boolean, default: false },
+    status: { type: Boolean, default: true },
     softDeleted: { type: Boolean, default: false },
   },
   {

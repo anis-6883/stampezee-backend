@@ -225,7 +225,10 @@ export const orderStamp = asyncHandler(async (req: IApiRequest, res: Response) =
     orderBody.stamp = zlib.deflateSync(dataString).toString("base64");
     orderBody.rewardCollected = true;
 
-    await CollectStamp.updateOne({ _id: collectStampId }, { eligibleForReward: false, rewardCollected: true });
+    await CollectStamp.updateOne(
+      { _id: collectStampId },
+      { eligibleForReward: false, rewardCollected: true, status: false }
+    );
 
     response.totalStampCollected = stampIsCollected[0].totalStampTaken;
     response.isRewarded = true;
