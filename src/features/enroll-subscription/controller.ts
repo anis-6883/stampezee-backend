@@ -143,16 +143,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
     return apiResponse(res, 400, false, "You can't take additional packages or coupon in free trial!");
   }
 
-  // Check the previous currency
-  const firstPayment = await Enrollment.findOne({
-    retailerId: req.user._id,
-    planExists: { $nin: [null, "trial"] },
-  });
-
-  // if (firstPayment && firstPayment.currency != currency) {
-  //   return apiResponse(res, 400, false, `Your can only purchase with ${firstPayment.currency} currency!`);
-  // }
-
   // Enroll Free Trial
   if (slugs.includes(PACKAGES.TRIAL)) {
     if (!req.user.takeFreeTrial) {
