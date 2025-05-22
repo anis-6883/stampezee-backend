@@ -11,6 +11,7 @@ import {
   htmlToPdf,
 } from "../../helpers";
 import { makePaginate } from "../../helpers/index";
+import Branch from "../../models/branch";
 import CurrencyExchange, { ICurrencyExchange } from "../../models/currency-exchange";
 import EnrollSubscription from "../../models/enroll-subscription";
 import Enrollment, { IEnrollment } from "../../models/enrollment";
@@ -18,6 +19,7 @@ import Payment from "../../models/payment";
 import Refund from "../../models/refund";
 import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
+import Stamp from "../../models/stamp";
 import { IApiRequest } from "../../types";
 import { changePaymentMethodSchema, enrollSubscriptionSchema, portalSchema } from "./validation";
 
@@ -306,6 +308,8 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
         status: true,
       }),
       CurrencyExchange.find({ status: true }),
+      Branch.updateMany({ enrollSubscriptionId, source: "subscription" }, { disabledBySystem: true }), // branch disable by system in base plan cancel
+      Stamp.updateMany({ enrollSubscriptionId, source: "subscription" }, { softDeleted: true }), // stamp delete by system in base plan cancel
     ]);
 
     const selectCurrency: ICurrencyExchange = allowCurrencies.find(
@@ -358,7 +362,6 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
           },
           {
             status: false,
-            // deletedByRetailerAt: new Date(),
             validAtAfterCancel: enrollment.validityTo,
           }
         ),
@@ -390,7 +393,6 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
             },
             {
               status: false,
-              // deletedByRetailerAt: new Date(),
               validAtAfterCancel: enrollment.validityTo,
             }
           ),

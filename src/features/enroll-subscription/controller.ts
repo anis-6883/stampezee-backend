@@ -1552,12 +1552,13 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
           }
         }
 
-        // Update expiration for already created branch
+        // Update expiration for already created branch in prev enrollment
         await Promise.all([
           Branch.updateMany(
             {
               retailerId: retailer._id,
               source: "subscription",
+              softDeleted: false,
             },
             { enrollSubscriptionId: newEnrollSubscription._id }
           ),
@@ -1565,6 +1566,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
             {
               retailerId: retailer._id,
               source: "subscription",
+              softDeleted: false,
             },
             { enrollSubscriptionId: newEnrollSubscription._id }
           ),

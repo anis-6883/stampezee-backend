@@ -166,6 +166,20 @@ export const getAllBranches = asyncHandler(async (req: IApiRequest, res: Respons
                 unlimitedFieldName: "$planSnapshot.unlimitedFieldName",
                 validityFrom: "$enrollment.validityFrom",
                 validityTo: "$enrollment.validityTo",
+                validAtAfterCancel: 1,
+                planDaysLeft: {
+                  $dateDiff: {
+                    startDate: "$$NOW",
+                    endDate: {
+                      $cond: {
+                        if: { $eq: ["$validAtAfterCancel", null] },
+                        then: "$enrollment.validityTo",
+                        else: "$validAtAfterCancel",
+                      },
+                    },
+                    unit: "day",
+                  },
+                },
               },
             },
           ],
@@ -292,6 +306,7 @@ export const activateSystemDisabledBranch = asyncHandler(async (req: IApiRequest
           {
             $match: {
               status: true,
+              "planSnapshot.type": "subscription",
             },
           },
         ],
@@ -300,38 +315,32 @@ export const activateSystemDisabledBranch = asyncHandler(async (req: IApiRequest
     {
       $unwind: "$enrollSubscription",
     },
-    {
-      $match: {
-        "enrollSubscription.planSnapshot.type": "subscription",
-      },
-    },
-    {
-      $replaceRoot: { newRoot: "$enrollSubscription" }, // Replace root with enrollSubscription
-    },
   ]);
 
-  if (enrollments.length === 0)
+  if (enrollments.length === 0) {
     return apiResponse(res, 400, false, "No one is allowed to create a branch without a plan!");
-
-  const subscription: IEnrollSubscription = enrollments.find((enrollment: IEnrollSubscription) => {
-    return enrollment.planSnapshot.type === "subscription";
-  });
+  }
 
   const retailerTotalActiveBranch = await Branch.find({
     retailerId: req.user._id,
-    softDeleted: false,
     source: "subscription",
+    softDeleted: false,
     disabledBySystem: false,
   });
-  const allowTotalBranch = subscription?.planSnapshot?.allowTotalBranch ?? 0;
+  const allowTotalBranch = enrollments[0]?.enrollSubscription?.planSnapshot?.allowTotalBranch ?? 0;
 
-  if (retailerTotalActiveBranch.length >= allowTotalBranch)
+  if (retailerTotalActiveBranch.length >= allowTotalBranch) {
     return apiResponse(res, 400, false, "Your branch limit is over to activate!");
+  }
 
-  const updateBranch = await Branch.findByIdAndUpdate(id, { status: true, disabledBySystem: false }, { new: true });
-  if (!updateBranch) return apiResponse(res, 400, false, "Branch not found!");
+  const activatedBranch = await Branch.findByIdAndUpdate(
+    id,
+    { status: true, disabledBySystem: false, enrollSubscriptionId: enrollments[0]?.enrollSubscription?._id },
+    { new: true }
+  );
+  if (!activatedBranch) return apiResponse(res, 400, false, "Branch not found!");
 
-  return apiResponse(res, 200, true, "Branch activated successfully!");
+  return apiResponse(res, 200, true, "Branch activated successfully!", activatedBranch);
 });
 
 /**
