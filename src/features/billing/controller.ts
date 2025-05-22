@@ -162,6 +162,7 @@ export const getSingleBilling = asyncHandler(async (req: IApiRequest, res: Respo
               title: "$planSnapshot.title",
               slug: "$planSnapshot.slug",
               type: "$planSnapshot.type",
+              unlimitedFieldName: "$planSnapshot.unlimitedFieldName",
               deletedByRetailerAt: 1,
               validAtAfterCancel: 1,
               branch: 1,
