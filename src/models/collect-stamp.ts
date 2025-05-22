@@ -26,7 +26,7 @@ const collectStampSchema = new Schema<ICollectStamp>(
   }
 );
 
-collectStampSchema.index({ customerId: 1, branchId: 1, stampId: 1 }, { unique: true });
+collectStampSchema.index({ customerId: 1, branchId: 1, stampId: 1, status: 1 });
 
 const CollectStamp = model<ICollectStamp>("collect_stamps", collectStampSchema);
 
