@@ -94,37 +94,50 @@ export const superAdminDashboardRevenue = asyncHandler(async (req: IApiRequest, 
   // Rules: amount * (baseCurrencyRatio / convertCurrencyRatio)
   const { start = undefined, end = undefined } = req.query;
 
-  const [totalRevenue, activeSubscription, totalRefund] = await Promise.all([
+  const settings = await Settings.findOne();
+  const timezone = settings.general.timezone.label;
+
+  let startDate, endDate;
+
+  // Handle date logic
+  if (start) {
+    startDate = moment.tz(start, timezone).startOf("day").toDate();
+    endDate = end ? moment.tz(end, timezone).endOf("day").toDate() : moment.tz(start, timezone).endOf("day").toDate(); // treat start as end
+  }
+
+  const dateFilter: Object = {};
+  if (startDate) dateFilter.$gte = startDate;
+  if (endDate) dateFilter.$lte = endDate;
+
+  const [revenueCalc, activeSubscription, totalRefund] = await Promise.all([
     Payment.aggregate([
       {
         $match: {
           paymentStatus: "succeeded", // Filter by completed payments
-          ...(start &&
-            end && {
-              createdAt: {
-                $gte: new Date(`${start}T00:00:00` as string), // Greater than or equal to start date
-                $lte: new Date(`${end}T23:59:59` as string), // Less than or equal to end date
-              },
-            }),
+          ...(start || end ? { createdAt: dateFilter } : {}),
         },
       },
       {
         $addFields: {
           convertedAmount: {
-            // Convert payment to base currency (CAD)
-            $round: [
-              {
-                $divide: ["$amountTotal", "$currencyRate"],
-              },
-              2,
-            ],
+            $cond: {
+              if: { $gt: ["$currencyRate", 0] },
+              then: { $divide: ["$amountTotal", "$currencyRate"] }, // Convert to CAD using exchangeRate if different currency
+              else: 0, // or null, if preferred
+            },
           },
         },
       },
       {
         $group: {
-          _id: null, // Group by null to aggregate all documents
-          totalRevenueInCAD: { $sum: "$convertedAmount" }, // Sum the converted payment amounts for all types
+          _id: null,
+          totalRevenueInCAD: { $sum: "$convertedAmount" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalRevenueInCAD: { $round: ["$totalRevenueInCAD", 2] }, // 2 decimal point after calculate the sum
         },
       },
     ]),
@@ -137,25 +150,18 @@ export const superAdminDashboardRevenue = asyncHandler(async (req: IApiRequest, 
       {
         $match: {
           refundStatus: "completed", // Filter by completed payments
-          ...(start &&
-            end && {
-              createdAt: {
-                $gte: new Date(`${start}T00:00:00` as string), // Greater than or equal to start date
-                $lte: new Date(`${end}T23:59:59` as string), // Less than or equal to end date
-              },
-            }),
+          ...(start || end ? { createdAt: dateFilter } : {}),
         },
       },
       {
         $addFields: {
           convertedAmount: {
             // Convert payment to base currency (CAD)
-            $round: [
-              {
-                $divide: ["$refundAmount", "$currencyRate"],
-              },
-              2,
-            ],
+            $cond: {
+              if: { $gt: ["$currencyRate", 0] },
+              then: { $divide: ["$refundAmount", "$currencyRate"] }, // Convert to CAD using exchangeRate if different currency
+              else: 0, // or null, if preferred
+            },
           },
         },
       },
@@ -165,17 +171,23 @@ export const superAdminDashboardRevenue = asyncHandler(async (req: IApiRequest, 
           totalRefundAmountInCAD: { $sum: "$convertedAmount" },
         },
       },
+      {
+        $project: {
+          _id: 0,
+          totalRefundAmountInCAD: { $round: ["$totalRefundAmountInCAD", 2] }, // 2 decimal point after calculate the sum
+        },
+      },
     ]),
   ]);
 
   const data = {
     activeSubscription,
-    totalEarningInCAD: totalRevenue[0]?.totalRevenueInCAD || 0,
+    totalEarningInCAD: revenueCalc[0]?.totalRevenueInCAD || 0,
     totalRefundAmountInCAD: totalRefund[0]?.totalRefundAmountInCAD || 0,
-    totalRevenueInCAD: (totalRevenue[0]?.totalRevenueInCAD || 0) - (totalRefund[0]?.totalRefundAmountInCAD || 0),
+    totalRevenueInCAD: (revenueCalc[0]?.totalRevenueInCAD || 0) - (totalRefund[0]?.totalRefundAmountInCAD || 0),
   };
 
-  return apiResponse(res, 200, true, "Super admin revenue stats fetched successfully!", data);
+  return apiResponse(res, 200, true, "Super admin  revenue stats fetched successfully!", data);
 });
 
 /**
