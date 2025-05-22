@@ -197,8 +197,30 @@ export const superAdminDashboardRevenue = asyncHandler(async (req: IApiRequest, 
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const customerStatsWithCountryWise = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { start = undefined, end = undefined } = req.query;
+
+  const settings = await Settings.findOne();
+  const timezone = settings.general.timezone.label;
+
+  let startDate, endDate;
+
+  // Handle date logic
+  if (start) {
+    startDate = moment.tz(start, timezone).startOf("day").toDate();
+    endDate = end ? moment.tz(end, timezone).endOf("day").toDate() : moment.tz(start, timezone).endOf("day").toDate(); // treat start as end
+  }
+
+  const dateFilter: Object = {};
+  if (startDate) dateFilter.$gte = startDate;
+  if (endDate) dateFilter.$lte = endDate;
+
   // Perform the aggregation to get country-wise counts and total count
   const customerCounts = await Customer.aggregate([
+    {
+      $match: {
+        ...(start || end ? { createdAt: dateFilter } : {}),
+      },
+    },
     {
       $group: {
         _id: "$country",
@@ -713,8 +735,30 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const retailerStatsWithCountryWise = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { start = undefined, end = undefined } = req.query;
+
+  const settings = await Settings.findOne();
+  const timezone = settings.general.timezone.label;
+
+  let startDate, endDate;
+
+  // Handle date logic
+  if (start) {
+    startDate = moment.tz(start, timezone).startOf("day").toDate();
+    endDate = end ? moment.tz(end, timezone).endOf("day").toDate() : moment.tz(start, timezone).endOf("day").toDate(); // treat start as end
+  }
+
+  const dateFilter: Object = {};
+  if (startDate) dateFilter.$gte = startDate;
+  if (endDate) dateFilter.$lte = endDate;
+
   // Perform the aggregation to get country-wise counts and total count
   const retailerCounts = await Retailer.aggregate([
+    {
+      $match: {
+        ...(start || end ? { createdAt: dateFilter } : {}),
+      },
+    },
     {
       $group: {
         _id: "$country",
