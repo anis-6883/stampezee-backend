@@ -1,8 +1,9 @@
 import { Document, model, Schema, Types } from "mongoose";
 
 interface IRefund extends Document {
-  prevEnrollmentId: Types.ObjectId;
   enrollmentId: Types.ObjectId;
+  prevEnrollmentId: Types.ObjectId;
+  stripeRefundId: string;
   refundAmount: number;
   usageAmount: number;
   currency: string;
@@ -18,6 +19,7 @@ const refundSchema = new Schema<IRefund>(
   {
     enrollmentId: { type: "ObjectId", ref: "Enrollment", required: true },
     prevEnrollmentId: { type: "ObjectId", ref: "Enrollment", default: null },
+    stripeRefundId: { type: String, default: null },
     refundAmount: { type: Number, default: 0 },
     usageAmount: { type: Number, default: 0 },
     currency: { type: String, required: true },

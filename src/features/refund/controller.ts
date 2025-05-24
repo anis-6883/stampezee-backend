@@ -1,7 +1,9 @@
 import { Response } from "express";
 import { Types } from "mongoose";
+import Stripe from "stripe";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import Refund from "../../models/refund";
+import Settings from "../../models/settings";
 import { IApiRequest } from "../../types";
 
 /**
@@ -323,17 +325,39 @@ export const refundDetailsForSuperAdmin = asyncHandler(async (req: IApiRequest, 
 export const refundConfirmBySuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
-  const refundUpdate = await Refund.findByIdAndUpdate(
-    id,
-    {
-      refundStatus: "completed",
-      refundedBy: req.user._id,
-      refundedAt: new Date(),
-    },
-    { new: true }
-  );
+  // const refund = await Refund.findById(id);
 
-  if (!refundUpdate) return apiResponse(res, 400, false, "Refund not found!");
+  const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
+  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
 
-  return apiResponse(res, 200, true, "Refund completed successfully!");
+  const { stripeSecretKey } = paymentMetadata.stripe ?? {};
+  const stripe = new Stripe(stripeSecretKey, { apiVersion: "2024-04-10", typescript: true });
+
+  // const paymentIntent = await stripe.paymentIntents.retrieve("pi_3RRY864Ko2vWsPPw1NPmPRGM");
+
+  // const refund = await stripe.refunds.create({
+  //   payment_intent: paymentIntent.id,
+  //   reason: "requested_by_customer",
+  //   metadata: {
+  //     refundId: id,
+  //     reason: "cancelled", // or "downgrade" based on your logic
+  //   },
+  //   amount: 2 * 100,
+  // });
+
+  const refund = await stripe.refunds.retrieve("re_3RRY864Ko2vWsPPw1q2dg8hA");
+
+  // const refundUpdate = await Refund.findByIdAndUpdate(
+  //   id,
+  //   {
+  //     refundStatus: "completed",
+  //     refundedBy: req.user._id,
+  //     refundedAt: new Date(),
+  //   },
+  //   { new: true }
+  // );
+
+  // if (!refundUpdate) return apiResponse(res, 400, false, "Refund not found!");
+
+  return apiResponse(res, 200, true, "Refund completed successfully!", refund);
 });

@@ -1280,7 +1280,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
         console.log("Subscription is updated!");
 
         const updatedEnrollment = await Enrollment.findOneAndUpdate(
-          { "stripe.subscriptionId": invoicePaymentEvent.subscription },
+          { "stripe.subscriptionId": invoice.subscription },
           {
             validityFrom: moment(),
             validityTo: moment().add(getNextBillingDateInDays(new Date()), "days"),
@@ -1298,16 +1298,16 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
         await Payment.create({
           enrollmentId: updatedEnrollment?._id,
           enrollSubscriptionIds,
-          paymentIntentId: invoicePaymentEvent.payment_intent,
-          invoiceNumber: invoicePaymentEvent.number,
-          invoicePdf: invoicePaymentEvent.invoice_pdf,
+          paymentIntentId: invoice.payment_intent.id,
+          invoiceNumber: invoice.number,
+          invoicePdf: invoice.invoice_pdf,
           paymentStatus: "succeeded",
           amountTotal:
             updatedEnrollment?.currency === "JPY"
-              ? invoicePaymentEvent?.total
+              ? invoice?.total
               : updatedEnrollment?.currency === "KWD"
-                ? (invoicePaymentEvent?.total / 1000).toFixed(2)
-                : (invoicePaymentEvent?.total / 100).toFixed(2),
+                ? (invoice?.total / 1000).toFixed(2)
+                : (invoice?.total / 100).toFixed(2),
           currency: updatedEnrollment?.currency,
           currencyRate: updatedEnrollment?.currencyRate,
           taxCost: updatedEnrollment?.taxSnapshot?.taxCost || 0,
