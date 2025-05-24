@@ -1374,8 +1374,21 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
       );
       break;
 
+    //////////////////////////////////////////////////////////////////
+    ////////////////// Subscription Deleted /////////////////////////
+    /////////////////////////////////////////////////////////////////
     case "customer.subscription.deleted":
       console.log("Subscription Deleted!");
+      break;
+
+    case "refund.created":
+      console.log("Refund Created!");
+      console.log({ "Refund Created": JSON.stringify(event.data.object) });
+      break;
+
+    case "refund.updated":
+      console.log("Refund Updated!");
+      console.log({ "Refund Updated": JSON.stringify(event.data.object) });
       break;
 
     default:

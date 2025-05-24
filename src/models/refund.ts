@@ -9,7 +9,7 @@ interface IRefund extends Document {
   currency: string;
   currencyRate: number;
   plan: "basic" | "pro" | "advanced";
-  refundStatus: "pending" | "completed";
+  refundStatus: "pending" | "processing" | "failed" | "refunded";
   reason: "cancelled" | "downgrade";
   refundedBy?: Types.ObjectId;
   refundedAt?: Date;
@@ -25,7 +25,7 @@ const refundSchema = new Schema<IRefund>(
     currency: { type: String, required: true },
     currencyRate: { type: Number, default: 0 },
     plan: { type: String, required: true, enum: ["basic", "pro", "advanced"] },
-    refundStatus: { type: String, enum: ["pending", "completed"], default: "pending" },
+    refundStatus: { type: String, enum: ["pending", "processing", "failed", "refunded"], default: "pending" },
     reason: { type: String, enum: ["cancelled", "downgrade"], required: true },
     refundedBy: { type: "ObjectId", ref: "SuperAdmin", default: null },
     refundedAt: { type: Date, default: null },

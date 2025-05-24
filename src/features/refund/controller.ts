@@ -1,7 +1,8 @@
 import { Response } from "express";
 import { Types } from "mongoose";
 import Stripe from "stripe";
-import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import { apiResponse, asyncHandler, makePaginate, roundToNearestTen } from "../../helpers";
+import Payment from "../../models/payment";
 import Refund from "../../models/refund";
 import Settings from "../../models/settings";
 import { IApiRequest } from "../../types";
@@ -324,40 +325,49 @@ export const refundDetailsForSuperAdmin = asyncHandler(async (req: IApiRequest, 
  */
 export const refundConfirmBySuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
+  if (!Types.ObjectId.isValid(id)) return apiResponse(res, 400, false, "Please, provide valid id!");
 
-  // const refund = await Refund.findById(id);
+  const [refund, paymentMetadata] = await Promise.all([
+    Refund.findById(id),
+    Settings.findOne({}, { "stripe.stripeSecretKey": 1 }),
+  ]);
+  if (!refund) return apiResponse(res, 400, false, "No refund found!");
+  if (!paymentMetadata) return apiResponse(res, 400, false, "Something went wrong in Stripe settings!");
 
-  const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
-  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+  const enrollmentId = refund.reason === "cancelled" ? refund.enrollmentId : refund.prevEnrollmentId;
+
+  const lastPayment = await Payment.findOne({ enrollmentId }, { paymentIntentId: 1 }).sort({
+    createdAt: -1,
+  });
+  if (!lastPayment) return apiResponse(res, 400, false, "No payment found for this refund!");
 
   const { stripeSecretKey } = paymentMetadata.stripe ?? {};
   const stripe = new Stripe(stripeSecretKey, { apiVersion: "2024-04-10", typescript: true });
 
-  // const paymentIntent = await stripe.paymentIntents.retrieve("pi_3RRY864Ko2vWsPPw1NPmPRGM");
+  let refundUnitAmount = Math.round(Number(refund.refundAmount) * 100); // convert into cent
+  if (refund?.currency === "JPY") refundUnitAmount = Math.round(Number(refund.refundAmount));
+  else if (refund?.currency === "KWD") refundUnitAmount = roundToNearestTen(refund.refundAmount);
 
-  // const refund = await stripe.refunds.create({
-  //   payment_intent: paymentIntent.id,
-  //   reason: "requested_by_customer",
-  //   metadata: {
-  //     refundId: id,
-  //     reason: "cancelled", // or "downgrade" based on your logic
-  //   },
-  //   amount: 2 * 100,
-  // });
+  const stripeRefund = await stripe.refunds.create({
+    payment_intent: lastPayment.paymentIntentId,
+    reason: "requested_by_customer",
+    metadata: {
+      refundId: id,
+      reason: refund.reason,
+    },
+    amount: refundUnitAmount,
+  });
 
-  const refund = await stripe.refunds.retrieve("re_3RRY864Ko2vWsPPw1q2dg8hA");
+  await Refund.findOneAndUpdate(
+    { _id: id },
+    {
+      stripeRefundId: stripeRefund.id,
+      refundStatus: "processing",
+      refundedBy: req.user._id,
+      refundedAt: new Date(),
+    },
+    { new: true }
+  );
 
-  // const refundUpdate = await Refund.findByIdAndUpdate(
-  //   id,
-  //   {
-  //     refundStatus: "completed",
-  //     refundedBy: req.user._id,
-  //     refundedAt: new Date(),
-  //   },
-  //   { new: true }
-  // );
-
-  // if (!refundUpdate) return apiResponse(res, 400, false, "Refund not found!");
-
-  return apiResponse(res, 200, true, "Refund completed successfully!", refund);
+  return apiResponse(res, 200, true, "Refund completed successfully!", stripeRefund);
 });
