@@ -1476,7 +1476,7 @@ export const getInvoiceTemplate = ({
   ${
     invoiceMetadata?.taxDiscount
       ? `<tr>
-      <td style="padding-left: 10px; text-align: left;" colspan="3" class="title">Tax (${invoiceMetadata?.tax?.taxCost}%)</td>
+      <td style="padding-left: 10px; text-align: left;" colspan="3" class="title">${invoiceMetadata?.tax?.taxTitle ? invoiceMetadata?.tax?.taxTitle : "Tax"} (${invoiceMetadata?.tax?.taxCost}%)</td>
       <td class="text-right pr-45">${invoiceMetadata?.taxDiscount}</td>
     </tr>`
       : ""
@@ -2088,7 +2088,7 @@ export const getInvoiceTemplatePdf = ({
                 ${
                   invoiceMetadata?.taxDiscount
                     ? `<tr>
-                  <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Tax (${invoiceMetadata?.tax?.taxCost}%)</td>
+                  <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">${invoiceMetadata?.tax?.taxTitle ? invoiceMetadata?.tax?.taxTitle : "Tax"} (${invoiceMetadata?.tax?.taxCost}%)</td>
                   <td style="border-bottom: none" class="text-right">${invoiceMetadata?.taxDiscount}</td>
                 </tr>`
                     : ""
