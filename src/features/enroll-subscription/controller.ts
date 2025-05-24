@@ -627,6 +627,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         //////////////////////////////////////////////
         if (totalAmount <= 0) {
           const priceIds = [];
+          let basePlanEnrollSubscriptionId = null;
 
           // Add Previous Add-on into new enrollment
           for (const prevAddon of prevAddons) {
@@ -715,6 +716,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             });
 
             const isPlan = [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug);
+            if (isPlan) basePlanEnrollSubscriptionId = enrollSubscription._id;
 
             // Create price/product for plan downgrading in stripe
             const product = await stripe.products.create({
@@ -746,7 +748,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             });
           }
 
-          // No Optimize for this line
+          // No Optimize for this line (Cancel Previous Subscription from Stripe)
           await stripe.subscriptions.cancel(enrolled?.stripe?.subscriptionId);
 
           //  Create New Subscription from Stripe
@@ -757,13 +759,27 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           });
 
           // Queries:
-          // Cancel Previous Subscription from Stripe
-          // Update Branch Expire,
-          // Disable Previous Enrollment,
+          // Update Branch & Stamp Cards Expire
+          // Disable Previous Enrollment
           // Disable Previous Enrollment Subscription
-          // Update New Enrollment,
+          // Update New Enrollment
           const updateQueries: any[] = [
-            Branch.updateMany({ retailerId: req.user._id, source: "subscription" }, { enrollmentId: enrollment._id }),
+            Branch.updateMany(
+              {
+                retailerId: req.user._id,
+                source: "subscription",
+                softDeleted: false,
+              },
+              { enrollSubscriptionId: basePlanEnrollSubscriptionId }
+            ),
+            Stamp.updateMany(
+              {
+                retailerId: req.user._id,
+                source: "subscription",
+                softDeleted: false,
+              },
+              { enrollSubscriptionId: basePlanEnrollSubscriptionId }
+            ),
             Enrollment.updateOne({ _id: enrolled._id }, { status: false }),
             EnrollSubscription.updateMany(
               { enrollmentId: enrolled._id },
