@@ -32,6 +32,7 @@ export const stampDetails = async (userId: any, collectedStampId: any) => {
             $project: {
               title: 1,
               description: 1,
+              expiredAt: 1,
               rules: 1,
               noOfStampsToCollect: 1,
               minPurchaseAmount: 1,

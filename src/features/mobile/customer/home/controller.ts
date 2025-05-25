@@ -345,6 +345,7 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
             $project: {
               title: 1,
               description: 1,
+              expiredAt: 1,
               rules: 1,
               noOfStampsToCollect: 1,
               minPurchaseAmount: 1,
