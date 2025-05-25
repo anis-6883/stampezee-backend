@@ -11,6 +11,7 @@ import Stamp from "../../../../models/stamp";
 import Subscription from "../../../../models/subscription";
 import { IApiRequest } from "../../../../types";
 import { collectStampSchema } from "./validation";
+import { stampDetails } from "./service";
 
 /**
  * Get All Stamp Categories
@@ -563,7 +564,9 @@ export const collectStamp = asyncHandler(async (req: IApiRequest, res: Response)
 
   if (alreadyCollected && alreadyCollected.softDeleted === true) {
     await CollectStamp.findByIdAndUpdate(alreadyCollected._id, { softDeleted: false });
-    return apiResponse(res, 200, true, "Stamp added successfully!");
+    const data = await stampDetails(req?.user?._id, alreadyCollected._id);
+
+    return apiResponse(res, 200, true, "Stamp added successfully!", data);
   }
 
   if (!branch || !stamp) return apiResponse(res, 400, false, "Branch or Stamp not found!");
@@ -640,7 +643,9 @@ export const collectStamp = asyncHandler(async (req: IApiRequest, res: Response)
     }
   }
 
-  await CollectStamp.create({ branchId, stampId, customerId: req.user._id });
+  const collectedStamp = await CollectStamp.create({ branchId, stampId, customerId: req.user._id });
 
-  return apiResponse(res, 200, true, "Stamp added successfully!");
+  const data = await stampDetails(req?.user?._id, collectedStamp._id);
+
+  return apiResponse(res, 200, true, "Stamp added successfully!", data);
 });
