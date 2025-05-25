@@ -107,12 +107,6 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
 
   createBody.source = source;
   createBody.enrollSubscriptionId = source === "subscription" ? subscription?._id : unUsedIds[0];
-
-  if (!createBody.hasValidity) {
-    createBody.startedAt = new Date("2020-01-01");
-    createBody.expiredAt = new Date("3030-01-01");
-  }
-
   createBody.retailerId = req.user._id;
   createBody.branchId = branchId;
   createBody.stampImageId = stampImageId;
@@ -120,6 +114,7 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
 
   const systemTime = getUTC(createBody.startedAt, req.user.timezone.label, true);
   const expireTime = getUTC(createBody.expiredAt, req.user.timezone.label, false, true);
+
   createBody.startedAt = systemTime;
   createBody.expiredAt = expireTime;
 
@@ -382,11 +377,6 @@ export const updateStamp = asyncHandler(async (req: IApiRequest, res: Response) 
   if (stampImageId) {
     const stampImage = await StampImage.findOne({ _id: stampImageId });
     if (!stampImage) return apiResponse(res, 400, false, "Stamp Image not found!");
-  }
-
-  if (!updatedBody?.hasValidity) {
-    updatedBody.startedAt = new Date();
-    updatedBody.expiredAt = new Date("3070-01-01");
   }
 
   updatedBody.branchId = branchId;
