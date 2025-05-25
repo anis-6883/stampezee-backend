@@ -627,6 +627,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
         //////////////////////////////////////////////
         if (totalAmount <= 0) {
           const priceIds = [];
+          let basePlanEnrollSubscriptionId = null;
 
           // Add Previous Add-on into new enrollment
           for (const prevAddon of prevAddons) {
@@ -715,6 +716,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             });
 
             const isPlan = [PACKAGES.BASIC, PACKAGES.PRO, PACKAGES.ADVANCED].includes(subscription.slug);
+            if (isPlan) basePlanEnrollSubscriptionId = enrollSubscription._id;
 
             // Create price/product for plan downgrading in stripe
             const product = await stripe.products.create({
@@ -746,7 +748,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
             });
           }
 
-          // No Optimize for this line
+          // No Optimize for this line (Cancel Previous Subscription from Stripe)
           await stripe.subscriptions.cancel(enrolled?.stripe?.subscriptionId);
 
           //  Create New Subscription from Stripe
@@ -757,13 +759,27 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
           });
 
           // Queries:
-          // Cancel Previous Subscription from Stripe
-          // Update Branch Expire,
-          // Disable Previous Enrollment,
+          // Update Branch & Stamp Cards Expire
+          // Disable Previous Enrollment
           // Disable Previous Enrollment Subscription
-          // Update New Enrollment,
+          // Update New Enrollment
           const updateQueries: any[] = [
-            Branch.updateMany({ retailerId: req.user._id, source: "subscription" }, { enrollmentId: enrollment._id }),
+            Branch.updateMany(
+              {
+                retailerId: req.user._id,
+                source: "subscription",
+                softDeleted: false,
+              },
+              { enrollSubscriptionId: basePlanEnrollSubscriptionId }
+            ),
+            Stamp.updateMany(
+              {
+                retailerId: req.user._id,
+                source: "subscription",
+                softDeleted: false,
+              },
+              { enrollSubscriptionId: basePlanEnrollSubscriptionId }
+            ),
             Enrollment.updateOne({ _id: enrolled._id }, { status: false }),
             EnrollSubscription.updateMany(
               { enrollmentId: enrolled._id },
@@ -1264,7 +1280,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
         console.log("Subscription is updated!");
 
         const updatedEnrollment = await Enrollment.findOneAndUpdate(
-          { "stripe.subscriptionId": invoicePaymentEvent.subscription },
+          { "stripe.subscriptionId": invoice.subscription },
           {
             validityFrom: moment(),
             validityTo: moment().add(getNextBillingDateInDays(new Date()), "days"),
@@ -1282,16 +1298,16 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
         await Payment.create({
           enrollmentId: updatedEnrollment?._id,
           enrollSubscriptionIds,
-          paymentIntentId: invoicePaymentEvent.payment_intent,
-          invoiceNumber: invoicePaymentEvent.number,
-          invoicePdf: invoicePaymentEvent.invoice_pdf,
+          paymentIntentId: invoice.payment_intent.id,
+          invoiceNumber: invoice.number,
+          invoicePdf: invoice.invoice_pdf,
           paymentStatus: "succeeded",
           amountTotal:
             updatedEnrollment?.currency === "JPY"
-              ? invoicePaymentEvent?.total
+              ? invoice?.total
               : updatedEnrollment?.currency === "KWD"
-                ? (invoicePaymentEvent?.total / 1000).toFixed(2)
-                : (invoicePaymentEvent?.total / 100).toFixed(2),
+                ? (invoice?.total / 1000).toFixed(2)
+                : (invoice?.total / 100).toFixed(2),
           currency: updatedEnrollment?.currency,
           currencyRate: updatedEnrollment?.currencyRate,
           taxCost: updatedEnrollment?.taxSnapshot?.taxCost || 0,
@@ -1358,8 +1374,21 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
       );
       break;
 
+    //////////////////////////////////////////////////////////////////
+    ////////////////// Subscription Deleted /////////////////////////
+    /////////////////////////////////////////////////////////////////
     case "customer.subscription.deleted":
       console.log("Subscription Deleted!");
+      break;
+
+    case "refund.created":
+      console.log("Refund Created!");
+      console.log({ "Refund Created": JSON.stringify(event.data.object) });
+      break;
+
+    case "refund.updated":
+      console.log("Refund Updated!");
+      console.log({ "Refund Updated": JSON.stringify(event.data.object) });
       break;
 
     default:
