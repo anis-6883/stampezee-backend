@@ -12,6 +12,7 @@ import {
   customerResendOtp,
   deleteAccount,
   forgetPassword,
+  logOut,
   updateCustomerProfile,
   updateLocationDeviceToken,
 } from "./controller";
@@ -33,5 +34,6 @@ router.get("/resend-forget-password-otp", customerForgetPasswordResendOtp);
 router.post("/forget-password-otp-verify", customerAndSubAdminForgetPasswordOtpVerify);
 router.post("/change-forget-password", customerAndSubAdminChangeForgetPassword);
 router.post("/otp-verify", customerOtpVerify);
+router.post("/logout", logOut);
 
 export default router;

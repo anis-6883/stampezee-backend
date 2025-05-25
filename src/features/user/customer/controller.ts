@@ -535,3 +535,21 @@ export const deleteAccount = asyncHandler(async (req: IApiRequest, res: Response
     return apiResponse(res, 400, false, "Something went wrong.");
   }
 });
+
+/**
+ * Request Log out account for Customer
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const logOut = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const userResponse = await Customer.findOneAndUpdate(
+    { _id: req?.user?._id },
+    { token: null, deviceToken: null }
+  ).select("_id");
+  if (userResponse) {
+    return apiResponse(res, 200, true, "Customer has been logged out successfully");
+  } else {
+    return apiResponse(res, 400, false, "Something went wrong.");
+  }
+});
