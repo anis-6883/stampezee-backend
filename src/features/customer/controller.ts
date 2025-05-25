@@ -509,6 +509,13 @@ export const getAllRetailerCustomers = asyncHandler(async (req: IApiRequest, res
           localField: "_id",
           foreignField: "customerId",
           as: "collectStamps",
+          pipeline: [
+            {
+              $match: {
+                branchId: { $in: branchIds },
+              },
+            },
+          ],
         },
       },
       {
@@ -517,6 +524,13 @@ export const getAllRetailerCustomers = asyncHandler(async (req: IApiRequest, res
           localField: "_id",
           foreignField: "customerId",
           as: "orderStamps",
+          pipeline: [
+            {
+              $match: {
+                branchId: { $in: branchIds },
+              },
+            },
+          ],
         },
       },
       {
