@@ -60,6 +60,7 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
                 promotionReward: 1,
                 discountReward: 1,
                 softDeleted: 1,
+                expiredAt: 1,
                 isExpired: {
                   $or: [
                     { $lt: ["$expiredAt", "$$NOW"] },
