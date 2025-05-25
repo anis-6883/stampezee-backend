@@ -1,4 +1,4 @@
-import e, { Response } from "express";
+import { Response } from "express";
 import mongoose from "mongoose";
 import { apiResponse, asyncHandler, makePaginateForMobile } from "../../../../helpers";
 import CollectStamp from "../../../../models/collect-stamp";
