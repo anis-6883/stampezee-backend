@@ -21,6 +21,7 @@ export const authAndPermissionCheck =
       let model: Model<any>;
 
       const hasPermission = Array.isArray(role) ? role.includes(decoded.role) : role === decoded.role;
+      console.log({ hasPermission });
 
       if (checkPermission && (!hasPermission || ott !== decoded.ott)) {
         return apiResponse(res, 403, false, "You are not authorized to perform this action!");
