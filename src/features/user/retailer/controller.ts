@@ -71,7 +71,7 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
 
   sendVerificationEmail(retailerBody.email, retailerBody.otp);
 
-  return apiResponse(res, 201, true, "OTP send successfully!", {
+  return apiResponse(res, 201, true, "OTP sent successfully!!", {
     temp: tempToken,
   });
 });

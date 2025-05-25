@@ -110,7 +110,7 @@ export const customerRegistration = asyncHandler(async (req: Request, res: Respo
       await Customer.create(customerBody);
     }
 
-    return apiResponse(res, 201, true, "OTP send successfully!", { token });
+    return apiResponse(res, 201, true, "OTP sent successfully!!", { token });
   }
 });
 
