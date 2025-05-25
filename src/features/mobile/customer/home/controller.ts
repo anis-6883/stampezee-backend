@@ -1,4 +1,4 @@
-import { Response } from "express";
+import e, { Response } from "express";
 import mongoose from "mongoose";
 import { apiResponse, asyncHandler, makePaginateForMobile } from "../../../../helpers";
 import CollectStamp from "../../../../models/collect-stamp";
@@ -60,6 +60,7 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
                 promotionReward: 1,
                 discountReward: 1,
                 softDeleted: 1,
+                expiredAt: 1,
                 isExpired: {
                   $or: [
                     { $lt: ["$expiredAt", "$$NOW"] },
