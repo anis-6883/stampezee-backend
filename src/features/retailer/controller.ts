@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt";
 import { Response } from "express";
-import moment from "moment";
+import moment from "moment-timezone";
 import mongoose, { Types } from "mongoose";
 import { PACKAGES } from "../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
@@ -9,9 +9,10 @@ import Branch from "../../models/branch";
 import EnrollSubscription from "../../models/enroll-subscription";
 import Enrollment from "../../models/enrollment";
 import Retailer from "../../models/retailer";
+import Settings from "../../models/settings";
 import SubAdmin from "../../models/sub-admin";
 import Subscription from "../../models/subscription";
-import { IApiRequest } from "../../types";
+import { IApiRequest, Object } from "../../types";
 import { sendRegistrationMail } from "./service";
 import { retailerSchema, retailerSchemaUpdate, retailerStatusSchema } from "./validation";
 
@@ -105,10 +106,26 @@ export const createRetailer = asyncHandler(async (req: IApiRequest, res: Respons
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getAllRetailers = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10, search } = req.query;
+  const { page = 1, limit = 10, search, start = undefined, end = undefined } = req.query;
+
   const skip: number = (Number(page) - 1) * Number(limit);
+  const settings = await Settings.findOne();
+  const timezone = settings.general.timezone.label;
+
+  let startDate, endDate;
+
+  // Handle date logic
+  if (start) {
+    startDate = moment.tz(start, timezone).startOf("day").toDate();
+    endDate = end ? moment.tz(end, timezone).endOf("day").toDate() : moment.tz(start, timezone).endOf("day").toDate(); // treat start as end
+  }
+
+  const dateFilter: Object = {};
+  if (startDate) dateFilter.$gte = startDate;
+  if (endDate) dateFilter.$lte = endDate;
 
   const query: any = { softDeleted: false, isVerified: true };
+  if (start || end) query.createdAt = dateFilter;
 
   if (search) {
     const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i

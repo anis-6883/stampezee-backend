@@ -1,11 +1,12 @@
 import { Response } from "express";
+import moment from "moment-timezone";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import { getUTC } from "../../helpers/moment";
 import Coupon from "../../models/coupon";
 import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
 import Subscription from "../../models/subscription";
-import { IApiRequest } from "../../types";
+import { IApiRequest, Object } from "../../types";
 import { couponSchema, couponStatusSchema, updateCouponSchema } from "./validation";
 
 /**
@@ -19,8 +20,16 @@ export const createCoupon = asyncHandler(async (req: IApiRequest, res: Response)
     abortEarly: false,
   });
 
+  const settings = await Settings.findOne();
+  const timezone = settings.general.timezone.label;
+  if (!timezone) return apiResponse(res, 400, false, "Setup TimeZone First!");
+
   const { softDeleted, ...createBody } = result;
   createBody.createdBy = req.user._id;
+  createBody.startedAt = moment.tz(createBody.startedAt, timezone).startOf("day").toDate();
+  createBody.expiredAt = createBody.expiredAt
+    ? moment.tz(createBody.expiredAt, timezone).endOf("day").toDate()
+    : moment.tz(createBody.startedAt, timezone).endOf("day").toDate();
 
   const [existingCoupon, subscriptions] = await Promise.all([
     Coupon.findOne({
@@ -50,11 +59,8 @@ export const createCoupon = asyncHandler(async (req: IApiRequest, res: Response)
     }
   }
 
-  const settings = await Settings.findOne(null, { "general.timezone": 1 });
-  if (!settings?.general?.timezone) return apiResponse(res, 400, false, "Setup TimeZone First!");
-
-  const systemTime = getUTC(createBody.startedAt, settings.general.timezone.label, true);
-  const expireTime = getUTC(createBody.expiredAt, settings.general.timezone.label, false, true);
+  const systemTime = getUTC(createBody.startedAt, timezone, true);
+  const expireTime = getUTC(createBody.expiredAt, timezone, false, true);
 
   createBody.startedAt = systemTime;
   createBody.expiredAt = expireTime;
@@ -91,10 +97,26 @@ export const getAllRetailersAndPlans = asyncHandler(async (req: IApiRequest, res
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getAllCoupons = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10, search } = req.query;
+  const { page = 1, limit = 10, search, start = undefined, end = undefined } = req.query;
+
   const skip: number = (Number(page) - 1) * Number(limit);
+  const settings = await Settings.findOne();
+  const timezone = settings.general.timezone.label;
+
+  let startDate, endDate;
+
+  // Handle date logic
+  if (start) {
+    startDate = moment.tz(start, timezone).startOf("day").toDate();
+    endDate = end ? moment.tz(end, timezone).endOf("day").toDate() : moment.tz(start, timezone).endOf("day").toDate(); // treat start as end
+  }
+
+  const dateFilter: Object = {};
+  if (startDate) dateFilter.$gte = startDate;
+  if (endDate) dateFilter.$lte = endDate;
 
   const query: any = { softDeleted: false };
+  if (start || end) query.startedAt = dateFilter;
 
   if (search) {
     const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
@@ -153,11 +175,20 @@ export const updateCoupon = asyncHandler(async (req: IApiRequest, res: Response)
     abortEarly: false,
   });
 
+  const settings = await Settings.findOne();
+  const timezone = settings.general.timezone.label;
+  if (!timezone) return apiResponse(res, 400, false, "Setup TimeZone First!");
+
   const { id } = req.params;
   const { softDeleted, ...updatedBody } = result;
 
   const coupon = await Coupon.findOne({ _id: id });
   if (!coupon) return apiResponse(res, 404, false, "Coupon not found!");
+
+  updatedBody.startedAt = moment.tz(updatedBody.startedAt, timezone).startOf("day").toDate();
+  updatedBody.expiredAt = updatedBody.expiredAt
+    ? moment.tz(updatedBody.expiredAt, timezone).endOf("day").toDate()
+    : moment.tz(updatedBody.startedAt, timezone).endOf("day").toDate();
 
   const [existingCoupon, subscriptions] = await Promise.all([
     Coupon.findOne({
@@ -188,11 +219,8 @@ export const updateCoupon = asyncHandler(async (req: IApiRequest, res: Response)
     }
   }
 
-  const settings = await Settings.findOne(null, { "general.timezone": 1 });
-  if (!settings?.general?.timezone) return apiResponse(res, 400, false, "Setup TimeZone First!");
-
-  const systemTime = getUTC(updatedBody.startedAt, settings.general.timezone.label, true);
-  const expireTime = getUTC(updatedBody.expiredAt, settings.general.timezone.label, false, true);
+  const systemTime = getUTC(updatedBody.startedAt, timezone, true);
+  const expireTime = getUTC(updatedBody.expiredAt, timezone, false, true);
 
   updatedBody.startedAt = systemTime;
   updatedBody.expiredAt = expireTime;

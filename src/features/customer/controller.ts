@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import { Response } from "express";
+import moment from "moment-timezone";
 import mongoose from "mongoose";
 import { ROLE } from "../../configs/constants";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
@@ -8,6 +9,7 @@ import CollectStamp from "../../models/collect-stamp";
 import CurrencyExchange from "../../models/currency-exchange";
 import Customer from "../../models/customer";
 import OrderStamp from "../../models/order-stamp";
+import Settings from "../../models/settings";
 import { IApiRequest, IUser, Object } from "../../types";
 import { sendRegistrationMail } from "./service";
 import { customerSchema, customerStatusSchema, updateCustomerSchema } from "./validation";
@@ -19,10 +21,26 @@ import { customerSchema, customerStatusSchema, updateCustomerSchema } from "./va
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getAllCustomers = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10, search } = req.query;
+  const { page = 1, limit = 10, search, start = undefined, end = undefined } = req.query;
+
   const skip: number = (Number(page) - 1) * Number(limit);
+  const settings = await Settings.findOne();
+  const timezone = settings.general.timezone.label;
+
+  let startDate, endDate;
+
+  // Handle date logic
+  if (start) {
+    startDate = moment.tz(start, timezone).startOf("day").toDate();
+    endDate = end ? moment.tz(end, timezone).endOf("day").toDate() : moment.tz(start, timezone).endOf("day").toDate(); // treat start as end
+  }
+
+  const dateFilter: Object = {};
+  if (startDate) dateFilter.$gte = startDate;
+  if (endDate) dateFilter.$lte = endDate;
 
   const query: any = { softDeleted: false, isVerified: true };
+  if (start || end) query.createdAt = dateFilter;
 
   if (search) {
     const regex = new RegExp(`.*${search}.*`, "i"); // case insensitive search. For sensitive remove i

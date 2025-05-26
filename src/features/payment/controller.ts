@@ -1,11 +1,12 @@
 import { Response } from "express";
+import moment from "moment-timezone";
 import { Types } from "mongoose";
 import Stripe from "stripe";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import Enrollment from "../../models/enrollment";
 import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
-import { IApiRequest } from "../../types";
+import { IApiRequest, Object } from "../../types";
 import { portalSchema } from "./validation";
 
 /**
@@ -15,10 +16,26 @@ import { portalSchema } from "./validation";
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getSubscriptionPayments = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10, search }: any = req.query;
+  const { page = 1, limit = 10, search, start = undefined, end = undefined } = req.query;
+
   const skip: number = (Number(page) - 1) * Number(limit);
+  const settings = await Settings.findOne();
+  const timezone = settings.general.timezone.label;
+
+  let startDate, endDate;
+
+  // Handle date logic
+  if (start) {
+    startDate = moment.tz(start, timezone).startOf("day").toDate();
+    endDate = end ? moment.tz(end, timezone).endOf("day").toDate() : moment.tz(start, timezone).endOf("day").toDate(); // treat start as end
+  }
+
+  const dateFilter: Object = {};
+  if (startDate) dateFilter.$gte = startDate;
+  if (endDate) dateFilter.$lte = endDate;
 
   const query: any = { paymentStatus: { $in: ["completed", "trial"] } };
+  if (start || end) query.createdAt = dateFilter;
 
   if (search) {
     const regex = { $regex: search, $options: "i" };

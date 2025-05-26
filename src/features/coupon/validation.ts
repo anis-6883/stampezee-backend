@@ -1,13 +1,30 @@
+import dayjs from "dayjs";
 import Joi from "joi";
 import { requiredBooleanField, requiredStringField, stringField } from "../../helpers";
 
-const startedAt = Joi.date().messages({
-  "date.base": "startedAt must be date!",
-});
+const startedAt = Joi.string()
+  .trim()
+  .required()
+  .custom((value, helpers) => {
+    if (!dayjs(value, "YYYY-MM-DD", true).isValid()) {
+      return helpers.error("any.invalid", { message: "startedAt must be a valid date string (YYYY-MM-DD)!" });
+    }
+    return value;
+  });
 
-const expiredAt = Joi.date().messages({
-  "date.base": "expiredAt must be date!",
-});
+const expiredAt = Joi.string()
+  .trim()
+  .required()
+  .custom((value, helpers) => {
+    const { startedAt } = helpers.state.ancestors[0];
+    if (!dayjs(value, "YYYY-MM-DD", true).isValid()) {
+      return helpers.error("any.invalid", { message: "expiredAt must be a valid date string (YYYY-MM-DD)!" });
+    }
+    if (startedAt && dayjs(value).isBefore(dayjs(startedAt))) {
+      return helpers.error("any.invalid", { message: "expiredAt must be greater than or equal to startedAt!" });
+    }
+    return value;
+  });
 
 const discountType = Joi.string().trim().lowercase().valid("percentage", "flat").messages({
   "any.required": "discountType is required!",
