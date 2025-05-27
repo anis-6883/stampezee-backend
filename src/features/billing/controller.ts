@@ -20,6 +20,7 @@ import Refund from "../../models/refund";
 import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
 import Stamp from "../../models/stamp";
+import SubAdmin from "../../models/sub-admin";
 import { IApiRequest } from "../../types";
 import { changePaymentMethodSchema, enrollSubscriptionSchema, portalSchema } from "./validation";
 
@@ -311,6 +312,7 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
       CurrencyExchange.find({ status: true }),
       Branch.updateMany({ enrollSubscriptionId, source: "subscription" }, { disabledBySystem: true }), // branch disable by system in base plan cancel
       Stamp.updateMany({ enrollSubscriptionId, source: "subscription" }, { softDeleted: true }), // stamp delete by system in base plan cancel
+      SubAdmin.updateMany({ retailerId: req.user._id }, { status: false, token: null }), // sub-admin disable by system in base plan cancel
     ]);
 
     const selectCurrency: ICurrencyExchange = allowCurrencies.find(

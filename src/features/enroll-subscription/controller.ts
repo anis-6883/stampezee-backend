@@ -26,6 +26,7 @@ import Refund from "../../models/refund";
 import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
 import Stamp from "../../models/stamp";
+import SubAdmin from "../../models/sub-admin";
 import Subscription, { ISubscription } from "../../models/subscription";
 import { getInvoiceTemplate } from "../../templates/invoice";
 import { IApiRequest, IEnrollSubscriptionBody, ILineItem } from "../../types";
@@ -510,6 +511,8 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
               { retailerId: req.user._id, _id: { $in: branchIds } },
               { disabledBySystem: true, status: false }
             );
+
+            await SubAdmin.updateMany({ branchId: { $in: branchIds } }, { status: false, token: null });
           }
         }
 
