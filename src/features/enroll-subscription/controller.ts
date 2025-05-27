@@ -151,7 +151,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
       if (!subscription) return apiResponse(res, 400, false, "Free trial package not found!");
 
       const retailer = await Retailer.findOneAndUpdate({ _id: req.user._id }, { takeFreeTrial: true }, { new: true });
-      await freeTrialInvoiceGenerate(retailer, false);
+      await freeTrialInvoiceGenerate(retailer);
 
       return apiResponse(res, 200, true, "Free trial enrolled successfully!");
     }
