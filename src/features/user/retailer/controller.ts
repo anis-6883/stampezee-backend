@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import { PACKAGES, ROLE } from "../../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../../configs/s3Bucket";
+import { sendRegistrationMail } from "../../../features/retailer/service";
 import {
   apiResponse,
   asyncHandler,
@@ -111,6 +112,8 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     "createdAt",
     "updatedAt",
   ]);
+
+  sendRegistrationMail(retailer.email, retailer?.fullName, retailer?.address, retailer?.storeName);
 
   return apiResponse(res, 200, true, "OTP verified & Login successfully!", {
     ...data,

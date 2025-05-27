@@ -6,7 +6,6 @@ import Enrollment from "../../../models/enrollment";
 import { IRetailer } from "../../../models/retailer";
 import Subscription from "../../../models/subscription";
 import { sendInvoiceToEmail } from "../../enroll-subscription/service";
-import { sendRegistrationMail } from "../../retailer/service";
 
 export const freeTrialInvoiceGenerate = async (retailer: IRetailer, sendRegEmail: boolean = true) => {
   const freeTrial = await Subscription.findOne({ slug: "trial" });
@@ -67,6 +66,5 @@ export const freeTrialInvoiceGenerate = async (retailer: IRetailer, sendRegEmail
   };
 
   // Send invoice and registration email
-  if (sendRegEmail) sendRegistrationMail(retailer.email, retailer?.fullName, retailer?.address, retailer?.storeName);
   sendInvoiceToEmail({ email: retailer?.email, customerInfo, purchasedItems, invoiceMetadata, paymentInfo });
 };
