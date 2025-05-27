@@ -370,26 +370,26 @@ export const refundConfirmBySuperAdmin = asyncHandler(async (req: IApiRequest, r
   if (refund?.currency === "JPY") refundUnitAmount = Math.round(Number(refund.refundAmount));
   else if (refund?.currency === "KWD") refundUnitAmount = roundToNearestTen(refund.refundAmount);
 
-  const stripeRefund = await stripe.refunds.create({
-    payment_intent: lastPayment.paymentIntentId,
-    reason: "requested_by_customer",
-    metadata: {
-      refundId: id,
-      reason: refund.reason,
-    },
-    amount: refundUnitAmount,
-  });
+  // const stripeRefund = await stripe.refunds.create({
+  //   payment_intent: lastPayment.paymentIntentId,
+  //   reason: "requested_by_customer",
+  //   metadata: {
+  //     refundId: id,
+  //     reason: refund.reason,
+  //   },
+  //   amount: refundUnitAmount,
+  // });
 
-  await Refund.findOneAndUpdate(
-    { _id: id },
-    {
-      stripeRefundId: stripeRefund.id,
-      refundStatus: "processing",
-      refundedBy: req.user._id,
-      refundedAt: new Date(),
-    },
-    { new: true }
-  );
+  // await Refund.findOneAndUpdate(
+  //   { _id: id },
+  //   {
+  //     stripeRefundId: stripeRefund.id,
+  //     refundStatus: "processing",
+  //     refundedBy: req.user._id,
+  //     refundedAt: new Date(),
+  //   },
+  //   { new: true }
+  // );
 
-  return apiResponse(res, 200, true, "Refund completed successfully!", stripeRefund);
+  return apiResponse(res, 200, true, "Refund completed successfully!");
 });
