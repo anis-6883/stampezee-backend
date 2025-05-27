@@ -313,9 +313,6 @@ export const topOutlets = asyncHandler(async (req: IApiRequest, res: Response) =
       },
     },
     {
-      $limit: 10,
-    },
-    {
       $lookup: {
         from: "retailers",
         localField: "retailerId",
@@ -424,6 +421,9 @@ export const topOutlets = asyncHandler(async (req: IApiRequest, res: Response) =
           totalStamps: "$branch.totalStamps",
         },
       },
+    },
+    {
+      $limit: 10,
     },
   ]);
 
