@@ -299,14 +299,6 @@ export const topOutlets = asyncHandler(async (req: IApiRequest, res: Response) =
       },
     },
     {
-      $sort: {
-        totalAmountInCAD: -1,
-      },
-    },
-    {
-      $limit: 10,
-    },
-    {
       $group: {
         _id: "$branchId", // Group by branchId
         totalAmountInCAD: { $sum: "$amountInCAD" }, // Sum the converted amountInCAD for each branchId
@@ -314,6 +306,14 @@ export const topOutlets = asyncHandler(async (req: IApiRequest, res: Response) =
         exchangeRate: { $first: "$exchangeRate" },
         amountCurrency: { $first: "$amountCurrency" },
       },
+    },
+    {
+      $sort: {
+        totalAmountInCAD: -1,
+      },
+    },
+    {
+      $limit: 10,
     },
     {
       $lookup: {
@@ -427,7 +427,7 @@ export const topOutlets = asyncHandler(async (req: IApiRequest, res: Response) =
     },
   ]);
 
-  return apiResponse(res, 200, true, "Top Outlets List!", outlets);
+  return apiResponse(res, 200, true, "Top ten outlets list based on revenue!", outlets);
 });
 
 /**
