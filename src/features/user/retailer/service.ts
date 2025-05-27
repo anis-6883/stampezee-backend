@@ -8,7 +8,7 @@ import Subscription from "../../../models/subscription";
 import { sendInvoiceToEmail } from "../../enroll-subscription/service";
 import { sendRegistrationMail } from "../../retailer/service";
 
-export const freeTrialInvoiceGenerate = async (retailer: IRetailer) => {
+export const freeTrialInvoiceGenerate = async (retailer: IRetailer, sendRegEmail: boolean = true) => {
   const freeTrial = await Subscription.findOne({ slug: "trial" });
   if (!freeTrial) throw new Error("Free trial subscription not found!");
 
@@ -67,6 +67,6 @@ export const freeTrialInvoiceGenerate = async (retailer: IRetailer) => {
   };
 
   // Send invoice and registration email
-  sendRegistrationMail(retailer.email, retailer?.fullName, retailer?.address, retailer?.storeName);
+  if (sendRegEmail) sendRegistrationMail(retailer.email, retailer?.fullName, retailer?.address, retailer?.storeName);
   sendInvoiceToEmail({ email: retailer?.email, customerInfo, purchasedItems, invoiceMetadata, paymentInfo });
 };
