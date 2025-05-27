@@ -7,7 +7,7 @@ import { IRetailer } from "../../../models/retailer";
 import Subscription from "../../../models/subscription";
 import { sendInvoiceToEmail } from "../../enroll-subscription/service";
 
-export const freeTrialInvoiceGenerate = async (retailer: IRetailer, sendRegEmail: boolean = true) => {
+export const freeTrialInvoiceGenerate = async (retailer: IRetailer) => {
   const freeTrial = await Subscription.findOne({ slug: "trial" });
   if (!freeTrial) throw new Error("Free trial subscription not found!");
 
