@@ -310,7 +310,7 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
         status: true,
       }),
       CurrencyExchange.find({ status: true }),
-      Branch.updateMany({ enrollSubscriptionId, source: "subscription" }, { disabledBySystem: true }), // branch disable by system in base plan cancel
+      Branch.updateMany({ enrollSubscriptionId, source: "subscription" }, { disabledBySystem: true, status: false }), // branch disable by system in base plan cancel
       Stamp.updateMany({ enrollSubscriptionId, source: "subscription" }, { softDeleted: true }), // stamp delete by system in base plan cancel
       SubAdmin.updateMany({ retailerId: req.user._id }, { status: false, token: null }), // sub-admin disable by system in base plan cancel
     ]);

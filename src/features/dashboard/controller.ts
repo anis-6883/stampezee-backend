@@ -1,5 +1,6 @@
 import { Response } from "express";
 import moment from "moment-timezone";
+import { Types } from "mongoose";
 import { apiResponse, asyncHandler, countryData, generateRandomColor } from "../../helpers";
 import Branch from "../../models/branch";
 import CollectStamp from "../../models/collect-stamp";
@@ -440,7 +441,13 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
   const retailer = await Retailer.findById(req.user?._id, { businessCurrency: 1 });
   const currencyExchange = await CurrencyExchange.findOne({ currency: retailer?.businessCurrency });
 
-  const { start = undefined, end = undefined } = req.query;
+  const { start = undefined, end = undefined, branchIds = "" }: any = req.query;
+  const query: Object = {};
+
+  if (branchIds) {
+    const branchIdArray = branchIds.split(",").map((id: string) => Types.ObjectId.createFromHexString(id.trim()));
+    query._id = { $in: branchIdArray };
+  }
 
   const settings = await Settings.findOne();
   const timezone = settings.general.timezone.label;
@@ -470,11 +477,7 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
           as: "branchCustomer",
           pipeline: [
             {
-              $match: {
-                status: true,
-                softDeleted: false,
-                disabledBySystem: false,
-              },
+              $match: query,
             },
             {
               $lookup: {
@@ -535,11 +538,7 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
           as: "branches",
           pipeline: [
             {
-              $match: {
-                status: true,
-                softDeleted: false,
-                disabledBySystem: false,
-              },
+              $match: query,
             },
             {
               $lookup: {
