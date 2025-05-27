@@ -815,7 +815,13 @@ export const retailerStatsWithCountryWise = asyncHandler(async (req: IApiRequest
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const avgCollectedStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { start = undefined, end = undefined } = req.query;
+  const { start = undefined, end = undefined, branchIds = "" }: any = req.query;
+  const query: Object = { retailerId: req.user._id };
+
+  if (branchIds) {
+    const branchIdArray = branchIds.split(",").map((id: string) => Types.ObjectId.createFromHexString(id.trim()));
+    query.branchId = { $in: branchIdArray };
+  }
 
   const settings = await Settings.findOne();
   const timezone = settings.general.timezone.label;
@@ -832,12 +838,11 @@ export const avgCollectedStamp = asyncHandler(async (req: IApiRequest, res: Resp
   if (startDate) dateFilter.$gte = startDate;
   if (endDate) dateFilter.$lte = endDate;
 
+  if (start || end) query.createdAt = dateFilter;
+
   const result = await OrderStamp.aggregate([
     {
-      $match: {
-        retailerId: req.user._id,
-        ...(start || end ? { createdAt: dateFilter } : {}),
-      },
+      $match: query,
     },
     {
       $group: {
@@ -886,10 +891,16 @@ export const avgCollectedStamp = asyncHandler(async (req: IApiRequest, res: Resp
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const rewardCollectPercentage = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const branches = await Branch.find({ retailerId: req.user._id, status: true, softDeleted: false }).select("_id");
-  const branchIds = branches.map((branch) => branch._id);
+  const { start = undefined, end = undefined, branchIds = "" }: any = req.query;
+  const query: Object = {};
 
-  const { start = undefined, end = undefined } = req.query;
+  if (branchIds) {
+    const branchIdArray = branchIds.split(",").map((id: string) => Types.ObjectId.createFromHexString(id.trim()));
+    query.branchId = { $in: branchIdArray };
+  } else {
+    const branches = await Branch.find({ retailerId: req.user._id, status: true, softDeleted: false }).select("_id");
+    query.branchId = { $in: branches.map((branch) => branch._id) };
+  }
 
   const settings = await Settings.findOne();
   const timezone = settings.general.timezone.label;
@@ -909,9 +920,7 @@ export const rewardCollectPercentage = asyncHandler(async (req: IApiRequest, res
   const [result1, result2] = await Promise.all([
     CollectStamp.aggregate([
       {
-        $match: {
-          branchId: { $in: branchIds },
-        },
+        $match: query,
       },
       {
         $lookup: {
@@ -977,9 +986,7 @@ export const rewardCollectPercentage = asyncHandler(async (req: IApiRequest, res
     ]),
     CollectStamp.aggregate([
       {
-        $match: {
-          branchId: { $in: branchIds },
-        },
+        $match: query,
       },
       {
         $lookup: {
