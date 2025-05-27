@@ -1,6 +1,5 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
-import moment from "moment";
 import { PACKAGES, ROLE } from "../../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../../configs/s3Bucket";
 import {
@@ -12,15 +11,11 @@ import {
   getSlugCountMap,
 } from "../../../helpers";
 import { countDaysLeft } from "../../../helpers/moment";
-import Branch from "../../../models/branch";
-import EnrollSubscription from "../../../models/enroll-subscription";
 import Enrollment from "../../../models/enrollment";
 import OrderStamp from "../../../models/order-stamp";
 import Retailer from "../../../models/retailer";
 import Subscription from "../../../models/subscription";
 import { IApiRequest } from "../../../types";
-import { sendInvoiceToEmail } from "../../enroll-subscription/service";
-import { sendRegistrationMail } from "../../retailer/service";
 import { retailerSchemaUpdate } from "../../retailer/validation";
 import { sendForgotPassEmail, sendVerificationEmail } from "../service";
 import {
@@ -32,6 +27,7 @@ import {
   verifyOtpOnRegSchema,
   verifyOtpSchema,
 } from "../validation";
+import { freeTrialInvoiceGenerate } from "./service";
 
 const ALARM_EXPIRE_TIME = 60 * 60 * 24 * 29 * 1000; // 29 Days
 
@@ -100,74 +96,7 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
     { new: true }
   );
 
-  if (result.selectFreeTrial) {
-    const freeTrial = await Subscription.findOne({ slug: "trial" });
-    if (!freeTrial) return apiResponse(res, 400, false, "Free trial package not found!");
-
-    const enrollment: any = await Enrollment.create({
-      retailerId: retailer._id,
-      planExists: PACKAGES.TRIAL,
-      paymentStatus: "trial",
-      validityFrom: moment(),
-      validityTo: freeTrial?.isUnlimited ? new Date("3030-01-01") : moment().add(freeTrial.duration, "days"),
-      enrollStatus: "trial",
-    });
-
-    const enrollSubscription = await EnrollSubscription.create({
-      enrollmentId: enrollment?._id,
-      planSnapshot: freeTrial,
-      status: true,
-    });
-
-    await Branch.create({
-      name: retailer.storeName,
-      address: {
-        loc: { type: "Point", coordinates: [retailer.longitude, retailer.latitude] },
-        name: retailer.address,
-      },
-      retailerId: retailer._id,
-      enrollSubscriptionId: enrollSubscription._id,
-      source: "subscription",
-    });
-
-    const customerInfo = {
-      name: `${req?.user.firstName?.length > 26 ? `${req?.user.firstName?.slice(0, 26)}...` : req?.user.firstName} ${req?.user?.lastName?.length > 26 ? `${req?.user?.lastName?.slice(0, 26)}...` : req?.user?.lastName}`,
-      phone: `${req?.user?.dialCode}-${req?.user?.phone}`,
-      address: `${req?.user?.address}`,
-    };
-
-    let subTotal = 0;
-    const purchasedItems = [
-      {
-        title: enrollSubscription?.planSnapshot?.title,
-        quantity: 1,
-        unitPrice: `0.00 CAD`,
-        total: `0.00 CAD`,
-      },
-    ];
-
-    const invoiceMetadata = {
-      invoiceNo: "INV-" + enrollment?._id.toHexString()?.slice(-8).toUpperCase(),
-      subtotal: `${Number(subTotal).toFixed(2)} CAD`,
-      total: `0.00 CAD`,
-    };
-    const paymentInfo = {
-      bankName: "Fauget Bank",
-      accountName: "Juliana Silva",
-      accountNo: "123-456-7890",
-      date: enrollment.createdAt,
-    };
-
-    sendRegistrationMail(req.user.email, retailer?.fullName, retailer?.address, retailer?.storeName);
-
-    await sendInvoiceToEmail({
-      email: req?.user?.email,
-      customerInfo,
-      purchasedItems,
-      invoiceMetadata,
-      paymentInfo,
-    });
-  }
+  if (result.selectFreeTrial) await freeTrialInvoiceGenerate(retailer);
 
   const accessToken = generateSignature({ email: req.user.email, role: ROLE.RETAILER }, 2592000); // 30 Day expiry 30*24*60*60;
   const refreshToken = generateSignature({ email: req.user.email, role: ROLE.RETAILER }, 5184000); // 60 Day expiry 60*24*60*60;

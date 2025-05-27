@@ -29,6 +29,7 @@ import Stamp from "../../models/stamp";
 import Subscription, { ISubscription } from "../../models/subscription";
 import { getInvoiceTemplate } from "../../templates/invoice";
 import { IApiRequest, IEnrollSubscriptionBody, ILineItem } from "../../types";
+import { freeTrialInvoiceGenerate } from "../user/retailer/service";
 import { sendInvoiceToEmail } from "./service";
 import { couponSchema, enrollmentSchema } from "./validation";
 
@@ -147,85 +148,12 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
   if (slugs.includes(PACKAGES.TRIAL)) {
     if (!req.user.takeFreeTrial) {
       const subscription = await Subscription.findOne({ slug: "trial" });
+      if (!subscription) return apiResponse(res, 400, false, "Free trial package not found!");
 
-      if (subscription) {
-        const now = moment();
-        const expireDate = moment().add(subscription.duration, "days");
+      const retailer = await Retailer.findOneAndUpdate({ _id: req.user._id }, { takeFreeTrial: true }, { new: true });
+      await freeTrialInvoiceGenerate(retailer);
 
-        const [enrollment, retailer]: any = await Promise.all([
-          Enrollment.create({
-            retailerId: req.user._id,
-            planExists: PACKAGES.TRIAL,
-            paymentStatus: "trial",
-            validityFrom: now,
-            validityTo: expireDate,
-            enrollStatus: "trial",
-          }),
-          Retailer.findOneAndUpdate({ _id: req.user._id }, { takeFreeTrial: true }, { new: true }),
-        ]);
-
-        const enrollSubscription = await EnrollSubscription.create({
-          enrollmentId: enrollment?._id,
-          planSnapshot: subscription,
-          status: true,
-        });
-
-        await Branch.create({
-          name: retailer.storeName,
-          address: {
-            loc: { type: "Point", coordinates: [req.user.longitude, req.user.latitude] },
-            name: req.user.address,
-          },
-          retailerId: req.user._id,
-          enrollSubscriptionId: enrollSubscription._id,
-          source: "subscription",
-        });
-
-        const customerInfo = {
-          name: `${req?.user.firstName?.length > 26 ? `${req?.user.firstName?.slice(0, 26)}...` : req?.user.firstName} ${req?.user?.lastName?.length > 26 ? `${req?.user?.lastName?.slice(0, 26)}...` : req?.user?.lastName}`,
-          phone: `${req?.user?.dialCode}-${req?.user?.phone}`,
-          address: `${req?.user?.address}`,
-        };
-
-        let subTotal = 0;
-        const purchasedItems = [
-          {
-            title: enrollSubscription?.planSnapshot?.title,
-            quantity: 1,
-            unitPrice: `0.00 CAD`,
-            total: `0.00 CAD`,
-          },
-        ];
-
-        const invoiceMetadata = {
-          invoiceNo: "INV-" + enrollment?._id.toHexString()?.slice(-8).toUpperCase(),
-          subtotal: `${Number(subTotal).toFixed(2)} CAD`,
-          total: `0.00 CAD`,
-        };
-        const paymentInfo = {
-          bankName: "Fauget Bank",
-          accountName: "Juliana Silva",
-          accountNo: "123-456-7890",
-          date: enrollment?.createdAt,
-        };
-
-        await sendInvoiceToEmail({
-          email: req?.user?.email,
-          customerInfo,
-          purchasedItems,
-          invoiceMetadata,
-          paymentInfo,
-        });
-
-        return apiResponse(res, 200, true, "Free trial enrolled successfully!", {
-          takeFreeTrial: true,
-          plan: "trial",
-          planStartAt: now,
-          planValidAt: expireDate,
-          totalBranch: subscription?.allowTotalBranch,
-        });
-      }
-      return apiResponse(res, 400, false, "Free trial package not found!");
+      return apiResponse(res, 200, true, "Free trial enrolled successfully!");
     }
     return apiResponse(res, 400, false, "Free trial already taken!");
   }
