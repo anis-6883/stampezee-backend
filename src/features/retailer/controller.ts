@@ -471,6 +471,7 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
           _id: "$enrollSubscription.planSnapshot.slug",
           title: { $first: "$enrollSubscription.planSnapshot.title" },
           slug: { $first: "$enrollSubscription.planSnapshot.slug" },
+          type: { $first: "$enrollSubscription.planSnapshot.type" },
           enrollSubscriptions: {
             $push: {
               _id: "$enrollSubscription._id",
