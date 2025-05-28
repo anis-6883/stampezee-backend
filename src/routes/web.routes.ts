@@ -15,7 +15,7 @@ import refundRoutes from "../features/refund/routes/retailer";
 import scansRoutes from "../features/scans/routes/retailer";
 import { getCommonSettings, getSecretSettings } from "../features/settings/controller";
 import stampImageRoutes from "../features/stamp-image/route";
-import stampRoutes from "../features/stamp/route";
+import stampCardRoutes from "../features/stamp/routes/retailer";
 import subAdminRoutes from "../features/sub-admin/route";
 import { refreshAccessToken } from "../features/user/controller";
 import retailerAuthRoutes from "../features/user/retailer/route";
@@ -43,7 +43,7 @@ router.use("/retailer", retailerAuthRoutes);
 // Retailer Panel Feature Routes
 router.use(authAndPermissionCheck(ROLE.RETAILER));
 router.use("/retailer/dashboard", dashboardRoutes);
-router.use("/retailer/stamp", stampRoutes);
+router.use("/retailer/stamp", stampCardRoutes);
 router.use("/retailer/scans", scansRoutes);
 router.use("/retailer/branch", branchRoutes);
 router.use("/retailer/sub-admin", subAdminRoutes);

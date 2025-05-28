@@ -11,6 +11,9 @@ import Stamp, { IStamp } from "../../models/stamp";
 import StampImage from "../../models/stamp-image";
 import { IApiRequest } from "../../types";
 import { stampSchema, stampStatusSchema, updateStampSchema } from "./validation";
+import { stampCardSuperAdminQuery } from "./service";
+import { Object } from "../../types/index";
+import { Types } from "mongoose";
 
 /**
  * Create A Stamp
@@ -360,9 +363,10 @@ export const updateStamp = asyncHandler(async (req: IApiRequest, res: Response) 
   const { id } = req.params;
   const { branchId, categoryId, stampImageId, softDeleted, ...updatedBody } = result;
 
-  const stamp = await Stamp.findOne({ _id: id });
+  const stamp = await Stamp.findOne({ _id: id, retailerId: req.user._id });
   if (!stamp) return apiResponse(res, 400, false, "Stamp not found!");
-  // if (stamp.isPublished) return apiResponse(res, 400, false, "The published stamp cannot be edited!");
+
+  if (stamp.isPublished) return apiResponse(res, 400, false, "The published stamp cannot be edited!");
 
   if (branchId) {
     const branch = await Branch.findOne({ _id: branchId, retailerId: req.user._id });
@@ -454,6 +458,9 @@ export const softDeleteStamp = asyncHandler(async (req: IApiRequest, res: Respon
   const stamp = await Stamp.findOneAndUpdate(
     { _id: id, retailerId: req.user._id },
     {
+      deleteRef: "retailer",
+      deletedAt: new Date(),
+      deletedBy: req.user._id,
       softDeleted: true,
     }
   );
@@ -499,4 +506,268 @@ export const confirmDeleteStamp = asyncHandler(async (req: IApiRequest, res: Res
   if (!stamp) return apiResponse(res, 400, false, "Stamp not found!");
 
   return apiResponse(res, 200, true, "Stamp deleted successfully!");
+});
+
+//################## Super Admin Controller ##################
+
+export const getAllStampCardsForSuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { page = 1, limit = 10, search, start = undefined, end = undefined, status } = req.query;
+  const skip: number = (Number(page) - 1) * Number(limit);
+
+  const query: any = await stampCardSuperAdminQuery({ status, start, end, search });
+
+  const [docs, total] = await Promise.all([
+    Stamp.aggregate([
+      {
+        $match: query,
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
+        $lookup: {
+          from: "branches",
+          localField: "branchId",
+          foreignField: "_id",
+          as: "branch",
+          pipeline: [
+            {
+              $project: {
+                name: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "categoryId",
+          foreignField: "_id",
+          as: "category",
+          pipeline: [
+            {
+              $project: {
+                name: 1,
+                image: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: "stamp_images",
+          localField: "stampImageId",
+          foreignField: "_id",
+          as: "stampImage",
+          pipeline: [
+            {
+              $project: {
+                title: 1,
+                image: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: "$branch",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $unwind: {
+          path: "$category",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $unwind: {
+          path: "$stampImage",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          branchId: 0,
+          categoryId: 0,
+          stampImageId: 0,
+        },
+      },
+    ]),
+    Stamp.countDocuments(query),
+  ]);
+
+  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
+
+  return apiResponse(res, 200, true, "Stamps fetched successfully!", data);
+});
+
+export const deleteStampCardBySuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { id } = req.params;
+
+  const stamp = await Stamp.findOneAndUpdate(
+    { _id: id },
+    {
+      deleteRef: "admin",
+      deletedAt: new Date(),
+      deletedBy: req.user._id,
+      softDeleted: true,
+    }
+  );
+
+  if (!stamp) return apiResponse(res, 400, false, "Stamp not found!");
+
+  return apiResponse(res, 200, true, "Stamp deleted successfully!");
+});
+
+export const getSingleStampBySuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { id } = req.params;
+
+  const stamp = await Stamp.findOne({ _id: id });
+  if (!stamp) return apiResponse(res, 404, false, "Stamp not found!");
+
+  return apiResponse(res, 200, true, "Stamp fetched successfully!", stamp);
+});
+
+export const updateStampBySuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await updateStampSchema.validateAsync(req.body, {
+    abortEarly: false,
+    allowUnknown: true,
+  });
+
+  const { id } = req.params;
+  const { branchId, categoryId, stampImageId, softDeleted, ...updatedBody } = result;
+
+  const stamp = await Stamp.findOne({ _id: id });
+  if (!stamp) return apiResponse(res, 400, false, "Stamp not found!");
+  // if (stamp.isPublished) return apiResponse(res, 400, false, "The published stamp cannot be edited!");
+
+  if (branchId) {
+    const branch = await Branch.findOne({ _id: branchId, retailerId: req.user._id });
+    if (!branch) return apiResponse(res, 400, false, "Branch not found!");
+  }
+
+  if (categoryId) {
+    const category = await Category.findOne({ _id: categoryId });
+    if (!category) return apiResponse(res, 400, false, "Category not found!");
+  }
+
+  if (stampImageId) {
+    const stampImage = await StampImage.findOne({ _id: stampImageId });
+    if (!stampImage) return apiResponse(res, 400, false, "Stamp Image not found!");
+  }
+
+  updatedBody.branchId = branchId;
+  updatedBody.stampImageId = stampImageId;
+  updatedBody.categoryId = categoryId;
+
+  const systemTime = getUTC(updatedBody.startedAt, req.user.timezone.label, true);
+  const expireTime = getUTC(updatedBody.expiredAt, req.user.timezone.label, false, true);
+
+  updatedBody.startedAt = systemTime;
+  updatedBody.expiredAt = expireTime;
+
+  const updatedData: any = await Stamp.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
+
+  return apiResponse(res, 200, true, "Stamp updated successfully!", updatedData);
+});
+
+export const getBranchCategoryImageListBySuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const retailerId = req.query.retailerId as string;
+  const [categories, branches, defaultImages, customImages] = await Promise.all([
+    Category.find({ softDeleted: false, status: true }, { name: 1, image: 1 }).sort({
+      createdAt: "desc",
+    }),
+    Branch.find(
+      { retailerId: new Types.ObjectId(retailerId), softDeleted: false, status: true, disabledBySystem: false },
+      { name: 1 }
+    ).sort({
+      createdAt: "desc",
+    }),
+    StampImage.find({ softDeleted: false, status: true, ref: ROLE.SUPER_ADMIN }, { image: 1, title: 1, ref: 1 }).sort({
+      createdAt: "desc",
+    }),
+    StampImage.aggregate([
+      {
+        $match: {
+          softDeleted: false,
+          status: true,
+          userId: new Types.ObjectId(retailerId),
+        },
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $lookup: {
+          from: "enroll_subscriptions",
+          localField: "enrollSubscriptionId",
+          foreignField: "_id",
+          as: "enrollSubscription",
+          pipeline: [
+            {
+              $lookup: {
+                from: "enrollments",
+                localField: "enrollmentId",
+                foreignField: "_id",
+                as: "enrollment",
+              },
+            },
+            {
+              $unwind: "$enrollment",
+            },
+            {
+              $project: {
+                validityFrom: "$enrollment.validityFrom",
+                validityTo: "$enrollment.validityTo",
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: "$enrollSubscription",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $match: {
+          "enrollSubscription.validityFrom": { $lte: new Date() },
+          "enrollSubscription.validityTo": { $gte: new Date() },
+        },
+      },
+      {
+        $project: { image: 1, title: 1, ref: 1 },
+      },
+    ]),
+  ]);
+
+  const sorting = await Sorting.findOne({ title: "default_stamp_image" });
+  const sortedIds = sorting ? sorting.sortedData : [];
+
+  const stampImageMap = new Map(defaultImages.map((stampImage) => [stampImage._id.toString(), stampImage]));
+  const sortedStampImages = sortedIds.map((id: string) => stampImageMap.get(id)).filter(Boolean);
+
+  const data = {
+    categories,
+    branches,
+    defaultImages: sortedStampImages,
+    customImages,
+  };
+
+  return apiResponse(res, 200, true, "Branches, Categories, Stamp Images fetched successfully!", data);
 });

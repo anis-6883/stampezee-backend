@@ -13,7 +13,10 @@ export interface IStamp extends Document {
   discountReward?: number;
   startedAt: Date;
   expiredAt: Date;
+  deletedAt: Date;
   status?: boolean;
+  deleteRef: "admin" | "retailer";
+  deletedBy?: Types.ObjectId;
   softDeleted?: boolean;
   source: string;
 
@@ -39,7 +42,10 @@ const stampSchema = new Schema<IStamp>(
     discountReward: { type: Number, trim: true, default: 0 },
     startedAt: { type: Date, required: true },
     expiredAt: { type: Date, required: true },
+    deletedAt: { type: Date, default: null },
     status: { type: Boolean, default: true },
+    deleteRef: { type: String, enum: ["admin", "retailer"], required: true, default: "retailer" },
+    deletedBy: { type: "ObjectId", default: null },
     softDeleted: { type: Boolean, default: false },
     source: { type: String, enum: ["subscription", "addon"], required: true },
 
