@@ -1,9 +1,10 @@
 import { Response } from "express";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
+import CurrencyExchange from "../../models/currency-exchange";
 import EnrollSubscription from "../../models/enroll-subscription";
 import Subscription from "../../models/subscription";
-import { IApiRequest } from "../../types";
+import { IApiRequest, Object } from "../../types";
 import { updateRetailerFreePlan } from "./service";
 import { subscriptionSchema, subscriptionStatusSchema, updateSubscriptionSchema } from "./validation";
 
@@ -160,9 +161,35 @@ export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Res
           currency: "$enrollment.currency",
         },
       },
+      {
+        $group: {
+          _id: null,
+          subscriptions: { $push: "$$ROOT" },
+          currencies: { $addToSet: "$currency" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          subscriptions: 1,
+          currencies: 1,
+        },
+      },
     ]);
 
-    // return apiResponse(res, 200, true, "Test!", enrollSubscriptions);
+    const currencyExchange = await CurrencyExchange.find();
+
+    const currencyPriceIdMap: Object = {};
+    for (const currency of enrollSubscriptions[0]?.currencies || []) {
+      // @TODO: Tax Check and Add
+      // @TODO: Create Price in Stripe for different currencies
+      // @TODO: Update price the Stripe for existing enrollments
+
+      const exchangeRate = currencyExchange.find((item) => item.currency === currency);
+      currencyPriceIdMap[currency] = exchangeRate.exchangeRate;
+    }
+
+    // return apiResponse(res, 200, true, "Test!", currencyPriceIdMap);
   }
 
   return apiResponse(res, 200, true, "Subscription updated successfully!", updatedData);
