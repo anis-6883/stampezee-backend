@@ -28,3 +28,27 @@ export const updateRetailerFreePlan = async (subscription: ISubscription) => {
 
   Promise.all(updateArr);
 };
+
+export const updateRetailerPaidPlan = async (subscription: ISubscription) => {
+  const enrollSubscriptions = await EnrollSubscription.aggregate([
+    {
+      $match: {
+        "planSnapshot.slug": subscription.slug,
+        $or: [{ status: true }, { status: false, validAtAfterCancel: { $gt: new Date() } }],
+      },
+    },
+    {
+      $lookup: {
+        from: "enrollments",
+        localField: "enrollmentId",
+        foreignField: "_id",
+        as: "enrollment",
+      },
+    },
+    {
+      $unwind: "$enrollment",
+    },
+  ]);
+
+  console.log({ enrollSubscriptions });
+};

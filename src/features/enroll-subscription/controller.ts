@@ -1775,3 +1775,34 @@ export const testEmailPDF = asyncHandler(async (req: IApiRequest, res: Response)
 
   return apiResponse(res, 200, true, "Test Email with Pdf!");
 });
+
+/**
+ * Test Price Update in Stripe
+ * @param {Request} eventObject - The HTTP webhook event object.
+ * @param {Request} stripe - The stripe object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const priceUpdateTestInStripe = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
+  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
+
+  const { stripeSecretKey } = paymentMetadata.stripe ?? {};
+  const stripe = new Stripe(stripeSecretKey);
+
+  const price = await stripe.prices.create({
+    currency: "cad",
+    unit_amount: 11 * 100,
+    recurring: {
+      interval: "month",
+    },
+    product_data: {
+      name: "Test Plan",
+    },
+  });
+
+  const subscriptionItem = await stripe.subscriptionItems.update("si_SOPxvVQYtNuufw", {
+    price: price.id,
+  });
+
+  return apiResponse(res, 200, true, "Test Price Update in Stripe!", subscriptionItem);
+});

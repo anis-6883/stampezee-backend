@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
+import EnrollSubscription from "../../models/enroll-subscription";
 import Subscription from "../../models/subscription";
 import { IApiRequest } from "../../types";
 import { updateRetailerFreePlan } from "./service";
@@ -132,7 +133,37 @@ export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Res
   const updatedData = await Subscription.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
   if (!updatedData) return apiResponse(res, 404, false, "Subscription not found!");
 
+  // Bulk Update
   if (updatedData?.slug === "trial") updateRetailerFreePlan(updatedData);
+  else {
+    const enrollSubscriptions = await EnrollSubscription.aggregate([
+      {
+        $match: {
+          "planSnapshot.slug": slug,
+          $or: [{ status: true }, { status: false, validAtAfterCancel: { $gt: new Date() } }],
+        },
+      },
+      {
+        $lookup: {
+          from: "enrollments",
+          localField: "enrollmentId",
+          foreignField: "_id",
+          as: "enrollment",
+        },
+      },
+      {
+        $unwind: "$enrollment",
+      },
+      {
+        $project: {
+          subscriptionItemId: 1,
+          currency: "$enrollment.currency",
+        },
+      },
+    ]);
+
+    // return apiResponse(res, 200, true, "Test!", enrollSubscriptions);
+  }
 
   return apiResponse(res, 200, true, "Subscription updated successfully!", updatedData);
 });
