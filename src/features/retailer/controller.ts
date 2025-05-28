@@ -6,13 +6,18 @@ import { PACKAGES } from "../../configs/constants";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
 import { apiResponse, asyncHandler, exclude, makePaginate } from "../../helpers";
 import Branch from "../../models/branch";
+import CollectStamp from "../../models/collect-stamp";
+import Customer from "../../models/customer";
 import EnrollSubscription from "../../models/enroll-subscription";
 import Enrollment from "../../models/enrollment";
+import OrderStamp from "../../models/order-stamp";
 import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
+import Stamp from "../../models/stamp";
 import SubAdmin from "../../models/sub-admin";
 import Subscription from "../../models/subscription";
 import { IApiRequest, Object } from "../../types";
+import { IRetailerScanQuery } from "../../types/index";
 import { sendRegistrationMail } from "./service";
 import { retailerSchema, retailerSchemaUpdate, retailerStatusSchema } from "./validation";
 
@@ -635,6 +640,610 @@ export const updateRetailerStatus = asyncHandler(async (req: IApiRequest, res: R
   if (!retailer) return apiResponse(res, 404, false, "Retailer not found!");
 
   return apiResponse(res, 200, true, "Retailer status updated successfully!");
+});
+
+/**
+ * Retailer Branches
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const retailerBranches = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { retailerId } = req.params;
+  const { page = 1, limit = 10, search } = req.query;
+  const skip: number = (Number(page) - 1) * Number(limit);
+
+  const query: any = { retailerId: Types.ObjectId.createFromHexString(retailerId), softDeleted: false };
+  if (search) {
+    const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
+    query.name = regex;
+  }
+
+  const [docs, total] = await Promise.all([
+    Branch.aggregate([
+      {
+        $match: query,
+      },
+      {
+        $sort: {
+          disabledBySystem: 1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
+        $lookup: {
+          from: "enroll_subscriptions",
+          localField: "enrollSubscriptionId",
+          foreignField: "_id",
+          as: "enrollSubscription",
+          pipeline: [
+            {
+              $lookup: {
+                from: "enrollments",
+                localField: "enrollmentId",
+                foreignField: "_id",
+                as: "enrollment",
+              },
+            },
+            {
+              $unwind: "$enrollment",
+            },
+            {
+              $project: {
+                unlimitedFieldName: "$planSnapshot.unlimitedFieldName",
+                validityFrom: "$enrollment.validityFrom",
+                validityTo: "$enrollment.validityTo",
+                validAtAfterCancel: 1,
+                planDaysLeft: {
+                  $dateDiff: {
+                    startDate: "$$NOW",
+                    endDate: {
+                      $cond: {
+                        if: { $eq: ["$validAtAfterCancel", null] },
+                        then: "$enrollment.validityTo",
+                        else: "$validAtAfterCancel",
+                      },
+                    },
+                    unit: "day",
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: "$enrollSubscription",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+    ]),
+    Branch.countDocuments(query),
+  ]);
+
+  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
+
+  return apiResponse(res, 200, true, "Retailer's branches fetched successfully!", data);
+});
+
+/**
+ * Retailer Stamp Cards
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const retailerStampCards = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { retailerId } = req.params;
+  const { page = 1, limit = 10, search } = req.query;
+  const skip: number = (Number(page) - 1) * Number(limit);
+
+  const query: any = { retailerId: Types.ObjectId.createFromHexString(retailerId), softDeleted: false };
+  if (search) {
+    const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
+    query.title = regex;
+  }
+
+  const [docs, total] = await Promise.all([
+    Stamp.aggregate([
+      {
+        $match: query,
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
+        $lookup: {
+          from: "branches",
+          localField: "branchId",
+          foreignField: "_id",
+          as: "branch",
+          pipeline: [
+            {
+              $project: {
+                name: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "categoryId",
+          foreignField: "_id",
+          as: "category",
+          pipeline: [
+            {
+              $project: {
+                name: 1,
+                image: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: "stamp_images",
+          localField: "stampImageId",
+          foreignField: "_id",
+          as: "stampImage",
+          pipeline: [
+            {
+              $project: {
+                title: 1,
+                image: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: "$branch",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $unwind: {
+          path: "$category",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $unwind: {
+          path: "$stampImage",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          branchId: 0,
+          categoryId: 0,
+          stampImageId: 0,
+        },
+      },
+    ]),
+    Stamp.countDocuments(query),
+  ]);
+
+  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
+
+  return apiResponse(res, 200, true, "Retailer's stamp cards fetched successfully!", data);
+});
+
+/**
+ * Retailer Stamps
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const retailerStamps = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { retailerId } = req.params;
+  const { page = 1, limit = 10, search }: any = req.query;
+  const skip: number = (Number(page) - 1) * Number(limit);
+  const query: IRetailerScanQuery = { retailerId: Types.ObjectId.createFromHexString(retailerId) };
+
+  if (search) {
+    const regex = new RegExp(`.*${search}.*`, "i"); // case insensitive search. For sensitive remove 'i'
+    const customers = await Customer.find({
+      $or: [{ fullName: regex }, { email: regex }],
+    }).select("_id");
+
+    // Extract array of _id values
+    const customerIds = customers.map((customer) => customer._id);
+    query.customerId = { $in: customerIds };
+  }
+  const [docs, total] = await Promise.all([
+    OrderStamp.aggregate([
+      {
+        $match: query,
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
+        $lookup: {
+          from: "collect_stamps",
+          localField: "collectStampId",
+          foreignField: "_id",
+          as: "collectstamp",
+          pipeline: [
+            {
+              $lookup: {
+                from: "stamps",
+                localField: "stampId",
+                foreignField: "_id",
+                as: "stamp",
+                pipeline: [
+                  {
+                    $lookup: {
+                      from: "categories",
+                      localField: "categoryId",
+                      foreignField: "_id",
+                      as: "category",
+                      pipeline: [
+                        {
+                          $project: {
+                            name: 1,
+                          },
+                        },
+                      ],
+                    },
+                  },
+                  {
+                    $unwind: "$category",
+                  },
+                  {
+                    $project: {
+                      title: 1,
+                      description: 1,
+                      rules: 1,
+                      noOfStampsToCollect: 1,
+                      minPurchaseAmount: 1,
+                      rewardType: 1,
+                      promotionReward: 1,
+                      discountReward: 1,
+                      category: "$category.name",
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              $unwind: "$stamp",
+            },
+            {
+              $lookup: {
+                from: "branches",
+                localField: "branchId",
+                foreignField: "_id",
+                as: "branch",
+                pipeline: [
+                  {
+                    $project: {
+                      _id: 0,
+                      name: 1,
+                      address: "$address.name",
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              $unwind: "$branch",
+            },
+          ],
+        },
+      },
+      {
+        $unwind: "$collectstamp",
+      },
+      {
+        $lookup: {
+          from: "sub_admins",
+          localField: "subAdminId",
+          foreignField: "_id",
+          as: "subAdmin",
+          pipeline: [
+            {
+              $project: {
+                _id: 0,
+                fullName: 1,
+                email: 1,
+                image: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: "$subAdmin",
+      },
+      {
+        $lookup: {
+          from: "customers",
+          localField: "customerId",
+          foreignField: "_id",
+          as: "customer",
+          pipeline: [
+            {
+              $project: {
+                _id: 0,
+                fullName: 1,
+                email: 1,
+                contactEmail: 1,
+                image: 1,
+                dialCode: 1,
+                phone: 1,
+                country: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: "$customer",
+      },
+      {
+        $project: {
+          "scan.time": "$createdAt",
+          "scan.rewardCollected": "$rewardCollected",
+          "scan.stampNumber": "$number",
+          "scan.amount": "$amount",
+          "scan.amountCurrency": "$amountCurrency",
+          "scan.invoice": "$invoice",
+          branch: "$collectstamp.branch",
+          offer: "$collectstamp.stamp",
+          subAdmin: 1,
+          customer: 1,
+        },
+      },
+    ]),
+    OrderStamp.countDocuments(query),
+  ]);
+
+  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
+
+  return apiResponse(res, 200, true, "Retailer's stamps fetched successfully!", data);
+});
+
+/**
+ * Retailer Customers
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const retailerCustomers = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { retailerId } = req.params;
+  const { page = 1, limit = 10, search } = req.query;
+  const skip: number = (Number(page) - 1) * Number(limit);
+
+  const query: any = { softDeleted: false, isVerified: true };
+
+  if (search) {
+    const regex = new RegExp(`.*${search}.*`, "i"); // case insensitive search. For sensitive remove i
+    const orQuery = [{ fullName: regex }, { email: regex }];
+    query.$or = orQuery;
+  }
+
+  const branchIds = (await Branch.find({ retailerId })).map((branch) => branch._id);
+
+  const collectStamp = (
+    await CollectStamp.aggregate([
+      {
+        $group: {
+          _id: "$branchId", // Group by branchId
+          uniqueCustomers: { $addToSet: "$customerId" }, // Collect unique customerId values in a set
+        },
+      },
+      {
+        $match: {
+          _id: { $in: branchIds },
+        },
+      },
+      {
+        $group: {
+          _id: null, // Group everything into a single document
+          allUniqueCustomers: { $addToSet: "$uniqueCustomers" }, // Collect all unique customer arrays
+        },
+      },
+      {
+        $project: {
+          _id: 0, // Remove the _id field
+          customerIds: {
+            $reduce: {
+              input: "$allUniqueCustomers", // Flatten the array of arrays
+              initialValue: [],
+              in: { $setUnion: ["$$value", "$$this"] }, // Merge unique customer arrays
+            },
+          },
+        },
+      },
+    ])
+  )[0];
+
+  query._id = { $in: collectStamp?.customerIds ?? [] };
+
+  const [docs, total] = await Promise.all([
+    Customer.aggregate([
+      {
+        $match: query,
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
+        $lookup: {
+          from: "collect_stamps",
+          localField: "_id",
+          foreignField: "customerId",
+          as: "collectStamps",
+          pipeline: [
+            {
+              $match: {
+                branchId: { $in: branchIds },
+              },
+            },
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: "order_stamps",
+          localField: "_id",
+          foreignField: "customerId",
+          as: "orderStamps",
+          pipeline: [
+            {
+              $match: {
+                branchId: { $in: branchIds },
+              },
+            },
+          ],
+        },
+      },
+      {
+        $addFields: {
+          totalStampsCollected: { $size: "$collectStamps" },
+          totalActiveStampsCollected: {
+            $size: {
+              $filter: {
+                input: "$collectStamps",
+                as: "collectStamp",
+                cond: { $eq: ["$$collectStamp.softDeleted", false] },
+              },
+            },
+          },
+          totalScan: { $size: "$orderStamps" },
+          totalRewardCollect: {
+            $size: {
+              $filter: {
+                input: "$orderStamps", // Filter on the orderStamps array
+                as: "orderStamp", // Alias for each element in the array
+                cond: { $eq: ["$$orderStamp.rewardCollected", true] }, // Condition: rewardCollected should be true
+              },
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          password: 0,
+          otp: 0,
+          otpExpiry: 0,
+          token: 0,
+          collectStamps: 0,
+          orderStamps: 0,
+        },
+      },
+    ]),
+    Customer.countDocuments(query),
+  ]);
+
+  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
+
+  return apiResponse(res, 200, true, "Retailer's customers fetched successfully!", data);
+});
+
+/**
+ * Retailer Sub-Admins
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const retailerSubAdmins = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { retailerId } = req.params;
+  const { page = 1, limit = 10, search } = req.query;
+  const skip: number = (Number(page) - 1) * Number(limit);
+
+  const query: any = { retailerId: Types.ObjectId.createFromHexString(retailerId), softDeleted: false };
+  if (search) {
+    const regex = new RegExp(`.*${search}.*`, "i"); //case insensitive search. For sensitive remove i
+    const orQuery = [{ fullName: regex }, { email: regex }];
+    query.$or = orQuery;
+  }
+
+  const [docs, total] = await Promise.all([
+    SubAdmin.aggregate([
+      {
+        $match: query,
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
+        $lookup: {
+          from: "branches",
+          localField: "branchId",
+          foreignField: "_id",
+          as: "branch",
+          pipeline: [
+            {
+              $project: {
+                name: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: "$branch",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          branchId: 0,
+          password: 0,
+        },
+      },
+    ]),
+    SubAdmin.countDocuments(query),
+  ]);
+
+  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
+
+  return apiResponse(res, 200, true, "Retailer's loyalty executives fetched successfully!", data);
 });
 
 /**
