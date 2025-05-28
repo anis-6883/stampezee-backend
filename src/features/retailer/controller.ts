@@ -251,7 +251,7 @@ export const getAllRetailers = asyncHandler(async (req: IApiRequest, res: Respon
 export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
-  const [retailer, addonSubscriptions] = await Promise.all([
+  const [retailer, activeSubscriptions] = await Promise.all([
     Retailer.aggregate([
       {
         $match: { _id: mongoose.Types.ObjectId.createFromHexString(id) },
@@ -374,8 +374,8 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
                 _id: 1,
                 name: 1,
                 address: "$address.name",
-                totalCustomer: { $ifNull: ["$collect_stamps.totalCustomer", 0] },
-                totalOrder: { $size: "$order_stamps" },
+                totalCustomers: { $ifNull: ["$collect_stamps.totalCustomer", 0] },
+                totalStamps: { $size: "$order_stamps" },
                 totalRevenue: { $sum: "$order_stamps.amount" },
               },
             },
@@ -387,7 +387,7 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
           from: "stamps",
           localField: "_id",
           foreignField: "retailerId",
-          as: "stamps",
+          as: "stampCards",
           pipeline: [
             {
               $match: {
@@ -404,18 +404,20 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
       {
         $addFields: {
           currentPlan: { $ifNull: ["$enrollment.planExists", null] },
-          totalActiveBranch: { $size: "$branches" },
-          totalSubAdmin: { $size: "$sub_admins" },
-          totalActiveStamp: { $size: "$stamps" },
-          totalCustomer: { $sum: "$branches.totalCustomer" },
-          totalOrder: { $sum: "$branches.totalOrder" },
+          totalBranches: { $size: "$branches" },
+          totalSubAdmins: { $size: "$sub_admins" },
+          totalStampCards: { $size: "$stampCards" },
+          totalCustomers: { $sum: "$branches.totalCustomers" },
+          totalStamps: { $sum: "$branches.totalStamps" },
           totalRevenue: { $sum: "$branches.totalRevenue" },
         },
       },
       {
         $project: {
           enrollment: 0,
-          stamps: 0,
+          stampCards: 0,
+          sub_admins: 0,
+          branches: 0,
           password: 0,
           otp: 0,
           otpExpiry: 0,
@@ -435,40 +437,46 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
           from: "enroll_subscriptions",
           localField: "_id",
           foreignField: "enrollmentId",
-          as: "addonEnrollSubscriptions",
+          as: "enrollSubscription",
           pipeline: [
             {
               $match: {
-                "planSnapshot.type": "addon", // Add-on specific condition
-                status: true,
-              },
-            },
-            {
-              $group: {
-                _id: "$planSnapshot.slug",
-                count: { $sum: 1 },
-                title: { $first: "$planSnapshot.title" },
-              },
-            },
-            {
-              $project: {
-                slug: "$_id", // Rename _id to slug
-                title: 1,
-                count: 1,
-                _id: 0,
+                $or: [{ status: true }, { status: false, validAtAfterCancel: { $gt: new Date() } }],
               },
             },
           ],
         },
       },
       {
-        $unwind: "$addonEnrollSubscriptions",
+        $unwind: "$enrollSubscription",
+      },
+      {
+        $addFields: {
+          "enrollSubscription.enrollment": {
+            _id: "$_id",
+            validityFrom: "$validityFrom",
+            validityTo: "$validityTo",
+            status: "$status",
+          },
+        },
       },
       {
         $group: {
-          _id: "$addonEnrollSubscriptions.slug",
-          count: { $sum: 1 },
-          title: { $first: "$addonEnrollSubscriptions.title" },
+          _id: "$enrollSubscription.planSnapshot.slug",
+          title: { $first: "$enrollSubscription.planSnapshot.title" },
+          slug: { $first: "$enrollSubscription.planSnapshot.slug" },
+          enrollSubscriptions: {
+            $push: {
+              _id: "$enrollSubscription._id",
+              validAtAfterCancel: "$enrollSubscription.validAtAfterCancel",
+              enrollment: "$enrollSubscription.enrollment",
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
         },
       },
     ]),
@@ -476,7 +484,7 @@ export const getSingleRetailer = asyncHandler(async (req: IApiRequest, res: Resp
 
   if (retailer.length <= 0) return apiResponse(res, 404, false, "Retailer not found!");
 
-  retailer[0].addonSubscriptions = addonSubscriptions;
+  retailer[0].activeSubscriptions = activeSubscriptions;
 
   return apiResponse(res, 201, true, "Retailer fetched successfully!", retailer[0]);
 });
