@@ -10,6 +10,7 @@ import dashboardRoutes from "../features/dashboard/routes/super-admin";
 import faqRoutes from "../features/faq/route";
 import newsletterRoutes from "../features/newsletter/route";
 import notificationRoutes from "../features/notification/routes/super-admin";
+import stampCardRoutes from "../features/stamp/routes/super-admin";
 import paymentRoutes from "../features/payment/route";
 import refundRoutes from "../features/refund/routes/super-admin";
 import manageRetailerRoutes from "../features/retailer/route";
@@ -44,5 +45,6 @@ router.use("/super-admin/manage-retailer", manageRetailerRoutes);
 router.use("/super-admin/manage-customer", manageCustomerRoutes);
 router.use("/super-admin/critical-payment", criticalPaymentRoutes);
 router.use("/super-admin/currency-exchange", currencyExchangeRoutes);
+router.use("/super-admin/stamp-card", stampCardRoutes);
 
 export default router;

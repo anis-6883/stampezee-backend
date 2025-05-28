@@ -10,7 +10,7 @@ import {
   softDeleteStamp,
   updateStamp,
   updateStampStatus,
-} from "./controller";
+} from "../controller";
 
 const router = express.Router();
 
