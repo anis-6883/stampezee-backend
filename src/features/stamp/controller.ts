@@ -13,6 +13,7 @@ import StampImage from "../../models/stamp-image";
 import { IApiRequest } from "../../types";
 import { stampCardSuperAdminQuery } from "./service";
 import { stampSchema, stampStatusSchema, updateStampSchema } from "./validation";
+import Settings from "../../models/settings";
 
 /**
  * Create A Stamp
@@ -454,19 +455,29 @@ export const publishStamp = asyncHandler(async (req: IApiRequest, res: Response)
 export const softDeleteStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
-  const stamp = await Stamp.findOneAndUpdate(
-    { _id: id, retailerId: req.user._id },
-    {
-      deleteRef: "retailer",
-      deletedAt: new Date(),
-      deletedBy: req.user._id,
-      softDeleted: true,
-    }
-  );
+  const stampIsExpiredOrUnpublished = await Stamp.findOne({
+    _id: id,
+    retailerId: req.user._id,
+    $or: [{ expiredAt: { $lt: new Date() } }, { isPublished: false }],
+  });
 
-  if (!stamp) return apiResponse(res, 400, false, "Stamp not found!");
+  if (stampIsExpiredOrUnpublished) {
+    const stamp = await Stamp.findOneAndUpdate(
+      { _id: id, retailerId: req.user._id },
+      {
+        deleteRef: "retailer",
+        deletedAt: new Date(),
+        deletedBy: req.user._id,
+        softDeleted: true,
+      }
+    );
 
-  return apiResponse(res, 200, true, "Stamp deleted successfully!");
+    if (!stamp) return apiResponse(res, 400, false, "Stamp not found!");
+
+    return apiResponse(res, 200, true, "Stamp deleted successfully!");
+  } else {
+    return apiResponse(res, 400, true, "You cannot delete a stamp that is not expired yet!");
+  }
 });
 
 /**
@@ -651,10 +662,9 @@ export const updateStampBySuperAdmin = asyncHandler(async (req: IApiRequest, res
 
   const stamp = await Stamp.findOne({ _id: id });
   if (!stamp) return apiResponse(res, 400, false, "Stamp not found!");
-  // if (stamp.isPublished) return apiResponse(res, 400, false, "The published stamp cannot be edited!");
 
   if (branchId) {
-    const branch = await Branch.findOne({ _id: branchId, retailerId });
+    const branch = await Branch.findOne({ _id: branchId, retailerId: req.user._id });
     if (!branch) return apiResponse(res, 400, false, "Branch not found!");
   }
 
@@ -672,8 +682,11 @@ export const updateStampBySuperAdmin = asyncHandler(async (req: IApiRequest, res
   updatedBody.stampImageId = stampImageId;
   updatedBody.categoryId = categoryId;
 
-  const systemTime = getUTC(updatedBody.startedAt, req.user.timezone.label, true);
-  const expireTime = getUTC(updatedBody.expiredAt, req.user.timezone.label, false, true);
+  const settings = await Settings.findOne();
+  const timezone = settings.general.timezone.label;
+
+  const systemTime = getUTC(updatedBody.startedAt, timezone, true);
+  const expireTime = getUTC(updatedBody.expiredAt, timezone, false, true);
 
   updatedBody.startedAt = systemTime;
   updatedBody.expiredAt = expireTime;
