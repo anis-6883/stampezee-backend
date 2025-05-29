@@ -9,14 +9,20 @@ import {
   setDefaultPaymentMethod,
   setupPaymentIntent,
 } from "../billing/controller";
-import { getRetailerBillingPortal, getSingleSubscriptionPayment, getSubscriptionPayments } from "./controller";
+import {
+  getEnrollments,
+  getRetailerBillingPortal,
+  getSingleEnrollment,
+  getSingleEnrollmentPayments,
+} from "./controller";
 
 const router = express.Router();
 
-router.get("/subscription/all", getSubscriptionPayments);
+router.get("/subscription/all", getEnrollments);
 router.post("/retailer-billing-portal", getRetailerBillingPortal);
 router.delete("/cancel-subscription", cancelBasePlanOrAddOn);
-router.get("/subscription/find/:id", getSingleSubscriptionPayment);
+router.get("/subscription/find/:enrollmentId", getSingleEnrollment);
+router.get("/subscription/find/payments/:enrollmentId", getSingleEnrollmentPayments);
 router.get("/find-payment-method/:paymentMethodId", findPaymentMethod);
 router.post("/download-pdf/:id", getRetailerBillingPdf);
 
