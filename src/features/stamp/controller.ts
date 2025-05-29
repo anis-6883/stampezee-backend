@@ -14,6 +14,7 @@ import { stampSchema, stampStatusSchema, updateStampSchema } from "./validation"
 import { stampCardSuperAdminQuery } from "./service";
 import { Object } from "../../types/index";
 import { Types } from "mongoose";
+import Settings from "../../models/settings";
 
 /**
  * Create A Stamp
@@ -647,14 +648,14 @@ export const updateStampBySuperAdmin = asyncHandler(async (req: IApiRequest, res
   });
 
   const { id } = req.params;
+  const { retailerId } = req?.query;
   const { branchId, categoryId, stampImageId, softDeleted, ...updatedBody } = result;
 
   const stamp = await Stamp.findOne({ _id: id });
   if (!stamp) return apiResponse(res, 400, false, "Stamp not found!");
-  // if (stamp.isPublished) return apiResponse(res, 400, false, "The published stamp cannot be edited!");
 
   if (branchId) {
-    const branch = await Branch.findOne({ _id: branchId, retailerId: req.user._id });
+    const branch = await Branch.findOne({ _id: branchId, retailerId: retailerId });
     if (!branch) return apiResponse(res, 400, false, "Branch not found!");
   }
 
@@ -672,8 +673,11 @@ export const updateStampBySuperAdmin = asyncHandler(async (req: IApiRequest, res
   updatedBody.stampImageId = stampImageId;
   updatedBody.categoryId = categoryId;
 
-  const systemTime = getUTC(updatedBody.startedAt, req.user.timezone.label, true);
-  const expireTime = getUTC(updatedBody.expiredAt, req.user.timezone.label, false, true);
+  const settings = await Settings.findOne();
+  const timezone = settings.general.timezone.label;
+
+  const systemTime = getUTC(updatedBody.startedAt, timezone, true);
+  const expireTime = getUTC(updatedBody.expiredAt, timezone, false, true);
 
   updatedBody.startedAt = systemTime;
   updatedBody.expiredAt = expireTime;
