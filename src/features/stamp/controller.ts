@@ -1,4 +1,5 @@
 import { Response } from "express";
+import { Types } from "mongoose";
 import { PACKAGES, ROLE } from "../../configs/constants";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import { getUTC } from "../../helpers/moment";
@@ -10,10 +11,8 @@ import Sorting from "../../models/sorting";
 import Stamp, { IStamp } from "../../models/stamp";
 import StampImage from "../../models/stamp-image";
 import { IApiRequest } from "../../types";
-import { stampSchema, stampStatusSchema, updateStampSchema } from "./validation";
 import { stampCardSuperAdminQuery } from "./service";
-import { Object } from "../../types/index";
-import { Types } from "mongoose";
+import { stampSchema, stampStatusSchema, updateStampSchema } from "./validation";
 
 /**
  * Create A Stamp
@@ -647,6 +646,7 @@ export const updateStampBySuperAdmin = asyncHandler(async (req: IApiRequest, res
   });
 
   const { id } = req.params;
+  const { retailerId } = req?.query;
   const { branchId, categoryId, stampImageId, softDeleted, ...updatedBody } = result;
 
   const stamp = await Stamp.findOne({ _id: id });
@@ -654,7 +654,7 @@ export const updateStampBySuperAdmin = asyncHandler(async (req: IApiRequest, res
   // if (stamp.isPublished) return apiResponse(res, 400, false, "The published stamp cannot be edited!");
 
   if (branchId) {
-    const branch = await Branch.findOne({ _id: branchId, retailerId: req.user._id });
+    const branch = await Branch.findOne({ _id: branchId, retailerId });
     if (!branch) return apiResponse(res, 400, false, "Branch not found!");
   }
 
