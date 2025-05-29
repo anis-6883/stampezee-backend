@@ -181,33 +181,6 @@ export const getSingleEnrollment = asyncHandler(async (req: IApiRequest, res: Re
         ],
       },
     },
-    {
-      $lookup: {
-        from: "payments",
-        localField: "_id",
-        foreignField: "enrollmentId",
-        as: "payments",
-        pipeline: [
-          {
-            $project: {
-              paymentIntentId: 1,
-              invoiceNumber: 1,
-              amountTotal: 1,
-              currency: 1,
-              paymentMethodId: "$paymentMethodDetails.id",
-              cardBrand: "$paymentMethodDetails.card.brand",
-              cardLast4: "$paymentMethodDetails.card.last4",
-              createdAt: 1,
-            },
-          },
-          {
-            $sort: {
-              createdAt: -1,
-            },
-          },
-        ],
-      },
-    },
   ]);
 
   if (enrollment.length <= 0) return apiResponse(res, 400, false, "No Billing Found!");
