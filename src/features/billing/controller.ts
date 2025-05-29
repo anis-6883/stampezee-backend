@@ -201,36 +201,41 @@ export const getSingleEnrollmentPayments = asyncHandler(async (req: IApiRequest,
   const { enrollmentId } = req.params;
   if (!Types.ObjectId.isValid(enrollmentId)) return apiResponse(res, 400, false, "Please, provide valid id!");
 
-  const payments = await Payment.aggregate([
-    {
-      $match: { enrollmentId: Types.ObjectId.createFromHexString(enrollmentId) },
-    },
-    {
-      $sort: {
-        createdAt: -1,
+  const [docs, total] = await Promise.all([
+    Payment.aggregate([
+      {
+        $match: { enrollmentId: Types.ObjectId.createFromHexString(enrollmentId) },
       },
-    },
-    {
-      $skip: skip,
-    },
-    {
-      $limit: Number(limit),
-    },
-    {
-      $project: {
-        paymentIntentId: 1,
-        invoiceNumber: 1,
-        amountTotal: 1,
-        currency: 1,
-        paymentMethodId: "$paymentMethodDetails.id",
-        cardBrand: "$paymentMethodDetails.card.brand",
-        cardLast4: "$paymentMethodDetails.card.last4",
-        createdAt: 1,
+      {
+        $sort: {
+          createdAt: -1,
+        },
       },
-    },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: Number(limit),
+      },
+      {
+        $project: {
+          paymentIntentId: 1,
+          invoiceNumber: 1,
+          amountTotal: 1,
+          currency: 1,
+          paymentMethodId: "$paymentMethodDetails.id",
+          cardBrand: "$paymentMethodDetails.card.brand",
+          cardLast4: "$paymentMethodDetails.card.last4",
+          createdAt: 1,
+        },
+      },
+    ]),
+    Payment.countDocuments({ enrollmentId: Types.ObjectId.createFromHexString(enrollmentId) }),
   ]);
 
-  return apiResponse(res, 200, true, "Retailer single enrollment payments fetched successfully!", payments);
+  const data = makePaginate(docs, Number(page), Number(limit), skip, total);
+
+  return apiResponse(res, 200, true, "Retailer single enrollment payments fetched successfully!", data);
 });
 
 /**
