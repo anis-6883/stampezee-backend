@@ -1,8 +1,11 @@
 import { Response } from "express";
+import pLimit from "p-limit";
+import Stripe from "stripe";
 import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bucket";
-import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
+import { apiResponse, asyncHandler, fileValidation, makePaginate, roundToNearestTen } from "../../helpers";
 import CurrencyExchange from "../../models/currency-exchange";
 import EnrollSubscription from "../../models/enroll-subscription";
+import Settings from "../../models/settings";
 import Subscription from "../../models/subscription";
 import { IApiRequest, Object } from "../../types";
 import { updateRetailerFreePlan } from "./service";
@@ -109,8 +112,8 @@ export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Res
   const { id } = req.params;
   const { softDeleted, image, slug, ...updatedBody } = result;
 
-  const subscription = await Subscription.findOne({ slug, _id: { $ne: id } });
-  if (subscription) return apiResponse(res, 400, false, "Slug must be unique!");
+  const subscription = await Subscription.findById(id);
+  if (!subscription) return apiResponse(res, 400, false, "Subscription not found!");
 
   // File Validation
   if (req.file) {
@@ -131,68 +134,132 @@ export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Res
   if (!updatedBody?.isUnlimited) updatedBody.unlimitedFieldName = null;
   else updatedBody.duration = 0;
 
-  const updatedData = await Subscription.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
-  if (!updatedData) return apiResponse(res, 404, false, "Subscription not found!");
+  const updatedSubscription = await Subscription.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
+  if (!updatedSubscription) return apiResponse(res, 404, false, "Subscription not found!");
 
   // Bulk Update
-  if (updatedData?.slug === "trial") updateRetailerFreePlan(updatedData);
-  else {
-    const enrollSubscriptions = await EnrollSubscription.aggregate([
-      {
-        $match: {
-          "planSnapshot.slug": slug,
-          $or: [{ status: true }, { status: false, validAtAfterCancel: { $gt: new Date() } }],
+  if (updatedSubscription?.slug === "trial") updateRetailerFreePlan(updatedSubscription);
+
+  const priceChangeFlag = updatedBody?.price && updatedBody?.price !== subscription?.price;
+
+  // Bulk Update
+  if (updatedSubscription?.slug !== "trial" && priceChangeFlag) {
+    // Get Payment Metadata, Allowed Currencies & enroll Subscriptions
+    const [paymentMetadata, allowCurrencies, enrollSubscriptions] = await Promise.all([
+      Settings.findOne({}, { "stripe.taxCost": 1, "stripe.taxStatus": 1, "stripe.stripeSecretKey": 1 }),
+      CurrencyExchange.find({ status: true }),
+      EnrollSubscription.aggregate([
+        {
+          $match: {
+            "planSnapshot.slug": updatedSubscription?.slug,
+            $or: [{ status: true }, { status: false, validAtAfterCancel: { $gt: new Date() } }],
+          },
         },
-      },
-      {
-        $lookup: {
-          from: "enrollments",
-          localField: "enrollmentId",
-          foreignField: "_id",
-          as: "enrollment",
+        {
+          $lookup: {
+            from: "enrollments",
+            localField: "enrollmentId",
+            foreignField: "_id",
+            as: "enrollment",
+          },
         },
-      },
-      {
-        $unwind: "$enrollment",
-      },
-      {
-        $project: {
-          subscriptionItemId: 1,
-          currency: "$enrollment.currency",
+        {
+          $unwind: "$enrollment",
         },
-      },
-      {
-        $group: {
-          _id: null,
-          subscriptions: { $push: "$$ROOT" },
-          currencies: { $addToSet: "$currency" },
+        {
+          $project: {
+            subscriptionItemId: 1,
+            currency: "$enrollment.currency",
+          },
         },
-      },
-      {
-        $project: {
-          _id: 0,
-          subscriptions: 1,
-          currencies: 1,
+        {
+          $group: {
+            _id: null,
+            subscriptions: { $push: "$$ROOT" },
+            currencies: { $addToSet: "$currency" },
+          },
         },
-      },
+        {
+          $project: {
+            _id: 0,
+            subscriptions: 1,
+            currencies: 1,
+          },
+        },
+      ]),
     ]);
 
-    const currencyExchange = await CurrencyExchange.find();
-
+    const { stripeSecretKey = null, taxCost = null, taxStatus = null } = paymentMetadata.stripe ?? {};
+    const stripe = new Stripe(stripeSecretKey);
     const currencyPriceIdMap: Object = {};
-    for (const currency of enrollSubscriptions[0]?.currencies || []) {
-      // @TODO: Tax Check and Add
-      // @TODO: Create Price in Stripe for different currencies
-      // @TODO: Update price the Stripe for existing enrollments
 
-      const exchangeRate = currencyExchange.find((item) => item.currency === currency);
-      currencyPriceIdMap[currency] = exchangeRate.exchangeRate;
+    // Create Prices for each currency
+    for (const currency of enrollSubscriptions[0]?.currencies || []) {
+      let finalPrice = 0;
+      const selectCurrency = allowCurrencies.find((item) => item.currency === currency);
+
+      // Exchange rate & TAX apply
+      finalPrice = Number((selectCurrency.exchangeRate * updatedSubscription?.price).toFixed(2));
+      if (taxStatus === "on") finalPrice += (finalPrice * taxCost) / 100;
+
+      let unitAmount = Math.round(Number(finalPrice) * 100); // convert into cent
+      if (selectCurrency?.currency === "JPY") unitAmount = Math.round(Number(finalPrice));
+      else if (selectCurrency?.currency === "KWD") unitAmount = roundToNearestTen(finalPrice);
+
+      const price = await stripe.prices.create({
+        currency: currency,
+        unit_amount: unitAmount,
+        recurring: {
+          interval: "month",
+        },
+        product_data: {
+          name: updatedSubscription?.title,
+        },
+      });
+
+      currencyPriceIdMap[currency] = price.id;
     }
 
-    // return apiResponse(res, 200, true, "Test!", currencyPriceIdMap);
+    // Update enroll subscriptions with new price id
+    // for (const enrollSubscription of enrollSubscriptions[0]?.subscriptions || []) {
+    //   console.log("ID: ", enrollSubscription.subscriptionItemId);
+
+    //   const subscriptionItem = await stripe.subscriptionItems.update(enrollSubscription.subscriptionItemId, {
+    //     price: currencyPriceIdMap[enrollSubscription.currency] || "",
+    //   });
+    // }
+
+    let counter = 0;
+    const limit = pLimit(10);
+
+    const updatePromises = (enrollSubscriptions[0]?.subscriptions || []).map((enrollSubscription: any, index: number) =>
+      limit(async () => {
+        const updatedSubscription = await stripe.subscriptionItems.update(enrollSubscription.subscriptionItemId, {
+          price: currencyPriceIdMap[enrollSubscription.currency] || "",
+          proration_behavior: "none",
+        });
+
+        // Price update in EnrollSubscription
+        await EnrollSubscription.findOneAndUpdate(
+          {
+            subscriptionItemId: enrollSubscription.subscriptionItemId,
+          },
+          {
+            "planSnapshot.price": updatedSubscription.price, // Access updated price
+          }
+        );
+
+        counter++;
+        return updatedSubscription;
+      })
+    );
+
+    const updatedSubscriptionItems = await Promise.all(updatePromises);
+
+    return apiResponse(res, 200, true, "Test!", { updatedSubscriptionItems });
   }
 
-  return apiResponse(res, 200, true, "Subscription updated successfully!", updatedData);
+  return apiResponse(res, 200, true, "Subscription updated successfully!", updatedSubscription);
 });
 
 /**

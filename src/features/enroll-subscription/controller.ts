@@ -1198,7 +1198,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
     ////////////////////////////////////////////////////////////////
     case "invoice.payment_succeeded":
       console.log("Handling Renew Subscription (Recurring Payment)!");
-      const invoicePaymentEvent = event.data.object;
+      const invoicePaymentEvent: any = event.data.object;
 
       const invoice: any = await stripe.invoices.retrieve(invoicePaymentEvent?.id as string, {
         expand: ["payment_intent.payment_method"],
@@ -1225,6 +1225,29 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
             status: true,
           })
         ).map((subscription) => subscription?._id);
+
+        for (const line of invoicePaymentEvent.lines.data) {
+          let finalAmount =
+            line?.currency === "jpy"
+              ? line?.amount
+              : line?.currency === "kwd"
+                ? (line?.amount / 1000).toFixed(2)
+                : (line?.amount / 100).toFixed(2);
+
+          // Minus the tax amount if tax is applied
+          if (updatedEnrollment?.taxSnapshot.taxCost) {
+            finalAmount = finalAmount / (1 + updatedEnrollment?.taxSnapshot.taxCost / 100);
+          }
+
+          const itemId = line.parent.subscription_item_details.subscription_item;
+
+          await EnrollSubscription.findOneAndUpdate(
+            { subscriptionItemId: itemId },
+            {
+              planCurrentPrice: finalAmount,
+            }
+          );
+        }
 
         await Payment.create({
           enrollmentId: updatedEnrollment?._id,
