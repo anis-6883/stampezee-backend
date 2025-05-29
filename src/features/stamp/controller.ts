@@ -456,19 +456,25 @@ export const publishStamp = asyncHandler(async (req: IApiRequest, res: Response)
 export const softDeleteStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
-  const stamp = await Stamp.findOneAndUpdate(
-    { _id: id, retailerId: req.user._id },
-    {
-      deleteRef: "retailer",
-      deletedAt: new Date(),
-      deletedBy: req.user._id,
-      softDeleted: true,
-    }
-  );
+  const stampIsExpired = await Stamp.findOne({ _id: id, retailerId: req.user._id, expiredAt: { $lt: new Date() } });
 
-  if (!stamp) return apiResponse(res, 400, false, "Stamp not found!");
+  if (stampIsExpired) {
+    const stamp = await Stamp.findOneAndUpdate(
+      { _id: id, retailerId: req.user._id },
+      {
+        deleteRef: "retailer",
+        deletedAt: new Date(),
+        deletedBy: req.user._id,
+        softDeleted: true,
+      }
+    );
 
-  return apiResponse(res, 200, true, "Stamp deleted successfully!");
+    if (!stamp) return apiResponse(res, 400, false, "Stamp not found!");
+
+    return apiResponse(res, 200, true, "Stamp deleted successfully!");
+  } else {
+    return apiResponse(res, 403, true, "You cannot delete a stamp that is not expired yet!");
+  }
 });
 
 /**
