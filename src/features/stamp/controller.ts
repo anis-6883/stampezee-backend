@@ -456,9 +456,13 @@ export const publishStamp = asyncHandler(async (req: IApiRequest, res: Response)
 export const softDeleteStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
 
-  const stampIsExpired = await Stamp.findOne({ _id: id, retailerId: req.user._id, expiredAt: { $lt: new Date() } });
+  const stampIsExpiredOrUnpublished = await Stamp.findOne({
+    _id: id,
+    retailerId: req.user._id,
+    $or: [{ expiredAt: { $lt: new Date() } }, { isPublished: false }],
+  });
 
-  if (stampIsExpired) {
+  if (stampIsExpiredOrUnpublished) {
     const stamp = await Stamp.findOneAndUpdate(
       { _id: id, retailerId: req.user._id },
       {
