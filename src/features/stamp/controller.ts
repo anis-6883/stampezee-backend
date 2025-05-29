@@ -477,7 +477,7 @@ export const softDeleteStamp = asyncHandler(async (req: IApiRequest, res: Respon
 
     return apiResponse(res, 200, true, "Stamp deleted successfully!");
   } else {
-    return apiResponse(res, 403, true, "You cannot delete a stamp that is not expired yet!");
+    return apiResponse(res, 400, true, "You cannot delete a stamp that is not expired yet!");
   }
 });
 
