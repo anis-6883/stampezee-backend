@@ -195,7 +195,7 @@ export const getSingleEnrollment = asyncHandler(async (req: IApiRequest, res: Re
 });
 
 /**
- * Get Single Enrollment
+ * Get Single Enrollment Payments
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.

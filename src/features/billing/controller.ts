@@ -25,12 +25,12 @@ import { IApiRequest } from "../../types";
 import { changePaymentMethodSchema, enrollSubscriptionSchema, portalSchema } from "./validation";
 
 /**
- * Get All Subscription Billings
+ * Get All Subscription Enrollments
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getAllEnrollments = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { page = 1, limit = 10, search }: any = req.query;
   const skip: number = (Number(page) - 1) * Number(limit);
 
@@ -91,12 +91,12 @@ export const getAllBillings = asyncHandler(async (req: IApiRequest, res: Respons
 });
 
 /**
- * Get A Subscription Billing
+ * Get A Subscription Enrollment
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
-export const getSingleBilling = asyncHandler(async (req: IApiRequest, res: Response) => {
+export const getSingleEnrollment = asyncHandler(async (req: IApiRequest, res: Response) => {
   const { id } = req.params;
   if (!Types.ObjectId.isValid(id)) return apiResponse(res, 400, false, "Please, provide valid id!");
 
@@ -213,6 +213,51 @@ export const getSingleBilling = asyncHandler(async (req: IApiRequest, res: Respo
   if (enrollment.length <= 0) return apiResponse(res, 400, false, "No Billing Found!");
 
   return apiResponse(res, 200, true, "Retailer single billing fetched successfully!", enrollment[0]);
+});
+
+/**
+ * Get Single Enrollment Payments
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {Promise<void>} - A promise that resolves when the response is sent.
+ */
+export const getSingleEnrollmentPayments = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { page = 1, limit = 10 } = req.query;
+  const skip: number = (Number(page) - 1) * Number(limit);
+
+  const { enrollmentId } = req.params;
+  if (!Types.ObjectId.isValid(enrollmentId)) return apiResponse(res, 400, false, "Please, provide valid id!");
+
+  const payments = await Payment.aggregate([
+    {
+      $match: { enrollmentId: Types.ObjectId.createFromHexString(enrollmentId) },
+    },
+    {
+      $sort: {
+        createdAt: -1,
+      },
+    },
+    {
+      $skip: skip,
+    },
+    {
+      $limit: Number(limit),
+    },
+    {
+      $project: {
+        paymentIntentId: 1,
+        invoiceNumber: 1,
+        amountTotal: 1,
+        currency: 1,
+        paymentMethodId: "$paymentMethodDetails.id",
+        cardBrand: "$paymentMethodDetails.card.brand",
+        cardLast4: "$paymentMethodDetails.card.last4",
+        createdAt: 1,
+      },
+    },
+  ]);
+
+  return apiResponse(res, 200, true, "Retailer single enrollment payments fetched successfully!", payments);
 });
 
 /**
