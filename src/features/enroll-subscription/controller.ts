@@ -1234,7 +1234,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
             title: enrollSubscription.planSnapshot.title,
             type: enrollSubscription.planSnapshot.type,
             slug: enrollSubscription.planSnapshot.slug,
-            price: enrollSubscription.planCurrentPrice,
+            price: enrollSubscription.planSnapshot.price,
           });
         }
 
@@ -1433,7 +1433,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
         title: enrollSubscription.planSnapshot.title,
         type: enrollSubscription.planSnapshot.type,
         slug: enrollSubscription.planSnapshot.slug,
-        price: enrollSubscription.planCurrentPrice,
+        price: enrollSubscription.planSnapshot.price,
       });
     }
 
