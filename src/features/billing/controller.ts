@@ -22,7 +22,7 @@ import Settings from "../../models/settings";
 import Stamp from "../../models/stamp";
 import SubAdmin from "../../models/sub-admin";
 import { IApiRequest } from "../../types";
-import { changePaymentMethodSchema, enrollSubscriptionSchema, portalSchema } from "./validation";
+import { changePaymentMethodSchema, enrollSubscriptionSchema } from "./validation";
 
 /**
  * Get All Subscription Enrollments
@@ -468,33 +468,6 @@ export const cancelBasePlanOrAddOn = asyncHandler(async (req: IApiRequest, res: 
 });
 
 /**
- * Retailer Billing Portal
- * @param {Request} req - The HTTP request object.
- * @param {Response} res - The HTTP response object.
- * @returns {Promise<void>} - A promise that resolves when the response is sent.
- */
-export const getRetailerBillingPortal = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = await portalSchema.validateAsync(req.body, {
-    abortEarly: false,
-  });
-
-  const { customerId, returnUrl } = result;
-
-  const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
-  if (!paymentMetadata) return apiResponse(res, 400, false, "Something went wrong in Stripe settings!");
-
-  const { stripeSecretKey } = paymentMetadata?.stripe;
-  const stripe = new Stripe(stripeSecretKey);
-
-  const portalSession = await stripe.billingPortal.sessions.create({
-    customer: customerId,
-    return_url: returnUrl,
-  });
-
-  return apiResponse(res, 200, true, "Get Retailer Billing Portal!", { url: portalSession.url });
-});
-
-/**
  * Retailer Billing PDF Download
  * @param {Request} req - The HTTP request object.
  * @param {Response} res - The HTTP response object.
@@ -507,14 +480,6 @@ export const getRetailerBillingPdf = asyncHandler(async (req: IApiRequest, res: 
   const payment = await Payment.aggregate([
     {
       $match: { _id: Types.ObjectId.createFromHexString(id) },
-    },
-    {
-      $lookup: {
-        from: "enroll_subscriptions",
-        localField: "enrollSubscriptionIds",
-        foreignField: "_id",
-        as: "enrollSubscriptions",
-      },
     },
     {
       $lookup: {
@@ -541,20 +506,19 @@ export const getRetailerBillingPdf = asyncHandler(async (req: IApiRequest, res: 
   let taxValue = 0;
   let subTotal = 0;
 
-  let coupon: any = null;
   const purchasedItems = payment[0]?.enrollSubscriptions?.map((purchasedSubscription: any) => {
     // Only tax apply
     if (payment[0]?.enrollment?.taxSnapshot) {
-      taxValue += (purchasedSubscription?.planSnapshot?.price * payment[0]?.enrollment?.taxSnapshot?.taxCost) / 100;
+      taxValue += (purchasedSubscription?.price * payment[0]?.enrollment?.taxSnapshot?.taxCost) / 100;
     }
 
-    subTotal += purchasedSubscription?.planSnapshot?.price * payment[0]?.enrollment?.currencyRate;
+    subTotal += purchasedSubscription?.price * payment[0]?.enrollment?.currencyRate;
 
     return {
-      title: purchasedSubscription?.planSnapshot?.title,
+      title: purchasedSubscription?.title,
       quantity: 1,
-      unitPrice: `${Number(purchasedSubscription?.planSnapshot?.price * payment[0]?.enrollment?.currencyRate).toFixed(2)} ${payment[0]?.enrollment?.currency}`,
-      total: `${Number(purchasedSubscription?.planSnapshot?.price * payment[0]?.enrollment?.currencyRate).toFixed(2)} ${payment[0]?.enrollment?.currency}`,
+      unitPrice: `${Number(purchasedSubscription?.price * payment[0]?.enrollment?.currencyRate).toFixed(2)} ${payment[0]?.enrollment?.currency}`,
+      total: `${Number(purchasedSubscription?.price * payment[0]?.enrollment?.currencyRate).toFixed(2)} ${payment[0]?.enrollment?.currency}`,
     };
   });
 

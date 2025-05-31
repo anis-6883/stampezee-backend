@@ -1,14 +1,12 @@
 import { Response } from "express";
 import moment from "moment-timezone";
 import { Types } from "mongoose";
-import Stripe from "stripe";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import Enrollment from "../../models/enrollment";
 import Payment from "../../models/payment";
 import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
 import { IApiRequest, Object } from "../../types";
-import { portalSchema } from "./validation";
 
 /**
  * Get All Enrollments
@@ -242,31 +240,4 @@ export const getSingleEnrollmentPayments = asyncHandler(async (req: IApiRequest,
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
   return apiResponse(res, 200, true, "Retailer single enrollment payments fetched successfully!", data);
-});
-
-/**
- * Retailer Billing Portal
- * @param {Request} req - The HTTP request object.
- * @param {Response} res - The HTTP response object.
- * @returns {Promise<void>} - A promise that resolves when the response is sent.
- */
-export const getRetailerBillingPortal = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const result = await portalSchema.validateAsync(req.body, {
-    abortEarly: false,
-  });
-
-  const { customerId, returnUrl } = result;
-
-  const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
-  if (!paymentMetadata) return apiResponse(res, 400, false, "Something went wrong in Stripe settings!");
-
-  const { stripeSecretKey } = paymentMetadata?.stripe;
-  const stripe = new Stripe(stripeSecretKey);
-
-  const portalSession = await stripe.billingPortal.sessions.create({
-    customer: customerId,
-    return_url: returnUrl,
-  });
-
-  return apiResponse(res, 200, true, "Get Retailer Billing Portal!", { url: portalSession.url });
 });

@@ -684,7 +684,7 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
 
           //  Create New Subscription from Stripe
           const stripeSubscription = await stripe.subscriptions.create({
-            customer: enrolled.stripe.customerId,
+            customer: req.user.stripeCustomerId,
             items: priceIds,
             default_payment_method: enrolled?.stripe?.paymentMethodId,
           });
@@ -724,7 +724,6 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                 validityFrom: moment(),
                 validityTo: moment().add(getNextBillingDateInDays(new Date()), "days"),
                 "stripe.subscriptionId": stripeSubscription.id,
-                "stripe.customerId": enrolled.stripe.customerId,
                 "stripe.paymentMethodId": enrolled.stripe.paymentMethodId,
               }
             ),
@@ -1219,12 +1218,19 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
           { new: true }
         );
 
-        const enrollSubscriptionIds = (
-          await EnrollSubscription.find({
-            enrollmentId: updatedEnrollment?._id,
-            status: true,
-          })
-        ).map((subscription) => subscription?._id);
+        const enrollSubscriptions = [];
+        const enrollSubscriptionList = await EnrollSubscription.find({
+          enrollmentId: updatedEnrollment?._id,
+          status: true,
+        });
+        for (const enrollSubscription of enrollSubscriptionList) {
+          enrollSubscriptions.push({
+            title: enrollSubscription.planSnapshot.title,
+            type: enrollSubscription.planSnapshot.type,
+            slug: enrollSubscription.planSnapshot.slug,
+            price: enrollSubscription.planCurrentPrice,
+          });
+        }
 
         for (const line of invoicePaymentEvent.lines.data) {
           let finalAmount =
@@ -1251,7 +1257,7 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
 
         await Payment.create({
           enrollmentId: updatedEnrollment?._id,
-          enrollSubscriptionIds,
+          enrollSubscriptions,
           paymentIntentId: invoice.payment_intent.id,
           invoiceNumber: invoice.number,
           invoicePdf: invoice.invoice_pdf,
@@ -1268,26 +1274,6 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
           paymentMethodDetails: invoice?.payment_intent?.payment_method, // Kind of Log Store
         });
       }
-      break;
-
-    /////////////////////////////////////////////////////////////////
-    //////// Handling Cancel & Renew Subscription By Retailer ///////
-    /////////////////////////////////////////////////////////////////
-    case "customer.subscription.updated":
-      console.log("Handling Cancel & Renew Subscription By Retailer!");
-      let subscriptionUpdateObject = event.data.object;
-
-      await Enrollment.findOneAndUpdate(
-        { "stripe.subscriptionId": subscriptionUpdateObject.id },
-        {
-          "stripe.renewCancelAt": subscriptionUpdateObject.cancel_at
-            ? new Date(subscriptionUpdateObject.cancel_at * 1000)
-            : null,
-          "stripe.renewCanceledAtByCustomer": subscriptionUpdateObject.canceled_at
-            ? new Date(subscriptionUpdateObject.canceled_at * 1000)
-            : null,
-        }
-      );
       break;
 
     //////////////////////////////////////////////////////////////////
@@ -1311,21 +1297,6 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
           stripe.subscriptions.cancel(invoiceObject.subscription as string),
         ]);
       }
-      break;
-
-    //////////////////////////////////////////////////////////////////
-    //////// Handling Customer Default Payment Card /////////////////
-    /////////////////////////////////////////////////////////////////
-    case "customer.updated":
-      console.log("Customer Updated!");
-      let customerObject = event.data.object;
-
-      await Enrollment.findOneAndUpdate(
-        { "stripe.customerId": customerObject.id },
-        {
-          "stripe.paymentMethodId": customerObject?.invoice_settings?.default_payment_method,
-        }
-      );
       break;
 
     //////////////////////////////////////////////////////////////////
@@ -1439,6 +1410,17 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
       subscriptionItems.data.map((item: any) => [item.plan.product.metadata.enrollSubscriptionId, item.id])
     );
 
+    const enrollSubscriptions = [];
+    const enrollSubscriptionList = await EnrollSubscription.find({ _id: { $in: Object.keys(subscriptionItemsMap) } });
+    for (const enrollSubscription of enrollSubscriptionList) {
+      enrollSubscriptions.push({
+        title: enrollSubscription.planSnapshot.title,
+        type: enrollSubscription.planSnapshot.type,
+        slug: enrollSubscription.planSnapshot.slug,
+        price: enrollSubscription.planCurrentPrice,
+      });
+    }
+
     const prevOrCurrentSubscriptionsMap = Object.fromEntries(
       subscriptionItems.data.map((item: any) => [
         item.plan.product.metadata.enrollSubscriptionId,
@@ -1550,7 +1532,7 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
     // Store Payment Info
     const payment: any = await Payment.create({
       enrollmentId: enrollment?._id,
-      enrollSubscriptionIds: Object.keys(subscriptionItemsMap),
+      enrollSubscriptions,
       coupon: {
         _id: couponId,
         discountType: couponDiscountType,
@@ -1582,8 +1564,6 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
           subscriptionId: checkoutSession?.subscription,
           customerId: checkoutSession?.customer,
           paymentMethodId: invoice?.payment_intent?.payment_method?.id,
-          renewCancelAt: null,
-          renewCanceledAtByCustomer: null,
         },
         validityFrom: moment(),
         validityTo: moment().add(getNextBillingDateInDays(new Date()), "days"),
@@ -1797,35 +1777,4 @@ export const testEmailPDF = asyncHandler(async (req: IApiRequest, res: Response)
   }
 
   return apiResponse(res, 200, true, "Test Email with Pdf!");
-});
-
-/**
- * Test Price Update in Stripe
- * @param {Request} eventObject - The HTTP webhook event object.
- * @param {Request} stripe - The stripe object.
- * @returns {Promise<void>} - A promise that resolves when the response is sent.
- */
-export const priceUpdateTestInStripe = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const paymentMetadata = await Settings.findOne({}, { "stripe.stripeSecretKey": 1 });
-  if (!paymentMetadata) throw "Something went wrong in Stripe settings!";
-
-  const { stripeSecretKey } = paymentMetadata.stripe ?? {};
-  const stripe = new Stripe(stripeSecretKey);
-
-  const price = await stripe.prices.create({
-    currency: "cad",
-    unit_amount: 11 * 100,
-    recurring: {
-      interval: "month",
-    },
-    product_data: {
-      name: "Test Plan",
-    },
-  });
-
-  const subscriptionItem = await stripe.subscriptionItems.update("si_SOPxvVQYtNuufw", {
-    price: price.id,
-  });
-
-  return apiResponse(res, 200, true, "Test Price Update in Stripe!", subscriptionItem);
 });
