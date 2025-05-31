@@ -47,8 +47,20 @@ export const getAllReward = asyncHandler(async (req: IApiRequest, res: Response)
           pipeline: [
             {
               $match: {
-                startedAt: { $lte: new Date() },
-                expiredAt: { $gte: new Date() },
+                $expr: {
+                  $cond: [
+                    "$$ROOT.eligibleForReward",
+                    {
+                      $and: [
+                        { $lte: ["$startedAt", new Date()] },
+                        { $gte: ["$expiredAt", new Date()] },
+                        { $eq: ["$softDeleted", false] },
+                        { $gt: ["$validityTill", new Date()] },
+                      ],
+                    },
+                    {}, // Allow all if not eligibleForReward
+                  ],
+                },
               },
             },
             {
@@ -89,6 +101,23 @@ export const getAllReward = asyncHandler(async (req: IApiRequest, res: Response)
           foreignField: "_id",
           as: "branch",
           pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $cond: [
+                    "$$ROOT.eligibleForReward",
+                    {
+                      $and: [
+                        { $eq: ["$status", true] },
+                        { $gt: ["$validityTill", new Date()] },
+                        { $eq: ["$softDeleted", false] },
+                      ],
+                    },
+                    {}, // Allow all if not eligibleForReward
+                  ],
+                },
+              },
+            },
             {
               $lookup: {
                 from: "retailers",

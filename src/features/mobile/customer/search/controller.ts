@@ -408,6 +408,7 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
   const stampQuery: any = {
     startedAt: { $lte: new Date() },
     expiredAt: { $gte: new Date() },
+    validityTill: { $gt: new Date() },
     isPublished: true,
     retailerId: { $in: activeSubscriptionRetailerIds },
     status: true,
@@ -435,6 +436,13 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
         distanceField: "distance",
         spherical: true,
         maxDistance: 600 * 1609.34, //500 KM. converted into miles
+      },
+    },
+    {
+      $match: {
+        status: true,
+        softDeleted: false,
+        validityTill: { $gt: new Date() },
       },
     },
     {
@@ -641,6 +649,15 @@ export const collectStamp = asyncHandler(async (req: IApiRequest, res: Response)
         "This stamp card has been disabled. Please contact this retailer for more information."
       );
     }
+  }
+
+  if (branch.validityTill < new Date() || stamp.validityTill < new Date()) {
+    return apiResponse(
+      res,
+      400,
+      false,
+      "This stamp card has been disabled. Please contact this retailer for more information."
+    );
   }
 
   const collectedStamp = await CollectStamp.create({ branchId, stampId, customerId: req.user._id });
