@@ -1,5 +1,4 @@
 import moment from "moment-timezone";
-import pLimit from "p-limit";
 import Stripe from "stripe";
 import { roundToNearestTen } from "../../helpers/index";
 import CurrencyExchange from "../../models/currency-exchange";
@@ -36,6 +35,8 @@ export const updateRetailerFreePlan = async (subscription: ISubscription) => {
 };
 
 export const updateRetailerPaidPlan = async (subscription: ISubscription) => {
+  const pLimit = await import("p-limit").then((mod) => mod.default);
+
   // Get Payment Metadata, Allowed Currencies & enroll Subscriptions
   const [paymentMetadata, allowCurrencies, enrollSubscriptions] = await Promise.all([
     Settings.findOne({}, { "stripe.taxCost": 1, "stripe.taxStatus": 1, "stripe.stripeSecretKey": 1 }),
