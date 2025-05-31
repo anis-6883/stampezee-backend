@@ -25,13 +25,13 @@ router.post("/login", retailerLogin);
 router.post("/logout", retailerLogout);
 router.post("/register", retailerRegistration);
 router.post("/forget-password", retailerForgetPassword);
+router.post("/resend-otp", retailerResendOtp);
 
 router.get("/profile", authAndPermissionCheck(ROLE.RETAILER), retailerProfile);
 router.put("/profile", authAndPermissionCheck(ROLE.RETAILER), upload.single("image"), updateRetailerProfile);
 router.post("/change-password", authAndPermissionCheck(ROLE.RETAILER), retailerChangePassword);
 
 router.post("/otp-verify", authAndPermissionCheck(ROLE.RETAILER, true, true, true), retailerOtpVerify);
-router.post("/resend-otp", authAndPermissionCheck(ROLE.RETAILER, true, true, true), retailerResendOtp);
 router.post(
   "/forget-password-otp-verify",
   authAndPermissionCheck(ROLE.RETAILER, true, true, true),

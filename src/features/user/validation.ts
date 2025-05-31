@@ -1,7 +1,6 @@
 import Joi from "joi";
 import {
   emailField,
-  numberField,
   requiredBooleanField,
   requiredEmailField,
   requiredStringField,
@@ -152,6 +151,10 @@ export const locationTokenSchema = Joi.object({
 });
 
 export const forgetPasswordSchema = Joi.object({
+  email: requiredEmailField,
+});
+
+export const resendOtpSchema = Joi.object({
   email: requiredEmailField,
 });
 

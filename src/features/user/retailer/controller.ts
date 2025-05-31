@@ -22,6 +22,7 @@ import { sendForgotPassEmail, sendVerificationEmail } from "../service";
 import {
   forgetPasswordSchema,
   loginSchema,
+  resendOtpSchema,
   retailerChangeForgetPasswordSchema,
   retailerChangePasswordSchema,
   retailerRegisterSchema,
@@ -64,7 +65,7 @@ export const retailerRegistration = asyncHandler(async (req: Request, res: Respo
           : retailerBody.firstName,
       });
 
-  const tempToken = generateSignature({ email: retailerBody.email, role: ROLE.RETAILER, ott: true }, 600); //15 minute // 15 min
+  const tempToken = generateSignature({ email: retailerBody.email, role: ROLE.RETAILER, ott: true }, 3600); // 1 hour
 
   sendVerificationEmail(retailerBody.email, retailerBody.otp);
 
@@ -131,20 +132,19 @@ export const retailerOtpVerify = asyncHandler(async (req: IApiRequest, res: Resp
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const retailerResendOtp = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const result = await resendOtpSchema.validateAsync(req.body, { abortEarly: false });
+
+  const retailer = await Retailer.findOne({ email: result.email, softDeleted: false });
+  if (!retailer) return apiResponse(res, 404, false, "Retailer not found!");
+
+  if (retailer.otpExpiry > new Date()) return apiResponse(res, 400, false, "Wait 2 minutes to resend OTP!");
+
   const otp = getRandomInteger(100000, 999999);
-  const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 10 min
+  const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 min
 
-  if (req.user.isVerified) {
-    return apiResponse(res, 400, false, "This retailer already verified!");
-  }
+  await Retailer.updateOne({ email: retailer.email }, { otp, otpExpiry });
 
-  if (req.user.otpExpiry > new Date()) {
-    return apiResponse(res, 400, false, "Wait 2 minutes to resend OTP!");
-  }
-
-  await Retailer.updateOne({ email: req.user.email }, { otp, otpExpiry });
-
-  sendVerificationEmail(req.user.email, otp);
+  sendVerificationEmail(retailer.email, otp);
 
   return apiResponse(res, 200, true, "OTP resend successfully!");
 });
@@ -549,17 +549,14 @@ export const retailerForgetPassword = asyncHandler(async (req: IApiRequest, res:
   const result = await forgetPasswordSchema.validateAsync(req.body, { abortEarly: false });
 
   const retailer = await Retailer.findOne({ email: result.email, status: true, softDeleted: false, isVerified: true });
-
-  if (!retailer) {
-    return apiResponse(res, 404, false, "Retailer not found!");
-  }
+  if (!retailer) return apiResponse(res, 404, false, "Retailer not found!");
 
   const otp = getRandomInteger(100000, 999999);
   const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 10 min
 
   await Retailer.findByIdAndUpdate(retailer._id, { otp, otpExpiry });
 
-  const tempToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER, ott: true }, 600); //15 minute // 15 min
+  const tempToken = generateSignature({ email: retailer.email, role: ROLE.RETAILER, ott: true }, 3600); // 1 hour
 
   // Send OTP to Email
   sendForgotPassEmail(retailer.email, otp, retailer.fullName);
