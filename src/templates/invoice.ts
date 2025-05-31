@@ -1997,13 +1997,13 @@ export const getInvoiceTemplatePdf = ({
             <div>
               <img
                 src="https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/logo.png"
-                width="150"
-                height="150"
+                width="120"
+                height="120"
                 alt="Cyber Kitty"
                 style="margin-bottom: 15px"
               />
             </div>
-            <h1 style="font-family: tannimbus; font-size: 40px; font-weight: bold">Invoice</h1>
+            <h1 style="font-family: tannimbus; font-size: 36px; font-weight: bold">Invoice</h1>
           </div>
         </td>
       </tr>
@@ -2129,7 +2129,7 @@ export const getInvoiceTemplatePdf = ({
                     <div style="padding-top: 40px">
                       <img
                         src="https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/thank-you.jpg"
-                        width="250"
+                        width="220"
                         alt="thank-you"
                         style="margin-bottom: 15px"
                       />
