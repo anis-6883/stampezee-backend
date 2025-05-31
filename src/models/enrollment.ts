@@ -7,8 +7,6 @@ export interface IEnrollment extends Document {
     subscriptionId?: string;
     customerId?: string;
     paymentMethodId?: string;
-    renewCancelAt?: Date;
-    renewCanceledAtByCustomer?: Date;
   };
   taxSnapshot: {
     taxTitle?: string;
@@ -30,10 +28,7 @@ const enrollmentSchema = new Schema<IEnrollment>(
     planExists: { type: String, default: null },
     stripe: {
       subscriptionId: { type: String, default: null },
-      customerId: { type: String, default: null },
       paymentMethodId: { type: String, default: null },
-      renewCancelAt: { type: Date, default: null },
-      renewCanceledAtByCustomer: { type: Date, default: null },
     },
     taxSnapshot: {
       taxTitle: { type: String, default: null },
