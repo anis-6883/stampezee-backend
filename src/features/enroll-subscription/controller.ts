@@ -701,7 +701,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                 source: "subscription",
                 softDeleted: false,
               },
-              { enrollSubscriptionId: basePlanEnrollSubscriptionId }
+              {
+                enrollSubscriptionId: basePlanEnrollSubscriptionId,
+                validityTill: moment().add(getNextBillingDateInDays(new Date()), "days"),
+              }
             ),
             Stamp.updateMany(
               {
@@ -709,7 +712,10 @@ export const enrollSubscription = asyncHandler(async (req: IApiRequest, res: Res
                 source: "subscription",
                 softDeleted: false,
               },
-              { enrollSubscriptionId: basePlanEnrollSubscriptionId }
+              {
+                enrollSubscriptionId: basePlanEnrollSubscriptionId,
+                validityTill: moment().add(getNextBillingDateInDays(new Date()), "days"),
+              }
             ),
             Enrollment.updateOne({ _id: enrolled._id }, { status: false }),
             EnrollSubscription.updateMany(
@@ -1247,12 +1253,22 @@ export const stripeWebhookHandler = asyncHandler(async (req: IApiRequest, res: R
 
           const itemId = line.parent.subscription_item_details.subscription_item;
 
-          await EnrollSubscription.findOneAndUpdate(
+          const enrollSubscription = await EnrollSubscription.findOneAndUpdate(
             { subscriptionItemId: itemId },
-            {
-              planCurrentPrice: finalAmount,
-            }
+            { planCurrentPrice: finalAmount },
+            { new: true }
           );
+
+          await Promise.all([
+            Branch.updateMany(
+              { enrollSubscriptionId: enrollSubscription?._id },
+              { validityTill: moment().add(getNextBillingDateInDays(new Date()), "days") }
+            ),
+            Stamp.updateMany(
+              { enrollSubscriptionId: enrollSubscription?._id },
+              { validityTill: moment().add(getNextBillingDateInDays(new Date()), "days") }
+            ),
+          ]);
         }
 
         await Payment.create({
@@ -1515,7 +1531,10 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
               source: "subscription",
               softDeleted: false,
             },
-            { enrollSubscriptionId: newEnrollSubscription._id }
+            {
+              enrollSubscriptionId: newEnrollSubscription._id,
+              validityTill: moment().add(getNextBillingDateInDays(new Date()), "days"),
+            }
           ),
           Stamp.updateMany(
             {
@@ -1523,7 +1542,10 @@ const checkoutSessionComplete = async (eventObject: Stripe.Checkout.Session, str
               source: "subscription",
               softDeleted: false,
             },
-            { enrollSubscriptionId: newEnrollSubscription._id }
+            {
+              enrollSubscriptionId: newEnrollSubscription._id,
+              validityTill: moment().add(getNextBillingDateInDays(new Date()), "days"),
+            }
           ),
         ]);
       }

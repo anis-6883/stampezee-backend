@@ -19,6 +19,7 @@ export interface IStamp extends Document {
   deletedBy?: Types.ObjectId;
   softDeleted?: boolean;
   source: string;
+  validityTill: Date;
 
   // Relations
   retailerId: Types.ObjectId;
@@ -48,6 +49,7 @@ const stampSchema = new Schema<IStamp>(
     deletedBy: { type: "ObjectId", default: null },
     softDeleted: { type: Boolean, default: false },
     source: { type: String, enum: ["subscription", "addon"], required: true },
+    validityTill: { type: Date, required: true },
 
     // Relations
     retailerId: { type: "ObjectId", ref: "Retailer", required: true },

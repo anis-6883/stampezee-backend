@@ -75,7 +75,7 @@ export const createRetailer = asyncHandler(async (req: IApiRequest, res: Respons
     planExists: PACKAGES.TRIAL,
     paymentStatus: "trial",
     validityFrom: moment(),
-    validityTo: moment().add(freeTrial.duration, "days"),
+    validityTo: freeTrial?.isUnlimited ? new Date("3030-01-01") : moment().add(freeTrial.duration, "days"),
     enrollStatus: "trial",
   });
 
@@ -93,6 +93,7 @@ export const createRetailer = asyncHandler(async (req: IApiRequest, res: Respons
     },
     retailerId: retailer._id,
     enrollSubscriptionId: enrollSubscription._id,
+    validityTill: freeTrial?.isUnlimited ? new Date("3030-01-01") : moment().add(freeTrial.duration, "days"),
     source: "subscription",
   });
 

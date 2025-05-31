@@ -1,4 +1,5 @@
 import { Response } from "express";
+import { Types } from "mongoose";
 import { PACKAGES, ROLE } from "../../configs/constants";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import { getUTC } from "../../helpers/moment";
@@ -6,15 +7,13 @@ import Branch from "../../models/branch";
 import Category from "../../models/category";
 import { IEnrollSubscription } from "../../models/enroll-subscription";
 import Enrollment from "../../models/enrollment";
+import Settings from "../../models/settings";
 import Sorting from "../../models/sorting";
 import Stamp, { IStamp } from "../../models/stamp";
 import StampImage from "../../models/stamp-image";
 import { IApiRequest } from "../../types";
-import { stampSchema, stampStatusSchema, updateStampSchema } from "./validation";
 import { stampCardSuperAdminQuery } from "./service";
-import { Object } from "../../types/index";
-import { Types } from "mongoose";
-import Settings from "../../models/settings";
+import { stampSchema, stampStatusSchema, updateStampSchema } from "./validation";
 
 /**
  * Create A Stamp
@@ -70,6 +69,11 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
         },
       },
       {
+        $addFields: {
+          "enrollSubscription.validityTo": "$validityTo",
+        },
+      },
+      {
         $replaceRoot: { newRoot: "$enrollSubscription" }, // Replace root with enrollSubscription
       },
     ]),
@@ -85,7 +89,7 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
   if (enrollments.length === 0)
     return apiResponse(res, 400, false, "No one is allowed to create a stamp without a plan!");
 
-  const subscription: IEnrollSubscription = enrollments.find((enrollment: IEnrollSubscription) => {
+  const subscription: any = enrollments.find((enrollment: IEnrollSubscription) => {
     return enrollment.planSnapshot.type === "subscription";
   });
 
@@ -109,8 +113,13 @@ export const createStamp = asyncHandler(async (req: IApiRequest, res: Response) 
   const addonIds = addons.map((enrollSubscription: IEnrollSubscription) => enrollSubscription._id.toString());
   const unUsedIds = addonIds.filter((id: string) => !retailerAddonIds.includes(id));
 
+  const unUsedAddon = enrollments.find((enrollment: IEnrollSubscription) => {
+    return enrollment._id == unUsedIds[0];
+  });
+
   createBody.source = source;
   createBody.enrollSubscriptionId = source === "subscription" ? subscription?._id : unUsedIds[0];
+  createBody.validityTill = source === "subscription" ? subscription?.validityTo : unUsedAddon?.validityTo;
   createBody.retailerId = req.user._id;
   createBody.branchId = branchId;
   createBody.stampImageId = stampImageId;

@@ -59,6 +59,11 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
       },
     },
     {
+      $addFields: {
+        "enrollSubscription.validityTo": "$validityTo",
+      },
+    },
+    {
       $replaceRoot: { newRoot: "$enrollSubscription" }, // Replace root with enrollSubscription
     },
   ]);
@@ -66,7 +71,7 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
   if (enrollments.length === 0)
     return apiResponse(res, 400, false, "No one is allowed to create a branch without a plan!");
 
-  const subscription: IEnrollSubscription = enrollments.find((enrollment: IEnrollSubscription) => {
+  const subscription: any = enrollments.find((enrollment: IEnrollSubscription) => {
     return enrollment.planSnapshot.type === "subscription";
   });
 
@@ -97,6 +102,10 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
   const addonIds = addons.map((enrollSubscription: IEnrollSubscription) => enrollSubscription._id.toString());
   const unUsedIds = addonIds.filter((id) => !retailerAddonIds.includes(id));
 
+  const unUsedAddon = enrollments.find((enrollment: IEnrollSubscription) => {
+    return enrollment._id == unUsedIds[0];
+  });
+
   await Branch.create({
     name,
     address: {
@@ -105,6 +114,7 @@ export const createBranch = asyncHandler(async (req: IApiRequest, res: Response)
     },
     retailerId: req.user._id,
     enrollSubscriptionId: source === "subscription" ? subscription?._id : unUsedIds[0],
+    validityTill: source === "subscription" ? subscription?.validityTo : unUsedAddon?.validityTo,
     source,
   });
 
@@ -453,7 +463,7 @@ export const softDeleteBranch = asyncHandler(async (req: IApiRequest, res: Respo
     );
   }
 
-  await Stamp.updateMany({ branchId: id }, { $set: { status: false, softDeleted: true } });
+  await Stamp.updateMany({ branchId: id }, { status: false, softDeleted: true });
 
   return apiResponse(res, 200, true, "Branch deleted successfully!");
 });

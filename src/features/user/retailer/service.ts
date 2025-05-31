@@ -34,6 +34,7 @@ export const freeTrialInvoiceGenerate = async (retailer: IRetailer) => {
     },
     retailerId: retailer._id,
     enrollSubscriptionId: enrollSubscription._id,
+    validityTill: freeTrial?.isUnlimited ? new Date("3030-01-01") : moment().add(freeTrial.duration, "days"),
     source: "subscription",
   });
 
