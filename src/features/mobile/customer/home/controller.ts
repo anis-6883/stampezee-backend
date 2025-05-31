@@ -60,8 +60,10 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
                 promotionReward: 1,
                 discountReward: 1,
                 softDeleted: 1,
+                expiredAt: 1,
                 isExpired: {
                   $or: [
+                    { $lt: ["$validityTill", "$$NOW"] },
                     { $lt: ["$expiredAt", "$$NOW"] },
                     { $eq: ["$softDeleted", true] },
                     { $eq: ["$status", false] },
@@ -81,6 +83,7 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
                           $cond: {
                             if: {
                               $or: [
+                                { $lt: ["$validityTill", "$$NOW"] },
                                 { $eq: ["$status", false] },
                                 { $eq: ["$retailer.softDeleted", true] },
                                 { $eq: ["$retailer.status", false] },
@@ -205,6 +208,22 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
         },
       },
       {
+        $addFields: {
+          isPlanExpired: {
+            $cond: {
+              if: {
+                $or: [
+                  { $lt: ["$branch.validityTill", "$$NOW"] },
+                  { $eq: [{ $size: "$branch.retailer.enrollments" }, 0] },
+                ],
+              },
+              then: true,
+              else: false,
+            },
+          },
+        },
+      },
+      {
         $project: {
           _id: 1,
           createdAt: 1,
@@ -237,24 +256,20 @@ export const getCollectedStamps = asyncHandler(async (req: IApiRequest, res: Res
               },
             ],
           },
-          "branch._id": "$branch._id",
-          "branch.name": "$branch.name",
-          "branch.address": "$branch.address.name",
+          branch: {
+            _id: "$branch._id",
+            name: "$branch.name",
+            address: "$branch.address.name",
+          },
           "retailer._id": "$branch.retailer._id",
           "retailer.storeName": "$branch.retailer.storeName",
           "retailer.image": "$branch.retailer.image",
-          "retailer.isPlanExpired": {
+          "retailer.isPlanExpired": "$isPlanExpired",
+          "retailer.planExpiryMessage": {
             $cond: {
-              if: { $gt: [{ $size: "$branch.retailer.enrollments" }, 0] },
-              then: false,
-              else: true,
-            },
-          },
-          "retailer.isPlanExpiredMessage": {
-            $cond: {
-              if: { $gt: [{ $size: "$branch.retailer.enrollments" }, 0] },
-              then: null,
-              else: "This stamp card has been disabled. Please contact this retailer for more information.",
+              if: "$isPlanExpired",
+              then: "This stamp card has been disabled. Please contact this retailer for more information.",
+              else: null,
             },
           },
           "retailer.totalOrders": "$branch.retailer.totalOrders",
@@ -344,6 +359,7 @@ export const collectedStampById = asyncHandler(async (req: IApiRequest, res: Res
             $project: {
               title: 1,
               description: 1,
+              expiredAt: 1,
               rules: 1,
               noOfStampsToCollect: 1,
               minPurchaseAmount: 1,

@@ -1,4 +1,5 @@
 import { Response } from "express";
+import moment from "moment-timezone";
 import schedule from "node-schedule";
 import { PACKAGES } from "../../configs/constants";
 import notification from "../../configs/fcm";
@@ -10,7 +11,7 @@ import Enrollment from "../../models/enrollment";
 import Notification from "../../models/notification";
 import Retailer from "../../models/retailer";
 import Settings from "../../models/settings";
-import { IApiRequest } from "../../types";
+import { IApiRequest, Object } from "../../types";
 import { notificationBasedOnLocationSchema, notificationSchema, superAdminNotificationSchema } from "./validation";
 
 /**
@@ -397,13 +398,28 @@ export const getAllNotificationsForRetailer = asyncHandler(async (req: IApiReque
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const getAllNotificationsForSuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10, search, type } = req.query;
+  const { page = 1, limit = 10, search, start = undefined, end = undefined, type } = req.query;
+
   const skip: number = (Number(page) - 1) * Number(limit);
+  const settings = await Settings.findOne();
+  const timezone = settings.general.timezone.label;
+
+  let startDate, endDate;
+
+  // Handle date logic
+  if (start) {
+    startDate = moment.tz(start, timezone).startOf("day").toDate();
+    endDate = end ? moment.tz(end, timezone).endOf("day").toDate() : moment.tz(start, timezone).endOf("day").toDate(); // treat start as end
+  }
+
+  const dateFilter: Object = {};
+  if (startDate) dateFilter.$gte = startDate;
+  if (endDate) dateFilter.$lte = endDate;
 
   const query: any = {};
-  if (type) {
-    query.type = type;
-  }
+  if (type) query.type = type;
+  if (start || end) query.$or = [{ createdAt: dateFilter }, { scheduleAt: dateFilter }];
+
   if (search) {
     const retailerIds = (await Retailer.find({ storeName: { $regex: search, $options: "i" } }, { _id: 1 })).map(
       (store) => store._id

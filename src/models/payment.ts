@@ -2,7 +2,12 @@ import { Document, model, Schema, Types } from "mongoose";
 
 interface IPayment extends Document {
   enrollmentId: Types.ObjectId;
-  enrollSubscriptionIds: Types.ObjectId[];
+  enrollSubscriptions: {
+    title: string;
+    slug: string;
+    type: "addon" | "subscription";
+    price: number;
+  }[];
   coupon: {
     _id: Types.ObjectId | null;
     discountType: "percentage" | "flat";
@@ -24,7 +29,17 @@ interface IPayment extends Document {
 const paymentSchema = new Schema<IPayment>(
   {
     enrollmentId: { type: "ObjectId", ref: "Enrollment", required: true },
-    enrollSubscriptionIds: { type: ["ObjectId"], ref: "EnrollSubscription", required: true },
+    enrollSubscriptions: {
+      type: [
+        {
+          title: { type: String, required: true },
+          slug: { type: String, required: true },
+          type: { type: String, enum: ["addon", "subscription"], required: true },
+          price: { type: Number, required: true },
+        },
+      ],
+      required: true,
+    },
     coupon: {
       _id: { type: "ObjectId", ref: "Coupon", default: null },
       discountType: { type: String, enum: ["percentage", "flat", null], default: null },

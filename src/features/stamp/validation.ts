@@ -1,4 +1,5 @@
 import Joi from "joi";
+import dayjs from "dayjs";
 import { requiredBooleanField, requiredStringField, stringField } from "../../helpers";
 
 const noOfStampsToCollect = Joi.number().required().min(1).max(20).messages({
@@ -58,15 +59,29 @@ const isPublished = Joi.boolean().messages({
   "boolean.base": "isPublished must be a boolean value!",
 });
 
-const startedAt = Joi.date().messages({
-  "date.base": "startedAt must be date!",
-});
+const startedAt = Joi.string()
+  .trim()
+  .required()
+  .custom((value, helpers) => {
+    if (!dayjs(value, "YYYY-MM-DD", true).isValid()) {
+      return helpers.error("any.invalid", { message: "startedAt must be a valid date string (YYYY-MM-DD)!" });
+    }
+    return value;
+  });
 
-const expiredAt = Joi.date().min(Joi.ref("startedAt")).messages({
-  "date.base": "expiredAt must be date!",
-  "date.min": "expiredAt must be greater than or equal to startedAt!",
-  "date.ref": "expiredAt must be greater than startedAt!",
-});
+const expiredAt = Joi.string()
+  .trim()
+  .required()
+  .custom((value, helpers) => {
+    const { startedAt } = helpers.state.ancestors[0];
+    if (!dayjs(value, "YYYY-MM-DD", true).isValid()) {
+      return helpers.error("any.invalid", { message: "expiredAt must be a valid date string (YYYY-MM-DD)!" });
+    }
+    if (startedAt && dayjs(value).isBefore(dayjs(startedAt))) {
+      return helpers.error("any.invalid", { message: "expiredAt must be greater than or equal to startedAt!" });
+    }
+    return value;
+  });
 
 export const stampSchema = Joi.object({
   title: requiredStringField("title"),
@@ -86,23 +101,26 @@ export const stampSchema = Joi.object({
   isPublished: isPublished.required().messages({
     "any.required": "isPublished is required!",
   }),
-  startedAt: Joi.date().when("hasValidity", {
-    is: true,
-    then: Joi.required().messages({
-      "date.base": "startedAt must be a date!",
-      "any.required": "startedAt is required!",
+  startedAt: Joi.string()
+    .trim()
+    .when("hasValidity", {
+      is: true,
+      then: Joi.required().messages({
+        "date.base": "startedAt must be a date!",
+        "any.required": "startedAt is required!",
+      }),
+      otherwise: Joi.optional(),
     }),
-    otherwise: Joi.optional(),
-  }),
-  expiredAt: Joi.date().when("hasValidity", {
-    is: true,
-    then: Joi.date().min(Joi.ref("startedAt")).required().messages({
-      "date.base": "expiredAt must be a date!",
-      "date.min": "expiredAt must be greater than or equal to startedAt!",
-      "any.required": "expiredAt is required!",
+  expiredAt: Joi.string()
+    .trim()
+    .when("hasValidity", {
+      is: true,
+      then: Joi.required().messages({
+        "date.base": "expiredAt must be a date!",
+        "any.required": "expiredAt is required!",
+      }),
+      otherwise: Joi.optional(),
     }),
-    otherwise: Joi.optional(),
-  }),
 });
 
 export const updateStampSchema = Joi.object({

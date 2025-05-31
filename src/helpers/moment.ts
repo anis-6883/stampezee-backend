@@ -9,7 +9,7 @@ export const getUTC = (
   timeZone: string,
   startOfDay: boolean = false,
   endOfDay: boolean = false
-): Date => {
+): string => {
   if (startOfDay && endOfDay) {
     throw new Error("startOfDay and endOfDay cannot both be true!");
   }
@@ -22,7 +22,13 @@ export const getUTC = (
     m = m.endOf("day");
   }
 
-  return new Date(m.utc().format()); // returns UTC Date object
+  return m.utc().format(); // returns UTC Date object
+
+  // if (startOfDay) {
+  //   return moment.tz(localTime, timeZone).startOf("day").utc().format();
+  // } else if() {
+  //   return moment.tz(localTime, timeZone).endOf("day").utc().format();
+  // }
 };
 
 export const countDaysLeft = (date: Date) => {

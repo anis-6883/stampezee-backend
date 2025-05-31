@@ -3,7 +3,7 @@ import { deleteFileFromS3Bucket, uploadFileToS3Bucket } from "../../configs/s3Bu
 import { apiResponse, asyncHandler, fileValidation, makePaginate } from "../../helpers";
 import Subscription from "../../models/subscription";
 import { IApiRequest } from "../../types";
-import { updateRetailerFreePlan } from "./service";
+import { updateRetailerFreePlan, updateRetailerPaidPlan } from "./service";
 import { subscriptionSchema, subscriptionStatusSchema, updateSubscriptionSchema } from "./validation";
 
 /**
@@ -107,8 +107,8 @@ export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Res
   const { id } = req.params;
   const { softDeleted, image, slug, ...updatedBody } = result;
 
-  const subscription = await Subscription.findOne({ slug, _id: { $ne: id } });
-  if (subscription) return apiResponse(res, 400, false, "Slug must be unique!");
+  const subscription = await Subscription.findById(id);
+  if (!subscription) return apiResponse(res, 400, false, "Subscription not found!");
 
   // File Validation
   if (req.file) {
@@ -129,12 +129,18 @@ export const updateSubscription = asyncHandler(async (req: IApiRequest, res: Res
   if (!updatedBody?.isUnlimited) updatedBody.unlimitedFieldName = null;
   else updatedBody.duration = 0;
 
-  const updatedData = await Subscription.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
-  if (!updatedData) return apiResponse(res, 404, false, "Subscription not found!");
+  const updatedSubscription = await Subscription.findOneAndUpdate({ _id: id }, updatedBody, { new: true });
+  if (!updatedSubscription) return apiResponse(res, 404, false, "Subscription not found!");
 
-  if (updatedData?.slug === "trial") updateRetailerFreePlan(updatedData);
+  // Bulk Update for Trial Plan
+  if (updatedSubscription?.slug === "trial") updateRetailerFreePlan(updatedSubscription);
 
-  return apiResponse(res, 200, true, "Subscription updated successfully!", updatedData);
+  const priceChangeFlag = updatedBody?.price && updatedBody?.price !== subscription?.price;
+
+  // Bulk Update for Paid Plan
+  if (updatedSubscription?.slug !== "trial" && priceChangeFlag) updateRetailerPaidPlan(updatedSubscription);
+
+  return apiResponse(res, 200, true, "Subscription updated successfully!", updatedSubscription);
 });
 
 /**

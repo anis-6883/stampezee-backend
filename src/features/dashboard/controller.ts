@@ -1,5 +1,6 @@
 import { Response } from "express";
 import moment from "moment-timezone";
+import { Types } from "mongoose";
 import { apiResponse, asyncHandler, countryData, generateRandomColor } from "../../helpers";
 import Branch from "../../models/branch";
 import CollectStamp from "../../models/collect-stamp";
@@ -197,8 +198,30 @@ export const superAdminDashboardRevenue = asyncHandler(async (req: IApiRequest, 
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const customerStatsWithCountryWise = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { start = undefined, end = undefined } = req.query;
+
+  const settings = await Settings.findOne();
+  const timezone = settings.general.timezone.label;
+
+  let startDate, endDate;
+
+  // Handle date logic
+  if (start) {
+    startDate = moment.tz(start, timezone).startOf("day").toDate();
+    endDate = end ? moment.tz(end, timezone).endOf("day").toDate() : moment.tz(start, timezone).endOf("day").toDate(); // treat start as end
+  }
+
+  const dateFilter: Object = {};
+  if (startDate) dateFilter.$gte = startDate;
+  if (endDate) dateFilter.$lte = endDate;
+
   // Perform the aggregation to get country-wise counts and total count
   const customerCounts = await Customer.aggregate([
+    {
+      $match: {
+        ...(start || end ? { createdAt: dateFilter } : {}),
+      },
+    },
     {
       $group: {
         _id: "$country",
@@ -277,20 +300,17 @@ export const topOutlets = asyncHandler(async (req: IApiRequest, res: Response) =
       },
     },
     {
-      $sort: {
-        totalAmountInCAD: -1,
-      },
-    },
-    {
-      $limit: 10,
-    },
-    {
       $group: {
         _id: "$branchId", // Group by branchId
         totalAmountInCAD: { $sum: "$amountInCAD" }, // Sum the converted amountInCAD for each branchId
         retailerId: { $first: "$retailerId" },
         exchangeRate: { $first: "$exchangeRate" },
         amountCurrency: { $first: "$amountCurrency" },
+      },
+    },
+    {
+      $sort: {
+        totalAmountInCAD: -1,
       },
     },
     {
@@ -403,9 +423,12 @@ export const topOutlets = asyncHandler(async (req: IApiRequest, res: Response) =
         },
       },
     },
+    {
+      $limit: 10,
+    },
   ]);
 
-  return apiResponse(res, 200, true, "Top Outlets List!", outlets);
+  return apiResponse(res, 200, true, "Top ten outlets list based on revenue!", outlets);
 });
 
 /**
@@ -418,7 +441,13 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
   const retailer = await Retailer.findById(req.user?._id, { businessCurrency: 1 });
   const currencyExchange = await CurrencyExchange.findOne({ currency: retailer?.businessCurrency });
 
-  const { start = undefined, end = undefined } = req.query;
+  const { start = undefined, end = undefined, branchIds = "" }: any = req.query;
+  const query: Object = {};
+
+  if (branchIds) {
+    const branchIdArray = branchIds.split(",").map((id: string) => Types.ObjectId.createFromHexString(id.trim()));
+    query._id = { $in: branchIdArray };
+  }
 
   const settings = await Settings.findOne();
   const timezone = settings.general.timezone.label;
@@ -448,11 +477,7 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
           as: "branchCustomer",
           pipeline: [
             {
-              $match: {
-                status: true,
-                softDeleted: false,
-                disabledBySystem: false,
-              },
+              $match: query,
             },
             {
               $lookup: {
@@ -513,11 +538,7 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
           as: "branches",
           pipeline: [
             {
-              $match: {
-                status: true,
-                softDeleted: false,
-                disabledBySystem: false,
-              },
+              $match: query,
             },
             {
               $lookup: {
@@ -713,8 +734,30 @@ export const retailerDashboardCardStats = asyncHandler(async (req: IApiRequest, 
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const retailerStatsWithCountryWise = asyncHandler(async (req: IApiRequest, res: Response) => {
+  const { start = undefined, end = undefined } = req.query;
+
+  const settings = await Settings.findOne();
+  const timezone = settings.general.timezone.label;
+
+  let startDate, endDate;
+
+  // Handle date logic
+  if (start) {
+    startDate = moment.tz(start, timezone).startOf("day").toDate();
+    endDate = end ? moment.tz(end, timezone).endOf("day").toDate() : moment.tz(start, timezone).endOf("day").toDate(); // treat start as end
+  }
+
+  const dateFilter: Object = {};
+  if (startDate) dateFilter.$gte = startDate;
+  if (endDate) dateFilter.$lte = endDate;
+
   // Perform the aggregation to get country-wise counts and total count
   const retailerCounts = await Retailer.aggregate([
+    {
+      $match: {
+        ...(start || end ? { createdAt: dateFilter } : {}),
+      },
+    },
     {
       $group: {
         _id: "$country",
@@ -772,7 +815,13 @@ export const retailerStatsWithCountryWise = asyncHandler(async (req: IApiRequest
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const avgCollectedStamp = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { start = undefined, end = undefined } = req.query;
+  const { start = undefined, end = undefined, branchIds = "" }: any = req.query;
+  const query: Object = { retailerId: req.user._id };
+
+  if (branchIds) {
+    const branchIdArray = branchIds.split(",").map((id: string) => Types.ObjectId.createFromHexString(id.trim()));
+    query.branchId = { $in: branchIdArray };
+  }
 
   const settings = await Settings.findOne();
   const timezone = settings.general.timezone.label;
@@ -789,12 +838,11 @@ export const avgCollectedStamp = asyncHandler(async (req: IApiRequest, res: Resp
   if (startDate) dateFilter.$gte = startDate;
   if (endDate) dateFilter.$lte = endDate;
 
+  if (start || end) query.createdAt = dateFilter;
+
   const result = await OrderStamp.aggregate([
     {
-      $match: {
-        retailerId: req.user._id,
-        ...(start || end ? { createdAt: dateFilter } : {}),
-      },
+      $match: query,
     },
     {
       $group: {
@@ -843,10 +891,16 @@ export const avgCollectedStamp = asyncHandler(async (req: IApiRequest, res: Resp
  * @returns {Promise<void>} - A promise that resolves when the response is sent.
  */
 export const rewardCollectPercentage = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const branches = await Branch.find({ retailerId: req.user._id, status: true, softDeleted: false }).select("_id");
-  const branchIds = branches.map((branch) => branch._id);
+  const { start = undefined, end = undefined, branchIds = "" }: any = req.query;
+  const query: Object = {};
 
-  const { start = undefined, end = undefined } = req.query;
+  if (branchIds) {
+    const branchIdArray = branchIds.split(",").map((id: string) => Types.ObjectId.createFromHexString(id.trim()));
+    query.branchId = { $in: branchIdArray };
+  } else {
+    const branches = await Branch.find({ retailerId: req.user._id, status: true, softDeleted: false }).select("_id");
+    query.branchId = { $in: branches.map((branch) => branch._id) };
+  }
 
   const settings = await Settings.findOne();
   const timezone = settings.general.timezone.label;
@@ -866,9 +920,7 @@ export const rewardCollectPercentage = asyncHandler(async (req: IApiRequest, res
   const [result1, result2] = await Promise.all([
     CollectStamp.aggregate([
       {
-        $match: {
-          branchId: { $in: branchIds },
-        },
+        $match: query,
       },
       {
         $lookup: {
@@ -934,9 +986,7 @@ export const rewardCollectPercentage = asyncHandler(async (req: IApiRequest, res
     ]),
     CollectStamp.aggregate([
       {
-        $match: {
-          branchId: { $in: branchIds },
-        },
+        $match: query,
       },
       {
         $lookup: {

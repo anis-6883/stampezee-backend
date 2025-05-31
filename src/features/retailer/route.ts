@@ -6,7 +6,12 @@ import {
   getAllDeletedRetailers,
   getAllRetailers,
   getSingleRetailer,
+  retailerBranches,
+  retailerCustomers,
   retailerPayments,
+  retailerStampCards,
+  retailerStamps,
+  retailerSubAdmins,
   softDeleteRetailer,
   updateRetailer,
   updateRetailerStatus,
@@ -20,6 +25,11 @@ router.post("/", upload.single("image"), createRetailer);
 router.get("/all", getAllRetailers);
 router.get("/deleted", getAllDeletedRetailers);
 router.get("/payments/:id", retailerPayments);
+router.get("/branches/:retailerId", retailerBranches);
+router.get("/stamp-cards/:retailerId", retailerStampCards);
+router.get("/stamps/:retailerId", retailerStamps);
+router.get("/customers/:retailerId", retailerCustomers);
+router.get("/sub-admins/:retailerId", retailerSubAdmins);
 router.put("/status/:id", updateRetailerStatus);
 router.delete("/confirm/:id", confirmDeleteRetailer);
 router.get("/:id", getSingleRetailer);

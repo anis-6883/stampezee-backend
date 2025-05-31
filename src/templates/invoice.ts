@@ -1476,7 +1476,7 @@ export const getInvoiceTemplate = ({
   ${
     invoiceMetadata?.taxDiscount
       ? `<tr>
-      <td style="padding-left: 10px; text-align: left;" colspan="3" class="title">Tax (${invoiceMetadata?.tax?.taxCost}%)</td>
+      <td style="padding-left: 10px; text-align: left;" colspan="3" class="title">${invoiceMetadata?.tax?.taxTitle ? invoiceMetadata?.tax?.taxTitle : "Tax"} (${invoiceMetadata?.tax?.taxCost}%)</td>
       <td class="text-right pr-45">${invoiceMetadata?.taxDiscount}</td>
     </tr>`
       : ""
@@ -1997,13 +1997,13 @@ export const getInvoiceTemplatePdf = ({
             <div>
               <img
                 src="https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/logo.png"
-                width="150"
-                height="150"
+                width="120"
+                height="120"
                 alt="Cyber Kitty"
                 style="margin-bottom: 15px"
               />
             </div>
-            <h1 style="font-family: tannimbus; font-size: 40px; font-weight: bold">Invoice</h1>
+            <h1 style="font-family: tannimbus; font-size: 36px; font-weight: bold">Invoice</h1>
           </div>
         </td>
       </tr>
@@ -2088,7 +2088,7 @@ export const getInvoiceTemplatePdf = ({
                 ${
                   invoiceMetadata?.taxDiscount
                     ? `<tr>
-                  <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">Tax (${invoiceMetadata?.tax?.taxCost}%)</td>
+                  <td style="padding-left: 250px; border-bottom: none" colspan="3" class="title">${invoiceMetadata?.tax?.taxTitle ? invoiceMetadata?.tax?.taxTitle : "Tax"} (${invoiceMetadata?.tax?.taxCost}%)</td>
                   <td style="border-bottom: none" class="text-right">${invoiceMetadata?.taxDiscount}</td>
                 </tr>`
                     : ""
@@ -2129,7 +2129,7 @@ export const getInvoiceTemplatePdf = ({
                     <div style="padding-top: 40px">
                       <img
                         src="https://stampezee-s3.s3.ap-south-1.amazonaws.com/default/thank-you.jpg"
-                        width="250"
+                        width="220"
                         alt="thank-you"
                         style="margin-bottom: 15px"
                       />

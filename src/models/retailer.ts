@@ -1,6 +1,6 @@
 import { Document, model, Schema } from "mongoose";
 
-interface IRetailer extends Document {
+export interface IRetailer extends Document {
   firstName: string;
   lastName?: string;
   fullName: string;

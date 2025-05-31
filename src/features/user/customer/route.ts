@@ -12,6 +12,7 @@ import {
   customerResendOtp,
   deleteAccount,
   forgetPassword,
+  logOut,
   updateCustomerProfile,
   updateLocationDeviceToken,
 } from "./controller";
@@ -26,6 +27,7 @@ router.get("/profile", authAndPermissionCheck([ROLE.CUSTOMER, ROLE.SUB_ADMIN]), 
 router.put("/profile", authAndPermissionCheck(ROLE.CUSTOMER), updateCustomerProfile);
 router.put("/update-location-token", authAndPermissionCheck(ROLE.CUSTOMER), updateLocationDeviceToken);
 router.delete("/request-delete", authAndPermissionCheck(ROLE.CUSTOMER), deleteAccount);
+router.post("/logout", authAndPermissionCheck(ROLE.CUSTOMER), logOut);
 
 router.use(authAndPermissionCheck([ROLE.CUSTOMER, ROLE.SUB_ADMIN], true, true, true));
 router.get("/resend-otp", customerResendOtp);

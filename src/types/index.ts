@@ -132,4 +132,8 @@ export interface IRetailerScanQuery {
 
 export interface ISuperAdminScanQuery {
   $or?: object[];
+  createdAt?: {
+    $gte?: Date;
+    $lte?: Date;
+  };
 }

@@ -1,9 +1,11 @@
 import { Response } from "express";
+import moment from "moment-timezone";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
 import Customer from "../../models/customer";
 import OrderStamp from "../../models/order-stamp";
 import Retailer from "../../models/retailer";
-import { IApiRequest, IRetailerScanQuery, ISuperAdminScanQuery } from "../../types";
+import Settings from "../../models/settings";
+import { IApiRequest, IRetailerScanQuery, ISuperAdminScanQuery, Object } from "../../types";
 
 /**
  * Stamp scan details for retailer
@@ -189,9 +191,26 @@ export const stampScanDetailsForRetailer = asyncHandler(async (req: IApiRequest,
 });
 
 export const stampScanDetailsForSuperAdmin = asyncHandler(async (req: IApiRequest, res: Response) => {
-  const { page = 1, limit = 10, search }: any = req.query;
+  const { page = 1, limit = 10, search, start = undefined, end = undefined } = req.query;
+
   const skip: number = (Number(page) - 1) * Number(limit);
+  const settings = await Settings.findOne();
+  const timezone = settings.general.timezone.label;
+
+  let startDate, endDate;
+
+  // Handle date logic
+  if (start) {
+    startDate = moment.tz(start, timezone).startOf("day").toDate();
+    endDate = end ? moment.tz(end, timezone).endOf("day").toDate() : moment.tz(start, timezone).endOf("day").toDate(); // treat start as end
+  }
+
+  const dateFilter: Object = {};
+  if (startDate) dateFilter.$gte = startDate;
+  if (endDate) dateFilter.$lte = endDate;
+
   const query: ISuperAdminScanQuery = {};
+  if (start || end) query.createdAt = dateFilter;
 
   if (search) {
     const regex = new RegExp(`.*${search}.*`, "i"); // case insensitive search. For sensitive remove 'i'

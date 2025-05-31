@@ -11,6 +11,7 @@ import Stamp from "../../../../models/stamp";
 import Subscription from "../../../../models/subscription";
 import { IApiRequest } from "../../../../types";
 import { collectStampSchema } from "./validation";
+import { stampDetails } from "./service";
 
 /**
  * Get All Stamp Categories
@@ -409,6 +410,7 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
   const stampQuery: any = {
     startedAt: { $lte: new Date() },
     expiredAt: { $gte: new Date() },
+    validityTill: { $gt: new Date() },
     isPublished: true,
     retailerId: { $in: activeSubscriptionRetailerIds },
     status: true,
@@ -436,6 +438,13 @@ export const getAllStampsByLocation = asyncHandler(async (req: IApiRequest, res:
         distanceField: "distance",
         spherical: true,
         maxDistance: 600 * 1609.34, //600 KM. converted into miles
+      },
+    },
+    {
+      $match: {
+        status: true,
+        softDeleted: false,
+        validityTill: { $gt: new Date() },
       },
     },
     {
@@ -566,7 +575,9 @@ export const collectStamp = asyncHandler(async (req: IApiRequest, res: Response)
 
   if (alreadyCollected && alreadyCollected.softDeleted === true) {
     await CollectStamp.findByIdAndUpdate(alreadyCollected._id, { softDeleted: false });
-    return apiResponse(res, 200, true, "Stamp added successfully!");
+    const data = await stampDetails(req?.user?._id, alreadyCollected._id);
+
+    return apiResponse(res, 200, true, "Stamp added successfully!", data);
   }
 
   if (!branch || !stamp) return apiResponse(res, 400, false, "Branch or Stamp not found!");
@@ -643,7 +654,18 @@ export const collectStamp = asyncHandler(async (req: IApiRequest, res: Response)
     }
   }
 
-  await CollectStamp.create({ branchId, stampId, customerId: req.user._id });
+  if (branch.validityTill < new Date() || stamp.validityTill < new Date()) {
+    return apiResponse(
+      res,
+      400,
+      false,
+      "This stamp card has been disabled. Please contact this retailer for more information."
+    );
+  }
 
-  return apiResponse(res, 200, true, "Stamp added successfully!");
+  const collectedStamp = await CollectStamp.create({ branchId, stampId, customerId: req.user._id });
+
+  const data = await stampDetails(req?.user?._id, collectedStamp._id);
+
+  return apiResponse(res, 200, true, "Stamp added successfully!", data);
 });
