@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { PACKAGES } from "../../configs/constants";
 import { apiResponse, asyncHandler, makePaginate } from "../../helpers";
+import { countDaysLeft } from "../../helpers/moment";
 import Branch from "../../models/branch";
 import { IEnrollSubscription } from "../../models/enroll-subscription";
 import Enrollment from "../../models/enrollment";
@@ -177,19 +178,6 @@ export const getAllBranches = asyncHandler(async (req: IApiRequest, res: Respons
                 validityFrom: "$enrollment.validityFrom",
                 validityTo: "$enrollment.validityTo",
                 validAtAfterCancel: 1,
-                planDaysLeft: {
-                  $dateDiff: {
-                    startDate: "$$NOW",
-                    endDate: {
-                      $cond: {
-                        if: { $eq: ["$validAtAfterCancel", null] },
-                        then: "$enrollment.validityTo",
-                        else: "$validAtAfterCancel",
-                      },
-                    },
-                    unit: "day",
-                  },
-                },
               },
             },
           ],
@@ -204,6 +192,13 @@ export const getAllBranches = asyncHandler(async (req: IApiRequest, res: Respons
     ]),
     Branch.countDocuments(query),
   ]);
+
+  for (const branch of docs) {
+    if (branch.enrollSubscription) {
+      const date = branch.enrollSubscription.validAtAfterCancel || branch.enrollSubscription.validityTo;
+      branch.enrollSubscription.planDaysLeft = countDaysLeft(date);
+    }
+  }
 
   const data = makePaginate(docs, Number(page), Number(limit), skip, total);
 
